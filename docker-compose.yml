@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  oracle-db:
+    image: gvenzl/oracle-free:23.4-slim
+    container_name: oracle23c-free
+    ports:
+      - "1521:1521"
+      - "5500:5500" # EM Express (web UI)
+    environment:
+      ORACLE_PASSWORD: Oracle123
+      APP_USER: appuser
+      APP_USER_PASSWORD: App123
+    volumes:
+      - oracle_data:/opt/oracle/oradata
+    shm_size: "1g"
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  oracle_data:
