@@ -1,10 +1,12 @@
+// CODE_GENERATOR: request
+
 package in
 
 import "errors"
 
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email    string `json:"email" form:"email" binding:"required,email"`
+	Password string `json:"password" form:"password" binding:"required"`
 }
 
 func (r *LoginRequest) Validate() error {

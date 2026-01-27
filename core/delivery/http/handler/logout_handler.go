@@ -11,20 +11,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type loginHandler struct {
+type logoutHandler struct {
 	authUsecase usecase.AuthUsecase
 }
 
-func NewLoginHandler(usecase usecase.Usecase) RequestHandler {
-	return &loginHandler{
+func NewLogoutHandler(usecase usecase.Usecase) RequestHandler {
+	return &logoutHandler{
 		authUsecase: usecase.AuthUsecase(),
 	}
 }
 
-func (h *loginHandler) Handle(c *gin.Context) (interface{}, error) {
+func (h *logoutHandler) Handle(c *gin.Context) (interface{}, error) {
 	ctx := c.Request.Context()
 	logger := logging.FromContext(ctx)
-	var request in.LoginRequest
+	var request in.LogoutRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
 		return nil, err
@@ -33,10 +33,10 @@ func (h *loginHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	result, err := h.authUsecase.Login(ctx, &request)
+	result, err := h.authUsecase.Logout(ctx, &request)
 	if err != nil {
-		logger.Errorw("Login failed", zap.Error(err))
-		return nil, errors.New("Login failed")
+		logger.Errorw("Logout failed", zap.Error(err))
+		return nil, errors.New("Logout failed")
 	}
 	return result, nil
 }

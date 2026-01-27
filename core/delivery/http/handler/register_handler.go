@@ -1,9 +1,9 @@
+// CODE_GENERATOR: handler
 package handler
 
 import (
 	"errors"
 	"go-socket/core/delivery/http/data/in"
-	"go-socket/core/delivery/http/data/out"
 	"go-socket/core/usecase"
 	"go-socket/shared/pkg/logging"
 
@@ -33,12 +33,10 @@ func (h *registerHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	token, err := h.authUsecase.Register(ctx, request.Email, request.Password)
+	result, err := h.authUsecase.Register(ctx, &request)
 	if err != nil {
 		logger.Errorw("Register failed", zap.Error(err))
-		return nil, errors.New("register failed")
+		return nil, errors.New("Register failed")
 	}
-	return out.RegisterResponse{
-		Token: token,
-	}, nil
+	return result, nil
 }

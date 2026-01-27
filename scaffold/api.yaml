@@ -1,0 +1,89 @@
+version: 1
+basePath: /api/v1
+
+endpoints:
+  - name: AuthLogin
+    method: POST
+    path: /auth/login
+    handler: LoginHandler
+    usecase:
+      name: AuthUsecase
+      method: Login
+    request:
+      struct: LoginRequest
+      fields:
+        - name: email
+          type: string
+          required: true
+        - name: password
+          type: string
+          required: true
+    response:
+      struct: LoginResponse
+      fields:
+        - name: token
+          type: string
+        - name: expires_at
+          type: int64
+
+  - name: AuthRegister
+    method: POST
+    path: /auth/register
+    handler: RegisterHandler
+    usecase:
+      name: AuthUsecase
+      method: Register
+    request:
+      struct: RegisterRequest
+      fields:
+        - name: email
+          type: string
+          required: true
+        - name: password
+          type: string
+          required: true
+    response:
+      struct: RegisterResponse
+      fields:
+        - name: token
+          type: string
+
+  - name: AuthLogout
+    method: POST
+    path: /auth/logout
+    handler: LogoutHandler
+    auth: true
+    usecase:
+      name: AuthUsecase
+      method: Logout
+    request:
+      struct: LogoutRequest
+      fields:
+        - name: token
+          type: string
+    response:
+      struct: LogoutResponse
+      fields:
+        - name: message
+          type: string
+
+  - name: AuthGetProfile
+    method: GET
+    path: /auth/profile
+    handler: GetProfileHandler
+    auth: true
+    usecase:
+      name: AuthUsecase
+      method: GetProfile
+    request:
+      struct: GetProfileRequest
+      fields:
+    response:
+      struct: GetProfileResponse
+      fields:
+        - name: email
+          type: string
+        - name: created_at
+          type: string
+        - name: updated_at
+          type: string

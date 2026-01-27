@@ -1,5 +1,5 @@
 // CODE_GENERATOR: routing
-package http
+package {{.PackageName}}
 
 import (
 	"github.com/gin-gonic/gin"
@@ -12,11 +12,13 @@ type RoutingHandler interface {
 }
 
 func (h *routingHandler) RegisterPublicHandlers(routes *gin.RouterGroup) {
-	routes.POST("/auth/login", h.Handle())
-	routes.POST("/auth/register", h.Handle())
+{{- range .PublicRoutes}}
+{{.}}
+{{- end}}
 }
 
 func (h *routingHandler) RegisterPrivateHandlers(routes *gin.RouterGroup) {
-	routes.POST("/auth/logout", h.Handle())
-	routes.GET("/auth/profile", h.Handle())
+{{- range .PrivateRoutes}}
+{{.}}
+{{- end}}
 }

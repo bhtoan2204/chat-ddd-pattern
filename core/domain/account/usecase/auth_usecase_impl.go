@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	appCtx "go-socket/core/context"
+	"go-socket/core/delivery/http/data/in"
+	"go-socket/core/delivery/http/data/out"
 	"go-socket/core/domain/account/entity"
 	accountrepos "go-socket/core/domain/account/repos"
 	repos "go-socket/core/domain/account/repos"
 	"go-socket/shared/infra/xpaseto"
 	"go-socket/shared/pkg/hasher"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -29,49 +32,73 @@ func NewAuthUsecase(appCtx *appCtx.AppContext, repos repos.Repos) AuthUsecase {
 	}
 }
 
-func (u *authUsecaseImpl) Login(ctx context.Context, email string, password string) (string, error) {
-	account, err := u.accountRepo.GetAccountByEmail(ctx, email)
+func (u *authUsecaseImpl) Login(ctx context.Context, in *in.LoginRequest) (*out.LoginResponse, error) {
+	account, err := u.accountRepo.GetAccountByEmail(ctx, in.Email)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", ErrAccountNotFound
+		return nil, ErrAccountNotFound
 	}
-	valid, err := u.hasher.Verify(ctx, password, account.Password)
+	valid, err := u.hasher.Verify(ctx, in.Password, account.Password)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if !valid {
-		return "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
 	}
-	token, _, err := u.paseto.GenerateToken(ctx, account)
+	token, expiresAt, err := u.paseto.GenerateToken(ctx, account)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return token, nil
+	return &out.LoginResponse{
+		Token:     token,
+		ExpiresAt: expiresAt.UnixMilli(),
+	}, nil
 }
 
-func (u *authUsecaseImpl) Register(ctx context.Context, email string, password string) (string, error) {
-	_, err := u.accountRepo.GetAccountByEmail(ctx, email)
+func (u *authUsecaseImpl) Register(ctx context.Context, in *in.RegisterRequest) (*out.RegisterResponse, error) {
+	_, err := u.accountRepo.GetAccountByEmail(ctx, in.Email)
 	if err == nil {
-		return "", ErrAccountExists
+		return nil, ErrAccountExists
 	}
-	hashedPassword, err := u.hasher.Hash(ctx, password)
+	hashedPassword, err := u.hasher.Hash(ctx, in.Password)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	newAccountEntity := &entity.Account{
 		ID:       uuid.New().String(),
-		Email:    email,
+		Email:    in.Email,
 		Password: hashedPassword,
 	}
 	if err := u.accountRepo.CreateAccount(ctx, newAccountEntity); err != nil {
-		return "", fmt.Errorf("create account failed: %w", err)
+		return nil, fmt.Errorf("create account failed: %w", err)
 	}
 	token, _, err := u.paseto.GenerateToken(ctx, newAccountEntity)
 	if err != nil {
-		return "", fmt.Errorf("generate token failed: %w", err)
+		return nil, fmt.Errorf("generate token failed: %w", err)
 	}
-	return token, nil
+	return &out.RegisterResponse{
+		Token: token,
+	}, nil
 }
 
-func (u *authUsecaseImpl) Logout(ctx context.Context, token string) error {
-	return nil
+func (u *authUsecaseImpl) Logout(ctx context.Context, in *in.LogoutRequest) (*out.LogoutResponse, error) {
+	return &out.LogoutResponse{
+		Message: "Logout successful",
+	}, nil
+}
+
+func (u *authUsecaseImpl) GetProfile(ctx context.Context, in *in.GetProfileRequest) (*out.GetProfileResponse, error) {
+	account := ctx.Value("account")
+	if account == nil {
+		return nil, errors.New("account not found")
+	}
+	userID := account.(*xpaseto.PasetoPayload).AccountID
+	accountEntity, err := u.accountRepo.GetAccountByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &out.GetProfileResponse{
+		Email:     accountEntity.Email,
+		CreatedAt: accountEntity.CreatedAt.Format(time.RFC3339),
+		UpdatedAt: accountEntity.UpdatedAt.Format(time.RFC3339),
+	}, nil
 }

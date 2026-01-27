@@ -1,9 +1,14 @@
 package usecase
 
-import "context"
+import (
+	"context"
+	"go-socket/core/delivery/http/data/in"
+	"go-socket/core/delivery/http/data/out"
+)
 
 type AuthUsecase interface {
-	Login(ctx context.Context, email string, password string) (string, error)
-	Register(ctx context.Context, email string, password string) (string, error)
-	Logout(ctx context.Context, token string) error
+	Login(ctx context.Context, in *in.LoginRequest) (*out.LoginResponse, error)
+	Register(ctx context.Context, in *in.RegisterRequest) (*out.RegisterResponse, error)
+	Logout(ctx context.Context, in *in.LogoutRequest) (*out.LogoutResponse, error)
+	GetProfile(ctx context.Context, in *in.GetProfileRequest) (*out.GetProfileResponse, error)
 }

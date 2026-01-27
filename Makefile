@@ -13,3 +13,7 @@ down:
 build:
 	@docker compose build
 .PHONY: build
+
+generate:
+	go run scaffold/main.go
+.PHONY: generate

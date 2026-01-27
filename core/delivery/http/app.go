@@ -30,6 +30,7 @@ type Server struct {
 	httpServer *http.Server
 	handler    RoutingHandler
 	usecase    coreusecase.Usecase
+	appCtx     *appCtx.AppContext
 }
 
 func NewServer(cfg *config.Config) *Server {
@@ -80,11 +81,12 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 	r.HEAD("/health-check", pingHandler)
 
 	s.router = r
-	s.handler = NewRoutingHandler(s.cfg, appCtx.GetRedisClient(), s.usecase)
+	s.appCtx = appCtx
+	s.handler = NewRoutingHandler(s.cfg, appCtx, appCtx.GetRedisClient(), s.usecase)
 
 	// public api
 	s.registerPublicAPI()
-
+	s.registerPrivateAPI()
 	return r
 }
 
@@ -112,5 +114,13 @@ func (s *Server) registerPublicAPI() {
 	h := s.handler
 	router := s.router.Group("")
 	apiV1 := router.Group("/api/v1")
-	h.RegisterHandlers(apiV1)
+	h.RegisterPublicHandlers(apiV1)
+}
+
+func (s *Server) registerPrivateAPI() {
+	h := s.handler
+	router := s.router.Group("")
+	apiV1 := router.Group("/api/v1")
+	apiV1.Use(middleware.AuthenMiddleware(s.appCtx))
+	h.RegisterPrivateHandlers(apiV1)
 }

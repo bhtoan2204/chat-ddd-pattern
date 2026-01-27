@@ -1,0 +1,46 @@
+// CODE_GENERATOR: handler
+package {{.PackageName}}
+
+import (
+	"errors"
+	"go-socket/core/delivery/http/data/in"
+	"go-socket/core/usecase"
+	"go-socket/shared/pkg/logging"
+
+	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
+)
+
+type {{.StructName}} struct {
+	{{.UsecaseField}} usecase.{{.UsecaseName}}
+}
+
+func New{{.HandlerName}}(usecase usecase.Usecase) RequestHandler {
+	return &{{.StructName}}{
+		{{.UsecaseField}}: usecase.{{.UsecaseGetter}}(),
+	}
+}
+
+func (h *{{.StructName}}) Handle(c *gin.Context) (interface{}, error) {
+	ctx := c.Request.Context()
+	logger := logging.FromContext(ctx)
+	var request in.{{.RequestStruct}}
+{{- if eq .Method "GET"}}
+	if err := c.ShouldBindQuery(&request); err != nil {
+{{- else}}
+	if err := c.ShouldBindJSON(&request); err != nil {
+{{- end}}
+		logger.Errorw("Unmarshal request failed", zap.Error(err))
+		return nil, err
+	}
+	if err := request.Validate(); err != nil {
+		logger.Errorw("Validate request failed", zap.Error(err))
+		return nil, errors.New("validate request failed")
+	}
+	result, err := h.{{.UsecaseField}}.{{.UsecaseMethod}}(ctx, &request)
+	if err != nil {
+		logger.Errorw("{{.UsecaseMethod}} failed", zap.Error(err))
+		return nil, errors.New("{{.UsecaseMethod}} failed")
+	}
+	return result, nil
+}

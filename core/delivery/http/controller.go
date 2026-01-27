@@ -2,6 +2,7 @@ package http
 
 import (
 	"go-socket/config"
+	appCtx "go-socket/core/context"
 	"go-socket/core/delivery/http/handler"
 	"go-socket/core/usecase"
 	"net/http"
@@ -17,13 +18,15 @@ type routingConfig struct {
 
 type routingHandler struct {
 	config      *config.Config
+	appCtx      *appCtx.AppContext
 	redisClient *redis.Client
 	registry    map[string]routingConfig
 }
 
-func NewRoutingHandler(config *config.Config, redisClient *redis.Client, usecase usecase.Usecase) RoutingHandler {
+func NewRoutingHandler(config *config.Config, appCtx *appCtx.AppContext, redisClient *redis.Client, usecase usecase.Usecase) RoutingHandler {
 	return &routingHandler{
 		config:      config,
+		appCtx:      appCtx,
 		redisClient: redisClient,
 		registry:    BuildRegistry(config, usecase),
 	}

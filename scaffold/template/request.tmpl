@@ -1,0 +1,32 @@
+// CODE_GENERATOR: request
+{{- $needErrors := false -}}
+{{- range .Fields}}
+  {{- if and .Required .ZeroCheck}}
+    {{- $needErrors = true -}}
+  {{- end}}
+{{- end}}
+
+package {{.PackageName}}
+
+{{- if $needErrors}}
+import "errors"
+{{- end}}
+
+type {{.StructName}} struct {
+{{- range .Fields}}
+	{{.GoName}} {{.Type}} `json:"{{.JSONName}}" form:"{{.JSONName}}"{{if .BindingTag}} binding:"{{.BindingTag}}"{{end}}`
+{{- end}}
+}
+
+func (r *{{.StructName}}) Validate() error {
+{{- range .Fields}}
+{{- if .Required}}
+{{- if .ZeroCheck}}
+	if {{.ZeroCheck}} {
+		return errors.New("{{.JSONName}} is required")
+	}
+{{- end}}
+{{- end}}
+{{- end}}
+	return nil
+}

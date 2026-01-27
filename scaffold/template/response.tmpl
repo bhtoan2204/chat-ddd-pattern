@@ -1,0 +1,8 @@
+// CODE_GENERATOR: response
+package {{.PackageName}}
+
+type {{.StructName}} struct {
+{{- range .Fields}}
+	{{.GoName}} {{.Type}} `json:"{{.JSONName}}"`
+{{- end}}
+}
