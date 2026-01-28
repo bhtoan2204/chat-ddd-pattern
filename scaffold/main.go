@@ -7,10 +7,10 @@ import (
 	"log"
 )
 
-const API_SPEC_PATH = "scaffold/api.yaml"
+const API_SPEC_DIR = "scaffold/api"
 
 func main() {
-	apiSpec, err := models.LoadAPISpec(API_SPEC_PATH)
+	apiSpec, err := models.LoadAPISpecDir(API_SPEC_DIR)
 	if err != nil {
 		log.Fatalf("Failed to load API spec: %v", err)
 	}

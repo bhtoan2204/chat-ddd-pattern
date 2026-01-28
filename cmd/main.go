@@ -7,8 +7,8 @@ import (
 	"go-socket/config"
 	appCtx "go-socket/core/context"
 	"go-socket/core/delivery/http"
-	"go-socket/shared/infra/db"
-	"go-socket/shared/pkg/logging"
+	"go-socket/core/shared/infra/db"
+	"go-socket/core/shared/pkg/logging"
 	"os/signal"
 	"syscall"
 )

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go-socket/config"
-	"go-socket/shared/pkg/logging"
+	"go-socket/core/shared/pkg/logging"
 
 	oracle "github.com/godoes/gorm-oracle"
 	"go.uber.org/zap"

@@ -4,11 +4,11 @@ import (
 	"context"
 	"go-socket/config"
 	"go-socket/constant"
-	"go-socket/shared/infra/cache"
-	dbinfra "go-socket/shared/infra/db"
-	"go-socket/shared/infra/redis"
-	"go-socket/shared/infra/xpaseto"
-	"go-socket/shared/pkg/hasher"
+	"go-socket/core/shared/infra/cache"
+	dbinfra "go-socket/core/shared/infra/db"
+	"go-socket/core/shared/infra/redis"
+	"go-socket/core/shared/infra/xpaseto"
+	"go-socket/core/shared/pkg/hasher"
 	"time"
 )
 

@@ -10,8 +10,8 @@ import (
 	"go-socket/core/domain/account/entity"
 	accountrepos "go-socket/core/domain/account/repos"
 	repos "go-socket/core/domain/account/repos"
-	"go-socket/shared/infra/xpaseto"
-	"go-socket/shared/pkg/hasher"
+	"go-socket/core/shared/infra/xpaseto"
+	"go-socket/core/shared/pkg/hasher"
 	"time"
 
 	"github.com/google/uuid"

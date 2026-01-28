@@ -7,8 +7,8 @@ import (
 	accountcache "go-socket/core/domain/account/infra/cache"
 	"go-socket/core/domain/account/infra/persistent/models"
 	accountrepos "go-socket/core/domain/account/repos"
-	sharedcache "go-socket/shared/infra/cache"
-	"go-socket/shared/pkg/logging"
+	sharedcache "go-socket/core/shared/infra/cache"
+	"go-socket/core/shared/pkg/logging"
 
 	"github.com/samber/lo"
 	"go.uber.org/zap"

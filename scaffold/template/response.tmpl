@@ -6,3 +6,11 @@ type {{.StructName}} struct {
 	{{.GoName}} {{.Type}} `json:"{{.JSONName}}"`
 {{- end}}
 }
+{{- range .AdditionalStructs}}
+
+type {{.StructName}} struct {
+{{- range .Fields}}
+	{{.GoName}} {{.Type}} `json:"{{.JSONName}}"`
+{{- end}}
+}
+{{- end}}

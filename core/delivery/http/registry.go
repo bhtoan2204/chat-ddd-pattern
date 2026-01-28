@@ -21,5 +21,20 @@ func BuildRegistry(config *config.Config, usecase usecase.Usecase) map[string]ro
 		"GET:/api/v1/auth/profile": {
 			handler: handler.NewGetProfileHandler(usecase),
 		},
+		"POST:/api/v1/room/create": {
+			handler: handler.NewCreateRoomHandler(usecase),
+		},
+		"GET:/api/v1/room/list": {
+			handler: handler.NewListRoomsHandler(usecase),
+		},
+		"GET:/api/v1/room/get": {
+			handler: handler.NewGetRoomHandler(usecase),
+		},
+		"PUT:/api/v1/room/update": {
+			handler: handler.NewUpdateRoomHandler(usecase),
+		},
+		"DELETE:/api/v1/room/delete": {
+			handler: handler.NewDeleteRoomHandler(usecase),
+		},
 	}
 }

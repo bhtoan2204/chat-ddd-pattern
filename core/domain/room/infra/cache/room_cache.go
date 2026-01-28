@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"go-socket/core/domain/room/infra/persistent/models"
-	"go-socket/shared/infra/cache"
+	"go-socket/core/shared/infra/cache"
 
 	"github.com/redis/go-redis/v9"
 )

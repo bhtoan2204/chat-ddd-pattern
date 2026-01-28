@@ -4,8 +4,8 @@ package handler
 import (
 	"errors"
 	"go-socket/core/delivery/http/data/in"
+	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/usecase"
-	"go-socket/shared/pkg/logging"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

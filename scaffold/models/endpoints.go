@@ -1,7 +1,10 @@
 package models
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 
 	"github.com/goccy/go-yaml"
 )
@@ -34,9 +37,10 @@ type Payload struct {
 }
 
 type FieldSpec struct {
-	Name     string `json:"name" yaml:"name"`
-	Type     string `json:"type" yaml:"type"`
-	Required bool   `json:"required,omitempty" yaml:"required,omitempty"`
+	Name     string   `json:"name" yaml:"name"`
+	Type     string   `json:"type" yaml:"type"`
+	Items    *Payload `json:"items,omitempty" yaml:"items,omitempty"`
+	Required bool     `json:"required,omitempty" yaml:"required,omitempty"`
 }
 
 func LoadAPISpec(path string) (*APISpec, error) {
@@ -50,4 +54,34 @@ func LoadAPISpec(path string) (*APISpec, error) {
 		return nil, err
 	}
 	return &apiSpec, nil
+}
+
+func LoadAPISpecDir(dir string) (*APISpec, error) {
+	pattern := filepath.Join(dir, "*.yaml")
+	files, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, err
+	}
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no api spec files found in %s", dir)
+	}
+	sort.Strings(files)
+	merged := &APISpec{}
+	for _, file := range files {
+		spec, err := LoadAPISpec(file)
+		if err != nil {
+			return nil, err
+		}
+		if merged.Version == 0 {
+			merged.Version = spec.Version
+		}
+		if merged.BasePath == "" {
+			merged.BasePath = spec.BasePath
+		}
+		if spec.BasePath != "" && merged.BasePath != spec.BasePath {
+			return nil, fmt.Errorf("basePath mismatch in %s", file)
+		}
+		merged.Endpoints = append(merged.Endpoints, spec.Endpoints...)
+	}
+	return merged, nil
 }

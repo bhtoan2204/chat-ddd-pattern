@@ -1,0 +1,142 @@
+version: 1
+basePath: /api/v1
+
+endpoints:
+  - name: RoomCreate
+    method: POST
+    path: /room/create
+    handler: CreateRoomHandler
+    usecase:
+      name: RoomUsecase
+      method: CreateRoom
+    request:
+      struct: CreateRoomRequest
+      fields:
+        - name: name
+          type: string
+        - name: description
+          type: string
+        - name: room_type
+          type: string
+    response:
+      struct: CreateRoomResponse
+      fields:
+        - name: id
+          type: string
+        - name: name
+          type: string
+
+  - name: RoomList
+    method: GET
+    path: /room/list
+    handler: ListRoomsHandler
+    usecase:
+      name: RoomUsecase
+      method: ListRooms
+    request:
+      struct: ListRoomsRequest
+      fields:
+        - name: page
+          type: int
+        - name: limit
+          type: int
+    response:
+      struct: ListRoomsResponse
+      fields:
+        - name: page
+          type: int
+        - name: limit
+          type: int
+        - name: rooms
+          type: array
+          items:
+            struct: RoomResponse
+            fields:
+              - name: id
+                type: string
+              - name: name
+                type: string
+              - name: description
+                type: string
+              - name: room_type
+                type: string
+              - name: owner_id
+                type: string
+              - name: created_at
+                type: string
+              - name: updated_at
+                type: string
+
+  - name: RoomGet
+    method: GET
+    path: /room/get
+    handler: GetRoomHandler
+    usecase:
+      name: RoomUsecase
+      method: GetRoom
+    request:
+      struct: GetRoomRequest
+      fields:
+        - name: id
+          type: string
+    response:
+      struct: GetRoomResponse
+      fields:
+        - name: id
+          type: string
+        - name: name
+          type: string
+        - name: description
+          type: string
+        - name: room_type
+          type: string
+        - name: owner_id
+          type: string
+        - name: created_at
+          type: string
+        - name: updated_at
+          type: string
+
+  - name: RoomUpdate
+    method: PUT
+    path: /room/update
+    handler: UpdateRoomHandler
+    usecase:
+      name: RoomUsecase
+      method: UpdateRoom
+    request:
+      struct: UpdateRoomRequest
+      fields:
+        - name: id
+          type: string
+        - name: name
+          type: string
+    response:
+      struct: UpdateRoomResponse
+      fields:
+        - name: id
+          type: string
+        - name: name
+          type: string
+        - name: created_at
+          type: string
+        - name: updated_at
+          type: string
+
+  - name: RoomDelete
+    method: DELETE
+    path: /room/delete
+    handler: DeleteRoomHandler
+    usecase:
+      name: RoomUsecase
+      method: DeleteRoom
+    request:
+      struct: DeleteRoomRequest
+      fields:
+        - name: id
+          type: string
+    response:
+      struct: DeleteRoomResponse
+      fields:
+        - name: message
+          type: string

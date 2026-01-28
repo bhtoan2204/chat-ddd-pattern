@@ -6,11 +6,9 @@ import (
 	"go-socket/constant"
 	appCtx "go-socket/core/context"
 	"go-socket/core/delivery/http/middleware"
-	accountrepo "go-socket/core/domain/account/infra/persistent/repos"
-	accountusecase "go-socket/core/domain/account/usecase"
+	"go-socket/core/shared/infra/idempotency"
+	"go-socket/core/shared/pkg/server"
 	coreusecase "go-socket/core/usecase"
-	"go-socket/shared/infra/idempotency"
-	"go-socket/shared/pkg/server"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
@@ -105,9 +103,7 @@ func (s *Server) Start(ctx context.Context, appCtx *appCtx.AppContext) error {
 }
 
 func (s *Server) buildUsecase(appCtx *appCtx.AppContext) (coreusecase.Usecase, error) {
-	repos := accountrepo.NewRepoImpl(appCtx)
-	authUC := accountusecase.NewAuthUsecase(appCtx, repos)
-	return coreusecase.NewUsecase(authUC), nil
+	return coreusecase.NewUsecase(appCtx), nil
 }
 
 func (s *Server) registerPublicAPI() {

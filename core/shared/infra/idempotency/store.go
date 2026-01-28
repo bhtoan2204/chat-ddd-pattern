@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"go-socket/shared/infra/cache"
+	"go-socket/core/shared/infra/cache"
 )
 
 const keyPrefix = "idempotency:"

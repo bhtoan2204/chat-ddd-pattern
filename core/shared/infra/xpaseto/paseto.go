@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"go-socket/core/domain/account/entity"
-	"go-socket/shared/pkg/logging"
+	"go-socket/core/shared/pkg/logging"
 
 	"github.com/o1egl/paseto"
 	"go.uber.org/zap"

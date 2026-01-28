@@ -34,9 +34,10 @@ func GenerateResponse(endpoints []models.Endpoint) (string, error) {
 		seen[ep.Response.Struct] = true
 
 		data := responseTemplateData{
-			PackageName: "out",
-			StructName:  ep.Response.Struct,
-			Fields:      mapResponseFields(ep.Response.Fields),
+			PackageName:       "out",
+			StructName:        ep.Response.Struct,
+			Fields:            mapResponseFields(ep.Response.Fields),
+			AdditionalStructs: mapNestedStructs(ep.Response.Fields),
 		}
 
 		fileName := utils.Snake(ep.Response.Struct) + "_response.go"
@@ -61,9 +62,10 @@ func GenerateResponse(endpoints []models.Endpoint) (string, error) {
 }
 
 type responseTemplateData struct {
-	PackageName string
-	StructName  string
-	Fields      []responseField
+	PackageName       string
+	StructName        string
+	Fields            []responseField
+	AdditionalStructs []nestedStruct
 }
 
 type responseField struct {
@@ -72,13 +74,41 @@ type responseField struct {
 	JSONName string
 }
 
+type nestedStruct struct {
+	StructName string
+	Fields     []responseField
+}
+
 func mapResponseFields(fields []models.FieldSpec) []responseField {
 	result := make([]responseField, 0, len(fields))
 	for _, f := range fields {
+		fieldType := utils.GoType(f.Type)
+		if f.Type == "array" && f.Items != nil && f.Items.Struct != "" {
+			fieldType = "[]" + f.Items.Struct
+		}
 		result = append(result, responseField{
 			GoName:   utils.Pascal(f.Name),
-			Type:     utils.GoType(f.Type),
+			Type:     fieldType,
 			JSONName: f.Name,
+		})
+	}
+	return result
+}
+
+func mapNestedStructs(fields []models.FieldSpec) []nestedStruct {
+	result := make([]nestedStruct, 0)
+	seen := make(map[string]bool)
+	for _, f := range fields {
+		if f.Type != "array" || f.Items == nil || f.Items.Struct == "" {
+			continue
+		}
+		if seen[f.Items.Struct] {
+			continue
+		}
+		seen[f.Items.Struct] = true
+		result = append(result, nestedStruct{
+			StructName: f.Items.Struct,
+			Fields:     mapResponseFields(f.Items.Fields),
 		})
 	}
 	return result

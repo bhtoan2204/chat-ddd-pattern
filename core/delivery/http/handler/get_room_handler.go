@@ -11,21 +11,21 @@ import (
 	"go.uber.org/zap"
 )
 
-type loginHandler struct {
-	authUsecase usecase.AuthUsecase
+type getRoomHandler struct {
+	roomUsecase usecase.RoomUsecase
 }
 
-func NewLoginHandler(usecase usecase.Usecase) RequestHandler {
-	return &loginHandler{
-		authUsecase: usecase.AuthUsecase(),
+func NewGetRoomHandler(usecase usecase.Usecase) RequestHandler {
+	return &getRoomHandler{
+		roomUsecase: usecase.RoomUsecase(),
 	}
 }
 
-func (h *loginHandler) Handle(c *gin.Context) (interface{}, error) {
+func (h *getRoomHandler) Handle(c *gin.Context) (interface{}, error) {
 	ctx := c.Request.Context()
 	logger := logging.FromContext(ctx)
-	var request in.LoginRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
+	var request in.GetRoomRequest
+	if err := c.ShouldBindQuery(&request); err != nil {
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
 		return nil, err
 	}
@@ -33,10 +33,10 @@ func (h *loginHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	result, err := h.authUsecase.Login(ctx, &request)
+	result, err := h.roomUsecase.GetRoom(ctx, &request)
 	if err != nil {
-		logger.Errorw("Login failed", zap.Error(err))
-		return nil, errors.New("Login failed")
+		logger.Errorw("GetRoom failed", zap.Error(err))
+		return nil, errors.New("GetRoom failed")
 	}
 	return result, nil
 }

@@ -2,9 +2,9 @@ package appCtx
 
 import (
 	"context"
-	"go-socket/shared/infra/cache"
-	"go-socket/shared/infra/xpaseto"
-	"go-socket/shared/pkg/hasher"
+	"go-socket/core/shared/infra/cache"
+	"go-socket/core/shared/infra/xpaseto"
+	"go-socket/core/shared/pkg/hasher"
 
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"

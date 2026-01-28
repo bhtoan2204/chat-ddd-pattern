@@ -7,8 +7,12 @@ import (
 	roomcache "go-socket/core/domain/room/infra/cache"
 	"go-socket/core/domain/room/infra/persistent/models"
 	"go-socket/core/domain/room/repos"
-	sharedcache "go-socket/shared/infra/cache"
+	sharedcache "go-socket/core/shared/infra/cache"
+	"go-socket/core/shared/pkg/logging"
+	"go-socket/utils"
 
+	"github.com/samber/lo"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -26,6 +30,33 @@ func NewRoomRepoImpl(db *gorm.DB, sharedCache sharedcache.Cache) repos.RoomRepos
 
 func (r *roomRepoImpl) CreateRoom(ctx context.Context, room *entity.Room) error {
 	return r.db.Create(room).Error
+}
+
+func (r *roomRepoImpl) ListRooms(ctx context.Context, options utils.QueryOptions) ([]*entity.Room, error) {
+	logger := logging.FromContext(ctx)
+
+	var rooms []*models.RoomModel
+	tx := r.db.WithContext(ctx)
+	for _, c := range options.Conditions {
+		tx = tx.Where(c.BuildCondition(), c.Value)
+	}
+	if options.Limit != nil {
+		tx = tx.Limit(*options.Limit)
+	}
+	if options.Offset != nil {
+		tx = tx.Offset(*options.Offset)
+	}
+	if options.OrderBy != "" && options.OrderDirection != "" {
+		tx = tx.Order(options.OrderBy + " " + options.OrderDirection)
+	}
+
+	if err := tx.Find(&rooms).Error; err != nil {
+		logger.Errorw("list rooms failed", zap.Error(err))
+		return nil, err
+	}
+	return lo.Map(rooms, func(room *models.RoomModel, _ int) *entity.Room {
+		return r.toEntity(room)
+	}), nil
 }
 
 func (r *roomRepoImpl) GetRoomByID(ctx context.Context, id string) (*entity.Room, error) {
@@ -53,22 +84,22 @@ func (r *roomRepoImpl) DeleteRoom(ctx context.Context, id string) error {
 
 func (r *roomRepoImpl) toEntity(m *models.RoomModel) *entity.Room {
 	return &entity.Room{
-		ID:        m.ID,
-		Name:      m.Name,
-		OwnerID:   m.OwnerID,
-		OwnerType: m.OwnerType,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		ID:          m.ID,
+		Name:        m.Name,
+		Description: m.Description,
+		RoomType:    m.RoomType,
+		CreatedAt:   m.CreatedAt,
+		UpdatedAt:   m.UpdatedAt,
 	}
 }
 
 func (r *roomRepoImpl) toModel(e *entity.Room) *models.RoomModel {
 	return &models.RoomModel{
-		ID:        e.ID,
-		Name:      e.Name,
-		OwnerID:   e.OwnerID,
-		OwnerType: e.OwnerType,
-		CreatedAt: e.CreatedAt,
-		UpdatedAt: e.UpdatedAt,
+		ID:          e.ID,
+		Name:        e.Name,
+		Description: e.Description,
+		RoomType:    e.RoomType,
+		CreatedAt:   e.CreatedAt,
+		UpdatedAt:   e.UpdatedAt,
 	}
 }
