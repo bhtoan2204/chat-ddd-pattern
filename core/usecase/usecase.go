@@ -1,10 +1,7 @@
 package usecase
 
 import (
-	appCtx "go-socket/core/context"
-	accountrepo "go-socket/core/domain/account/infra/persistent/repos"
 	accountusecase "go-socket/core/domain/account/usecase"
-	roomrepo "go-socket/core/domain/room/infra/persistent/repos"
 	roomusecase "go-socket/core/domain/room/usecase"
 )
 
@@ -21,14 +18,13 @@ type usecase struct {
 	room roomusecase.RoomUsecase
 }
 
-func NewUsecase(appCtx *appCtx.AppContext) Usecase {
-	accountRepos := accountrepo.NewRepoImpl(appCtx)
-	authUC := accountusecase.NewAuthUsecase(appCtx, accountRepos)
-	roomRepos := roomrepo.NewRepoImpl(appCtx)
-	roomUC := roomusecase.NewRoomUsecase(appCtx, roomRepos)
+func NewUsecase(
+	auth accountusecase.AuthUsecase,
+	room roomusecase.RoomUsecase,
+) Usecase {
 	return &usecase{
-		auth: authUC,
-		room: roomUC,
+		auth: auth,
+		room: room,
 	}
 }
 

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 
-	"go-socket/core/domain/room/infra/persistent/models"
+	"go-socket/core/domain/room/entity"
 	"go-socket/core/shared/infra/cache"
 
 	"github.com/redis/go-redis/v9"
@@ -20,7 +20,7 @@ func NewRoomCache(cache cache.Cache) *RoomCache {
 	return &RoomCache{cache: cache}
 }
 
-func (r *RoomCache) Get(ctx context.Context, id string) (*models.RoomModel, bool, error) {
+func (r *RoomCache) Get(ctx context.Context, id string) (*entity.Room, bool, error) {
 	if r == nil || r.cache == nil {
 		return nil, false, nil
 	}
@@ -31,14 +31,14 @@ func (r *RoomCache) Get(ctx context.Context, id string) (*models.RoomModel, bool
 		}
 		return nil, false, err
 	}
-	var m models.RoomModel
+	var m entity.Room
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, false, fmt.Errorf("unmarshal room cache failed: %w", err)
 	}
 	return &m, true, nil
 }
 
-func (r *RoomCache) Set(ctx context.Context, m *models.RoomModel) error {
+func (r *RoomCache) Set(ctx context.Context, m *entity.Room) error {
 	if r == nil || r.cache == nil || m == nil {
 		return nil
 	}

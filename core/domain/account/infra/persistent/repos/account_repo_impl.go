@@ -28,8 +28,8 @@ func NewAccountRepoImpl(db *gorm.DB, sharedCache sharedcache.Cache) accountrepos
 }
 
 func (r *accountRepoImpl) GetAccountByID(ctx context.Context, id string) (*entity.Account, error) {
-	if m, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
-		return r.toEntity(m), nil
+	if cached, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
+		return cached, nil
 	}
 	var m models.AccountModel
 
@@ -41,15 +41,15 @@ func (r *accountRepoImpl) GetAccountByID(ctx context.Context, id string) (*entit
 		return nil, err
 	}
 
-	_ = r.accountCache.Set(ctx, &m)
+	_ = r.accountCache.Set(ctx, r.toEntity(&m))
 
 	return r.toEntity(&m), nil
 }
 
 func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (*entity.Account, error) {
 	logger := logging.FromContext(ctx)
-	if m, ok, err := r.accountCache.GetByEmail(ctx, email); err == nil && ok {
-		return r.toEntity(m), nil
+	if cached, ok, err := r.accountCache.GetByEmail(ctx, email); err == nil && ok {
+		return cached, nil
 	}
 	var m models.AccountModel
 	err := r.db.WithContext(ctx).
@@ -59,7 +59,7 @@ func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (
 		logger.Errorw("Failed to get account by email", zap.String("email", email), zap.Error(err))
 		return nil, err
 	}
-	_ = r.accountCache.SetByEmail(ctx, &m)
+	_ = r.accountCache.SetByEmail(ctx, r.toEntity(&m))
 	return r.toEntity(&m), nil
 }
 
@@ -72,7 +72,9 @@ func (r *accountRepoImpl) CreateAccount(ctx context.Context, account *entity.Acc
 		return err
 	}
 
-	return r.accountCache.Set(ctx, m)
+	_ = r.accountCache.Set(ctx, r.toEntity(m))
+	_ = r.accountCache.SetByEmail(ctx, r.toEntity(m))
+	return nil
 }
 
 func (r *accountRepoImpl) UpdateAccount(ctx context.Context, account *entity.Account) error {
@@ -84,10 +86,15 @@ func (r *accountRepoImpl) UpdateAccount(ctx context.Context, account *entity.Acc
 		return err
 	}
 
-	return r.accountCache.Set(ctx, m)
+	_ = r.accountCache.Set(ctx, r.toEntity(m))
+	_ = r.accountCache.SetByEmail(ctx, r.toEntity(m))
+	return nil
 }
 
 func (r *accountRepoImpl) DeleteAccount(ctx context.Context, id string) error {
+	if cached, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
+		_ = r.accountCache.DeleteByEmail(ctx, cached.Email)
+	}
 	err := r.db.WithContext(ctx).
 		Delete(&models.AccountModel{}, "id = ?", id).Error
 	if err != nil {

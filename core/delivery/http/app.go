@@ -4,6 +4,7 @@ import (
 	"context"
 	"go-socket/config"
 	"go-socket/constant"
+	"go-socket/core/assembly"
 	appCtx "go-socket/core/context"
 	"go-socket/core/delivery/http/middleware"
 	"go-socket/core/shared/infra/idempotency"
@@ -102,8 +103,8 @@ func (s *Server) Start(ctx context.Context, appCtx *appCtx.AppContext) error {
 	return srv.ServeHTTPHandler(ctx, s.Routes(ctx, appCtx))
 }
 
-func (s *Server) buildUsecase(appCtx *appCtx.AppContext) (coreusecase.Usecase, error) {
-	return coreusecase.NewUsecase(appCtx), nil
+func (s *Server) buildUsecase(appContext *appCtx.AppContext) (coreusecase.Usecase, error) {
+	return assembly.BuildUsecase(appContext), nil
 }
 
 func (s *Server) registerPublicAPI() {

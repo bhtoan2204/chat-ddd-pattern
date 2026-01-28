@@ -29,7 +29,12 @@ func NewRoomRepoImpl(db *gorm.DB, sharedCache sharedcache.Cache) repos.RoomRepos
 }
 
 func (r *roomRepoImpl) CreateRoom(ctx context.Context, room *entity.Room) error {
-	return r.db.Create(room).Error
+	m := r.toModel(room)
+	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
+		return err
+	}
+	_ = r.roomCache.Set(ctx, r.toEntity(m))
+	return nil
 }
 
 func (r *roomRepoImpl) ListRooms(ctx context.Context, options utils.QueryOptions) ([]*entity.Room, error) {
@@ -60,8 +65,8 @@ func (r *roomRepoImpl) ListRooms(ctx context.Context, options utils.QueryOptions
 }
 
 func (r *roomRepoImpl) GetRoomByID(ctx context.Context, id string) (*entity.Room, error) {
-	if m, ok, err := r.roomCache.Get(ctx, id); err == nil && ok {
-		return r.toEntity(m), nil
+	if cached, ok, err := r.roomCache.Get(ctx, id); err == nil && ok {
+		return cached, nil
 	}
 	var m models.RoomModel
 	err := r.db.WithContext(ctx).
@@ -70,16 +75,24 @@ func (r *roomRepoImpl) GetRoomByID(ctx context.Context, id string) (*entity.Room
 	if err != nil {
 		return nil, err
 	}
-	_ = r.roomCache.Set(ctx, &m)
+	_ = r.roomCache.Set(ctx, r.toEntity(&m))
 	return r.toEntity(&m), nil
 }
 
 func (r *roomRepoImpl) UpdateRoom(ctx context.Context, room *entity.Room) error {
-	return r.db.Save(room).Error
+	m := r.toModel(room)
+	if err := r.db.WithContext(ctx).Save(m).Error; err != nil {
+		return err
+	}
+	_ = r.roomCache.Set(ctx, r.toEntity(m))
+	return nil
 }
 
 func (r *roomRepoImpl) DeleteRoom(ctx context.Context, id string) error {
-	return r.db.Delete(&entity.Room{}, "id = ?", id).Error
+	if err := r.db.WithContext(ctx).Delete(&models.RoomModel{}, "id = ?", id).Error; err != nil {
+		return err
+	}
+	return r.roomCache.Delete(ctx, id)
 }
 
 func (r *roomRepoImpl) toEntity(m *models.RoomModel) *entity.Room {

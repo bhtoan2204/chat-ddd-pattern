@@ -6,18 +6,18 @@ import (
 	"errors"
 	"fmt"
 
-	"go-socket/core/domain/account/infra/persistent/models"
+	"go-socket/core/domain/account/entity"
 	"go-socket/core/shared/infra/cache"
 
 	"github.com/redis/go-redis/v9"
 )
 
 type AccountCache interface {
-	Get(ctx context.Context, id string) (*models.AccountModel, bool, error)
-	Set(ctx context.Context, m *models.AccountModel) error
+	Get(ctx context.Context, id string) (*entity.Account, bool, error)
+	Set(ctx context.Context, m *entity.Account) error
 	Delete(ctx context.Context, id string) error
-	GetByEmail(ctx context.Context, email string) (*models.AccountModel, bool, error)
-	SetByEmail(ctx context.Context, m *models.AccountModel) error
+	GetByEmail(ctx context.Context, email string) (*entity.Account, bool, error)
+	SetByEmail(ctx context.Context, m *entity.Account) error
 	DeleteByEmail(ctx context.Context, email string) error
 }
 
@@ -37,7 +37,7 @@ func accountEmailCacheKey(email string) string {
 	return "account:email:" + email
 }
 
-func (a *accountCache) Get(ctx context.Context, id string) (*models.AccountModel, bool, error) {
+func (a *accountCache) Get(ctx context.Context, id string) (*entity.Account, bool, error) {
 	if a == nil || a.cache == nil {
 		return nil, false, nil
 	}
@@ -48,14 +48,14 @@ func (a *accountCache) Get(ctx context.Context, id string) (*models.AccountModel
 		}
 		return nil, false, err
 	}
-	var m models.AccountModel
+	var m entity.Account
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, false, fmt.Errorf("unmarshal account cache failed: %w", err)
 	}
 	return &m, true, nil
 }
 
-func (a *accountCache) Set(ctx context.Context, m *models.AccountModel) error {
+func (a *accountCache) Set(ctx context.Context, m *entity.Account) error {
 	if a == nil || a.cache == nil || m == nil {
 		return nil
 	}
@@ -73,7 +73,7 @@ func (a *accountCache) Delete(ctx context.Context, id string) error {
 	return a.cache.Delete(ctx, accountCacheKey(id))
 }
 
-func (a *accountCache) GetByEmail(ctx context.Context, email string) (*models.AccountModel, bool, error) {
+func (a *accountCache) GetByEmail(ctx context.Context, email string) (*entity.Account, bool, error) {
 	if a == nil || a.cache == nil {
 		return nil, false, nil
 	}
@@ -84,14 +84,14 @@ func (a *accountCache) GetByEmail(ctx context.Context, email string) (*models.Ac
 		}
 		return nil, false, err
 	}
-	var m models.AccountModel
+	var m entity.Account
 	if err := json.Unmarshal(data, &m); err != nil {
 		return nil, false, fmt.Errorf("unmarshal account cache failed: %w", err)
 	}
 	return &m, true, nil
 }
 
-func (a *accountCache) SetByEmail(ctx context.Context, m *models.AccountModel) error {
+func (a *accountCache) SetByEmail(ctx context.Context, m *entity.Account) error {
 	if a == nil || a.cache == nil || m == nil {
 		return nil
 	}
