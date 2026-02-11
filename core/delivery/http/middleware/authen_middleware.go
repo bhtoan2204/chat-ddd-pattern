@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	appCtx "go-socket/core/context"
 	"net/http"
 	"strings"
@@ -25,6 +26,8 @@ func AuthenMiddleware(appCtx *appCtx.AppContext) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			return
 		}
+		ctx := context.WithValue(c.Request.Context(), "account", claims)
+		c.Request = c.Request.WithContext(ctx)
 		c.Set("account", claims)
 		c.Next()
 	}

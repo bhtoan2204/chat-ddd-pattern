@@ -14,5 +14,6 @@ func BuildUsecase(appCtx *appCtx.AppContext) coreusecase.Usecase {
 	authUC := accountusecase.NewAuthUsecase(appCtx, accountRepos)
 	roomRepos := roomrepo.NewRepoImpl(appCtx)
 	roomUC := roomusecase.NewRoomUsecase(appCtx, roomRepos)
-	return coreusecase.NewUsecase(authUC, roomUC)
+	messageUC := roomusecase.NewMessageUsecase(appCtx, roomRepos)
+	return coreusecase.NewUsecase(authUC, roomUC, messageUC)
 }

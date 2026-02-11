@@ -36,5 +36,8 @@ func BuildRegistry(config *config.Config, usecase usecase.Usecase) map[string]ro
 		"DELETE:/api/v1/room/delete": {
 			handler: handler.NewDeleteRoomHandler(usecase),
 		},
+		"POST:/api/v1/message/create": {
+			handler: handler.NewCreateMessageHandler(usecase),
+		},
 	}
 }

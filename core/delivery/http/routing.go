@@ -24,4 +24,5 @@ func (h *routingHandler) RegisterPrivateHandlers(routes *gin.RouterGroup) {
 	routes.GET("/room/get", h.Handle())
 	routes.PUT("/room/update", h.Handle())
 	routes.DELETE("/room/delete", h.Handle())
+	routes.POST("/message/create", h.Handle())
 }

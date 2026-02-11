@@ -19,6 +19,7 @@ type roomUsecaseImpl struct {
 }
 
 func NewRoomUsecase(appCtx *appCtx.AppContext, repos repos.Repos) RoomUsecase {
+	_ = appCtx
 	return &roomUsecaseImpl{roomRepo: repos.RoomRepository()}
 }
 

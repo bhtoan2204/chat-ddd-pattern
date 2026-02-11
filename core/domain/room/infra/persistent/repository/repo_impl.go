@@ -12,8 +12,15 @@ type repoImpl struct {
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
-	roomRepo := NewRoomRepoImpl(appCtx.GetDB(), appCtx.GetCache())
-	return &repoImpl{roomRepo: roomRepo}
+	db := appCtx.GetDB()
+	roomRepo := NewRoomRepoImpl(db, appCtx.GetCache())
+	messageRepo := NewMessageRepoImpl(db)
+	roomMemberRepo := NewRoomMemberImpl(db)
+	return &repoImpl{
+		roomRepo:       roomRepo,
+		messageRepo:    messageRepo,
+		roomMemberRepo: roomMemberRepo,
+	}
 }
 
 func (r *repoImpl) RoomRepository() repos.RoomRepository {
