@@ -14,8 +14,6 @@ import (
 	"go-socket/scaffold/utils"
 )
 
-const REQUEST_DESTINATION_PATH = "core/delivery/http/data/in"
-
 func GenerateRequest(endpoints []models.Endpoint) (string, error) {
 	tmpl, err := template.ParseFiles("scaffold/template/request.tmpl")
 	if err != nil {
@@ -30,10 +28,16 @@ func GenerateRequest(endpoints []models.Endpoint) (string, error) {
 		if ep.Request.Struct == "" {
 			continue
 		}
-		if seen[ep.Request.Struct] {
+
+		module, err := moduleForUsecase(ep.Usecase.Name)
+		if err != nil {
+			return "", err
+		}
+		key := module.FsRoot + ":in:" + ep.Request.Struct
+		if seen[key] {
 			continue
 		}
-		seen[ep.Request.Struct] = true
+		seen[key] = true
 
 		data := requestTemplateData{
 			PackageName: "in",
@@ -42,7 +46,7 @@ func GenerateRequest(endpoints []models.Endpoint) (string, error) {
 		}
 
 		fileName := utils.Snake(ep.Request.Struct) + "_request.go"
-		dst := filepath.Join(REQUEST_DESTINATION_PATH, fileName)
+		dst := filepath.Join(module.FsRoot, "application/dto/in", fileName)
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			return "", err
 		}

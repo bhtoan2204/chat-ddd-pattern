@@ -12,8 +12,6 @@ import (
 	"text/template"
 )
 
-const RESPONSE_DESTINATION_PATH = "core/delivery/http/data/out"
-
 func GenerateResponse(endpoints []models.Endpoint) (string, error) {
 	tmpl, err := template.ParseFiles("scaffold/template/response.tmpl")
 	if err != nil {
@@ -28,10 +26,16 @@ func GenerateResponse(endpoints []models.Endpoint) (string, error) {
 		if ep.Response.Struct == "" {
 			continue
 		}
-		if seen[ep.Response.Struct] {
+
+		module, err := moduleForUsecase(ep.Usecase.Name)
+		if err != nil {
+			return "", err
+		}
+		key := module.FsRoot + ":out:" + ep.Response.Struct
+		if seen[key] {
 			continue
 		}
-		seen[ep.Response.Struct] = true
+		seen[key] = true
 
 		data := responseTemplateData{
 			PackageName:       "out",
@@ -41,7 +45,7 @@ func GenerateResponse(endpoints []models.Endpoint) (string, error) {
 		}
 
 		fileName := utils.Snake(ep.Response.Struct) + "_response.go"
-		dst := filepath.Join(RESPONSE_DESTINATION_PATH, fileName)
+		dst := filepath.Join(module.FsRoot, "application/dto/out", fileName)
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			return "", err
 		}

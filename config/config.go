@@ -37,7 +37,11 @@ type AuthConfig struct {
 }
 
 type KafkaConfig struct {
-	KafkaServers     string `env:"KAFKA_SERVERS"`
-	KafkaPrefixGroup string `env:"KAFKA_PREFIX_GROUP"`
-	KafkaOffsetReset string `env:"KAFKA_OFFSET_RESET"`
+	KafkaServers       string `env:"KAFKA_SERVERS"`
+	KafkaOffsetReset   string `env:"KAFKA_OFFSET_RESET"`
+	KafkaConsumerGroup KafkaConsumerGroup
+}
+
+type KafkaConsumerGroup struct {
+	Notification string `env:"KAFKA_NOTIFICATION_CONSUMER_GROUP"`
 }

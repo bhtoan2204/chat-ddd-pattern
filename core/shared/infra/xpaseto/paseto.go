@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"go-socket/core/domain/account/entity"
+	"go-socket/core/modules/account/domain/entity"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/o1egl/paseto"

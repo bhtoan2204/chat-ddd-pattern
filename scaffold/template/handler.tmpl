@@ -3,8 +3,8 @@ package {{.PackageName}}
 
 import (
 	"errors"
-	"go-socket/core/delivery/http/data/in"
-	"go-socket/core/application/usecase"
+	"{{.RequestDtoImport}}"
+	"{{.UsecaseImport}}"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/gin-gonic/gin"
@@ -15,9 +15,9 @@ type {{.StructName}} struct {
 	{{.UsecaseField}} usecase.{{.UsecaseName}}
 }
 
-func New{{.HandlerName}}(usecase usecase.Usecase) RequestHandler {
+func New{{.HandlerName}}({{.UsecaseField}} usecase.{{.UsecaseName}}) *{{.StructName}} {
 	return &{{.StructName}}{
-		{{.UsecaseField}}: usecase.{{.UsecaseGetter}}(),
+		{{.UsecaseField}}: {{.UsecaseField}},
 	}
 }
 

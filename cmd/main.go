@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"go-socket/config"
 	appCtx "go-socket/core/context"
-	"go-socket/core/delivery/http"
 	"go-socket/core/shared/infra/db"
 	"go-socket/core/shared/pkg/logging"
+	"go-socket/core/shared/transport/http"
 	"os/signal"
 	"syscall"
 )
