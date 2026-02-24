@@ -4,7 +4,7 @@ package handler
 import (
 	"errors"
 	"go-socket/core/modules/account/application/dto/in"
-	"go-socket/core/modules/account/application/usecase"
+	"go-socket/core/modules/account/application/query"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/gin-gonic/gin"
@@ -12,12 +12,12 @@ import (
 )
 
 type getProfileHandler struct {
-	authUsecase usecase.AuthUsecase
+	queryBus query.Bus
 }
 
-func NewGetProfileHandler(authUsecase usecase.AuthUsecase) *getProfileHandler {
+func NewGetProfileHandler(queryBus query.Bus) *getProfileHandler {
 	return &getProfileHandler{
-		authUsecase: authUsecase,
+		queryBus: queryBus,
 	}
 }
 
@@ -33,7 +33,7 @@ func (h *getProfileHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	result, err := h.authUsecase.GetProfile(ctx, &request)
+	result, err := h.queryBus.GetProfile.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("GetProfile failed", zap.Error(err))
 		return nil, errors.New("GetProfile failed")

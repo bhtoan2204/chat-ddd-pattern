@@ -19,10 +19,15 @@ type repoImpl struct {
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
-	accountRepo := NewAccountRepoImpl(appCtx.GetDB(), appCtx.GetCache())
-	accountOutboxEventsRepo := NewAccountOutboxEventsRepoImpl(appCtx.GetDB())
+	return newRepoImplWithDB(appCtx, appCtx.GetDB())
+}
+
+func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
+	accountRepo := NewAccountRepoImpl(db, appCtx.GetCache())
+	accountOutboxEventsRepo := NewAccountOutboxEventsRepoImpl(db)
 	return &repoImpl{
 		appCtx: appCtx,
+		db:     db,
 
 		accountRepo:             accountRepo,
 		accountOutboxEventsRepo: accountOutboxEventsRepo,
@@ -37,28 +42,35 @@ func (r *repoImpl) AccountOutboxEventsRepository() repos.AccountOutboxEventsRepo
 	return r.accountOutboxEventsRepo
 }
 
-func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) error {
+func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) (err error) {
 	log := logging.FromContext(ctx).Named("StartTransaction")
-	tx := r.db.Begin()
-	if err := tx.Error; err != nil {
-		log.Errorw("Failed to begin transaction", zap.Error(err))
-		return err
+	tx := r.db.WithContext(ctx).Begin()
+	if beginErr := tx.Error; beginErr != nil {
+		log.Errorw("Failed to begin transaction", zap.Error(beginErr))
+		return beginErr
 	}
-	tr := NewRepoImpl(r.appCtx)
+	tr := newRepoImplWithDB(r.appCtx, tx)
 
 	defer func() {
-		if err := recover(); err != nil {
-			tx.Rollback()
-			log.Errorw("Failed to rollback transaction", zap.Error(err.(error)))
-			panic(err)
-		} else if err != nil {
-			tx.Rollback()
-			log.Errorw("Failed to commit transaction", zap.Error(err.(error)))
+		if rec := recover(); rec != nil {
+			_ = tx.Rollback().Error
+			log.Errorw("Panic -> rollback", zap.Any("panic", rec))
+			panic(rec)
+		}
+		if err != nil {
+			_ = tx.Rollback().Error
+			log.Errorw("Transaction rollback", zap.Error(err))
+			return
+		}
+		if commitErr := tx.Commit().Error; commitErr != nil {
+			log.Errorw("Commit failed", zap.Error(commitErr))
+			err = commitErr
 		} else {
-			log.Info("Committing transaction")
-			tx.Commit()
+			log.Info("Transaction committed")
 		}
 	}()
 
-	return fn(tr)
+	err = fn(tr)
+
+	return err
 }

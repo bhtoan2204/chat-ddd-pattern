@@ -8,10 +8,8 @@ import (
 	accountcache "go-socket/core/modules/account/infra/cache"
 	"go-socket/core/modules/account/infra/persistent/models"
 	sharedcache "go-socket/core/shared/infra/cache"
-	"go-socket/core/shared/pkg/logging"
 
 	"github.com/samber/lo"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -47,7 +45,6 @@ func (r *accountRepoImpl) GetAccountByID(ctx context.Context, id string) (*entit
 }
 
 func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (*entity.Account, error) {
-	logger := logging.FromContext(ctx)
 	if cached, ok, err := r.accountCache.GetByEmail(ctx, email); err == nil && ok {
 		return cached, nil
 	}
@@ -56,7 +53,6 @@ func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (
 		Where("email = ?", email).
 		First(&m).Error
 	if err != nil {
-		logger.Errorw("Failed to get account by email", zap.String("email", email), zap.Error(err))
 		return nil, err
 	}
 	_ = r.accountCache.SetByEmail(ctx, r.toEntity(&m))
@@ -71,9 +67,6 @@ func (r *accountRepoImpl) CreateAccount(ctx context.Context, account *entity.Acc
 	if err != nil {
 		return err
 	}
-
-	_ = r.accountCache.Set(ctx, r.toEntity(m))
-	_ = r.accountCache.SetByEmail(ctx, r.toEntity(m))
 	return nil
 }
 

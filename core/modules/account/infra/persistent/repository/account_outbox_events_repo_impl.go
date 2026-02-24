@@ -2,24 +2,44 @@ package repos
 
 import (
 	"context"
+	"fmt"
 	"go-socket/core/modules/account/domain/repos"
 	"go-socket/core/modules/account/infra/persistent/models"
-	"go-socket/core/shared/pkg/event"
+	eventpkg "go-socket/core/shared/pkg/event"
+	"time"
 
 	"gorm.io/gorm"
 )
 
 type accountOutboxEventsRepoImpl struct {
-	db *gorm.DB
+	db         *gorm.DB
+	serializer eventpkg.Serializer
 }
 
 func NewAccountOutboxEventsRepoImpl(db *gorm.DB) repos.AccountOutboxEventsRepository {
-	return &accountOutboxEventsRepoImpl{db: db}
+	return &accountOutboxEventsRepoImpl{
+		db:         db,
+		serializer: eventpkg.NewSerializer(),
+	}
 }
 
-func (a *accountOutboxEventsRepoImpl) Append(ctx context.Context, event event.Event) error {
-	return a.db.Create(&models.AccountOutboxEventModel{
-		EventName: event.GetName(),
-		EventData: event.GetData(),
+func (a *accountOutboxEventsRepoImpl) Append(ctx context.Context, evt eventpkg.Event) error {
+	data, err := a.serializer.Marshal(evt.EventData)
+	if err != nil {
+		return fmt.Errorf("marshal event data failed: %w", err)
+	}
+
+	createdAt := time.Now().UTC()
+	if evt.CreatedAt > 0 {
+		createdAt = time.Unix(evt.CreatedAt, 0).UTC()
+	}
+
+	return a.db.WithContext(ctx).Create(&models.AccountOutboxEventModel{
+		AggregateID:   evt.AggregateID,
+		AggregateType: evt.AggregateType,
+		Version:       evt.Version,
+		EventName:     evt.EventName,
+		EventData:     string(data),
+		CreatedAt:     createdAt,
 	}).Error
 }

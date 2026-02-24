@@ -2,16 +2,22 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	appCtx "go-socket/core/context"
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/modules/room/types"
+	"go-socket/core/shared/infra/xpaseto"
+	"go-socket/core/shared/pkg/logging"
 	"go-socket/utils"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/samber/lo"
+	"go.uber.org/zap"
 )
 
 type roomUsecaseImpl struct {
@@ -24,14 +30,23 @@ func NewRoomUsecase(appCtx *appCtx.AppContext, repos repos.Repos) RoomUsecase {
 }
 
 func (u *roomUsecaseImpl) CreateRoom(ctx context.Context, in *in.CreateRoomRequest) (*out.CreateRoomResponse, error) {
+	log := logging.FromContext(ctx).Named("CreateRoom")
+	account := ctx.Value("account").(*xpaseto.PasetoPayload)
+	if account == nil {
+		log.Errorw("Account not found", zap.Error(errors.New("account not found")))
+		return nil, errors.New("account not found")
+	}
 	room := &entity.Room{
+		ID:          uuid.NewString(),
 		Name:        in.Name,
 		Description: in.Description,
 		RoomType:    types.RoomType(in.RoomType),
+		OwnerID:     account.AccountID,
 	}
 	err := u.roomRepo.CreateRoom(ctx, room)
 	if err != nil {
-		return nil, err
+		log.Errorw("Failed to create room", zap.Error(err))
+		return nil, fmt.Errorf("create room failed: %w", err)
 	}
 	return &out.CreateRoomResponse{
 		Id:   room.ID,

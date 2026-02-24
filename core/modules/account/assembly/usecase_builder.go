@@ -2,11 +2,24 @@ package assembly
 
 import (
 	appCtx "go-socket/core/context"
-	accountusecase "go-socket/core/modules/account/application/usecase"
+	"go-socket/core/modules/account/application/command"
+	"go-socket/core/modules/account/application/query"
 	accountrepo "go-socket/core/modules/account/infra/persistent/repository"
 )
 
-func BuildAuthUsecase(appCtx *appCtx.AppContext) accountusecase.AuthUsecase {
+type Buses struct {
+	Command command.Bus
+	Query   query.Bus
+}
+
+func BuildBuses(appCtx *appCtx.AppContext) Buses {
 	accountRepos := accountrepo.NewRepoImpl(appCtx)
-	return accountusecase.NewAuthUsecase(appCtx, accountRepos)
+	loginUseCase := command.NewLoginUseCase(appCtx, accountRepos)
+	registerUseCase := command.NewRegisterUseCase(appCtx, accountRepos)
+	logoutUseCase := command.NewLogoutUseCase()
+	getProfileUseCase := query.NewGetProfileUseCase(accountRepos)
+	return Buses{
+		Command: command.NewBus(loginUseCase, registerUseCase, logoutUseCase),
+		Query:   query.NewBus(getProfileUseCase),
+	}
 }

@@ -3,8 +3,8 @@ package handler
 
 import (
 	"errors"
+	"go-socket/core/modules/account/application/command"
 	"go-socket/core/modules/account/application/dto/in"
-	"go-socket/core/modules/account/application/usecase"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/gin-gonic/gin"
@@ -12,12 +12,12 @@ import (
 )
 
 type loginHandler struct {
-	authUsecase usecase.AuthUsecase
+	commandBus command.Bus
 }
 
-func NewLoginHandler(authUsecase usecase.AuthUsecase) *loginHandler {
+func NewLoginHandler(commandBus command.Bus) *loginHandler {
 	return &loginHandler{
-		authUsecase: authUsecase,
+		commandBus: commandBus,
 	}
 }
 
@@ -33,7 +33,7 @@ func (h *loginHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	result, err := h.authUsecase.Login(ctx, &request)
+	result, err := h.commandBus.Login.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("Login failed", zap.Error(err))
 		return nil, errors.New("Login failed")

@@ -47,7 +47,7 @@ func NewPaseto(symmetricKey string, issuer string, ttl time.Duration) (PasetoSer
 		paseto:       paseto.NewV2(),
 		symmetricKey: keyBytes,
 		issuer:       issuer,
-		ttl:          ttl * time.Second,
+		ttl:          ttl,
 	}, nil
 }
 

@@ -1,4 +1,4 @@
-package usecase
+package command
 
 import (
 	"context"
@@ -21,56 +21,21 @@ import (
 	"gorm.io/gorm"
 )
 
-type authUsecaseImpl struct {
+type registerUseCase struct {
 	baseRepo repos.Repos
 	hasher   hasher.Hasher
 	paseto   xpaseto.PasetoService
 }
 
-func NewAuthUsecase(appCtx *appCtx.AppContext, baseRepo repos.Repos) AuthUsecase {
-	return &authUsecaseImpl{
+func NewRegisterUseCase(appCtx *appCtx.AppContext, baseRepo repos.Repos) RegisterHandler {
+	return &registerUseCase{
 		baseRepo: baseRepo,
 		hasher:   appCtx.GetHasher(),
 		paseto:   appCtx.GetPaseto(),
 	}
 }
 
-func (u *authUsecaseImpl) Login(ctx context.Context, req *in.LoginRequest) (*out.LoginResponse, error) {
-	log := logging.FromContext(ctx).Named("Login")
-	accountRepo := u.baseRepo.AccountRepository()
-	account, err := accountRepo.GetAccountByEmail(ctx, req.Email)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Errorw("Account not found", zap.String("email", req.Email))
-			return nil, ErrAccountNotFound
-		}
-		log.Errorw("Failed to get account", zap.Error(err))
-		return nil, fmt.Errorf("get account failed: %w", err)
-	}
-
-	valid, err := u.hasher.Verify(ctx, req.Password, account.Password)
-	if err != nil {
-		log.Errorw("Failed to verify password", zap.Error(err))
-		return nil, err
-	}
-	if !valid {
-		log.Errorw("Invalid credentials", zap.String("email", req.Email))
-		return nil, ErrInvalidCredentials
-	}
-
-	token, expiresAt, err := u.paseto.GenerateToken(ctx, account)
-	if err != nil {
-		log.Errorw("Failed to generate token", zap.Error(err))
-		return nil, err
-	}
-
-	return &out.LoginResponse{
-		Token:     token,
-		ExpiresAt: expiresAt.UnixMilli(),
-	}, nil
-}
-
-func (u *authUsecaseImpl) Register(ctx context.Context, req *in.RegisterRequest) (*out.RegisterResponse, error) {
+func (u *registerUseCase) Handle(ctx context.Context, req *in.RegisterRequest) (*out.RegisterResponse, error) {
 	log := logging.FromContext(ctx).Named("Register")
 	accountRepo := u.baseRepo.AccountRepository()
 	_, err := accountRepo.GetAccountByEmail(ctx, req.Email)
@@ -125,21 +90,14 @@ func (u *authUsecaseImpl) Register(ctx context.Context, req *in.RegisterRequest)
 		return nil, txErr
 	}
 
-	token, _, err := u.paseto.GenerateToken(ctx, newAccountEntity)
+	token, expiresAt, err := u.paseto.GenerateToken(ctx, newAccountEntity)
 	if err != nil {
 		log.Errorw("Failed to generate token", zap.Error(err))
 		return nil, fmt.Errorf("generate token failed: %w", err)
 	}
 
 	return &out.RegisterResponse{
-		Token: token,
-	}, nil
-}
-
-func (u *authUsecaseImpl) Logout(ctx context.Context, req *in.LogoutRequest) (*out.LogoutResponse, error) {
-	_ = ctx
-	_ = req
-	return &out.LogoutResponse{
-		Message: "Logout successful",
+		Token:     token,
+		ExpiresAt: expiresAt.UnixMilli(),
 	}, nil
 }

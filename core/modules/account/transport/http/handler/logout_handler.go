@@ -3,8 +3,8 @@ package handler
 
 import (
 	"errors"
+	"go-socket/core/modules/account/application/command"
 	"go-socket/core/modules/account/application/dto/in"
-	"go-socket/core/modules/account/application/usecase"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/gin-gonic/gin"
@@ -12,12 +12,12 @@ import (
 )
 
 type logoutHandler struct {
-	authUsecase usecase.AuthUsecase
+	commandBus command.Bus
 }
 
-func NewLogoutHandler(authUsecase usecase.AuthUsecase) *logoutHandler {
+func NewLogoutHandler(commandBus command.Bus) *logoutHandler {
 	return &logoutHandler{
-		authUsecase: authUsecase,
+		commandBus: commandBus,
 	}
 }
 
@@ -33,7 +33,7 @@ func (h *logoutHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	result, err := h.authUsecase.Logout(ctx, &request)
+	result, err := h.commandBus.Logout.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("Logout failed", zap.Error(err))
 		return nil, errors.New("Logout failed")
