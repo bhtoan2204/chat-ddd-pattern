@@ -1,10 +1,15 @@
 package config
 
 type Config struct {
-	RedisConfig RedisConfig
-	HttpConfig  HttpConfig
-	DBConfig    DBConfig
-	AuthConfig  AuthConfig
+	ServerConfig ServerConfig
+	RedisConfig  RedisConfig
+	HttpConfig   HttpConfig
+	DBConfig     DBConfig
+	AuthConfig   AuthConfig
+}
+
+type ServerConfig struct {
+	Environment string `env:"ENVIRONMENT"`
 }
 
 type RedisConfig struct {
