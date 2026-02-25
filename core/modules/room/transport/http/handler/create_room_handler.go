@@ -3,8 +3,8 @@ package handler
 
 import (
 	"errors"
+	"go-socket/core/modules/room/application/command"
 	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/usecase"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/gin-gonic/gin"
@@ -12,12 +12,12 @@ import (
 )
 
 type createRoomHandler struct {
-	roomUsecase usecase.RoomUsecase
+	commandBus command.Bus
 }
 
-func NewCreateRoomHandler(roomUsecase usecase.RoomUsecase) *createRoomHandler {
+func NewCreateRoomHandler(commandBus command.Bus) *createRoomHandler {
 	return &createRoomHandler{
-		roomUsecase: roomUsecase,
+		commandBus: commandBus,
 	}
 }
 
@@ -33,7 +33,7 @@ func (h *createRoomHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	result, err := h.roomUsecase.CreateRoom(ctx, &request)
+	result, err := h.commandBus.CreateRoom.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("CreateRoom failed", zap.Error(err))
 		return nil, errors.New("CreateRoom failed")

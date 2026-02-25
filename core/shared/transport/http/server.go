@@ -9,7 +9,8 @@ import (
 	accountquery "go-socket/core/modules/account/application/query"
 	accountassembly "go-socket/core/modules/account/assembly"
 	accounthttp "go-socket/core/modules/account/transport/http"
-	roomusecase "go-socket/core/modules/room/application/usecase"
+	roomcommand "go-socket/core/modules/room/application/command"
+	roomquery "go-socket/core/modules/room/application/query"
 	roomassembly "go-socket/core/modules/room/assembly"
 	roomhttp "go-socket/core/modules/room/transport/http"
 	"go-socket/core/shared/infra/idempotency"
@@ -34,8 +35,8 @@ type Server struct {
 	httpServer     *http.Server
 	accountCommand accountcommand.Bus
 	accountQuery   accountquery.Bus
-	roomUsecase    roomusecase.RoomUsecase
-	messageUsecase roomusecase.MessageUsecase
+	roomCommand    roomcommand.Bus
+	roomQuery      roomquery.Bus
 	appCtx         *appCtx.AppContext
 }
 
@@ -111,9 +112,9 @@ func (s *Server) buildUsecases(appContext *appCtx.AppContext) error {
 	accountBuses := accountassembly.BuildBuses(appContext)
 	s.accountCommand = accountBuses.Command
 	s.accountQuery = accountBuses.Query
-	roomUsecases := roomassembly.BuildUsecases(appContext)
-	s.roomUsecase = roomUsecases.Room
-	s.messageUsecase = roomUsecases.Message
+	roomUsecases := roomassembly.BuildBuses(appContext)
+	s.roomCommand = roomUsecases.Command
+	s.roomQuery = roomUsecases.Query
 	return nil
 }
 
@@ -126,5 +127,5 @@ func (s *Server) registerPrivateAPI() {
 	apiV1 := s.router.Group("/api/v1")
 	apiV1.Use(middleware.AuthenMiddleware(s.appCtx))
 	accounthttp.RegisterPrivateRoutes(apiV1, s.accountCommand, s.accountQuery)
-	roomhttp.RegisterPrivateRoutes(apiV1, s.roomUsecase, s.messageUsecase)
+	roomhttp.RegisterPrivateRoutes(apiV1, s.roomCommand, s.roomQuery)
 }

@@ -16,21 +16,21 @@ import (
 	"gorm.io/gorm"
 )
 
-type loginUseCase struct {
+type loginHandler struct {
 	accountRepo repos.AccountRepository
 	hasher      hasher.Hasher
 	paseto      xpaseto.PasetoService
 }
 
-func NewLoginUseCase(appCtx *appCtx.AppContext, baseRepo repos.Repos) LoginHandler {
-	return &loginUseCase{
+func NewLoginHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos) LoginHandler {
+	return &loginHandler{
 		accountRepo: baseRepo.AccountRepository(),
 		hasher:      appCtx.GetHasher(),
 		paseto:      appCtx.GetPaseto(),
 	}
 }
 
-func (u *loginUseCase) Handle(ctx context.Context, req *in.LoginRequest) (*out.LoginResponse, error) {
+func (u *loginHandler) Handle(ctx context.Context, req *in.LoginRequest) (*out.LoginResponse, error) {
 	log := logging.FromContext(ctx).Named("Login")
 	account, err := u.accountRepo.GetAccountByEmail(ctx, req.Email)
 	if err != nil {

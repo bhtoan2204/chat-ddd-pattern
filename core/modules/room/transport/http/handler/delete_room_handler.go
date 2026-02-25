@@ -3,8 +3,8 @@ package handler
 
 import (
 	"errors"
+	"go-socket/core/modules/room/application/command"
 	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/usecase"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/gin-gonic/gin"
@@ -12,12 +12,12 @@ import (
 )
 
 type deleteRoomHandler struct {
-	roomUsecase usecase.RoomUsecase
+	commandBus command.Bus
 }
 
-func NewDeleteRoomHandler(roomUsecase usecase.RoomUsecase) *deleteRoomHandler {
+func NewDeleteRoomHandler(commandBus command.Bus) *deleteRoomHandler {
 	return &deleteRoomHandler{
-		roomUsecase: roomUsecase,
+		commandBus: commandBus,
 	}
 }
 
@@ -33,7 +33,7 @@ func (h *deleteRoomHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	result, err := h.roomUsecase.DeleteRoom(ctx, &request)
+	result, err := h.commandBus.DeleteRoom.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("DeleteRoom failed", zap.Error(err))
 		return nil, errors.New("DeleteRoom failed")

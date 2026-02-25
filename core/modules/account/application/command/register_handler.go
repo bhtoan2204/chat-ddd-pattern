@@ -21,21 +21,21 @@ import (
 	"gorm.io/gorm"
 )
 
-type registerUseCase struct {
+type registerHandler struct {
 	baseRepo repos.Repos
 	hasher   hasher.Hasher
 	paseto   xpaseto.PasetoService
 }
 
-func NewRegisterUseCase(appCtx *appCtx.AppContext, baseRepo repos.Repos) RegisterHandler {
-	return &registerUseCase{
+func NewRegisterHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos) RegisterHandler {
+	return &registerHandler{
 		baseRepo: baseRepo,
 		hasher:   appCtx.GetHasher(),
 		paseto:   appCtx.GetPaseto(),
 	}
 }
 
-func (u *registerUseCase) Handle(ctx context.Context, req *in.RegisterRequest) (*out.RegisterResponse, error) {
+func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (*out.RegisterResponse, error) {
 	log := logging.FromContext(ctx).Named("Register")
 	accountRepo := u.baseRepo.AccountRepository()
 	_, err := accountRepo.GetAccountByEmail(ctx, req.Email)

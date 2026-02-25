@@ -6,13 +6,13 @@ import (
 	"go-socket/core/modules/account/application/dto/out"
 )
 
-type logoutUseCase struct{}
+type logoutHandler struct{}
 
-func NewLogoutUseCase() LogoutHandler {
-	return &logoutUseCase{}
+func NewLogoutHandler() LogoutHandler {
+	return &logoutHandler{}
 }
 
-func (u *logoutUseCase) Handle(ctx context.Context, req *in.LogoutRequest) (*out.LogoutResponse, error) {
+func (u *logoutHandler) Handle(ctx context.Context, req *in.LogoutRequest) (*out.LogoutResponse, error) {
 	_ = ctx
 	_ = req
 	return &out.LogoutResponse{

@@ -14,12 +14,12 @@ type Buses struct {
 
 func BuildBuses(appCtx *appCtx.AppContext) Buses {
 	accountRepos := accountrepo.NewRepoImpl(appCtx)
-	loginUseCase := command.NewLoginUseCase(appCtx, accountRepos)
-	registerUseCase := command.NewRegisterUseCase(appCtx, accountRepos)
-	logoutUseCase := command.NewLogoutUseCase()
-	getProfileUseCase := query.NewGetProfileUseCase(accountRepos)
+	loginHandler := command.NewLoginHandler(appCtx, accountRepos)
+	registerHandler := command.NewRegisterHandler(appCtx, accountRepos)
+	logoutHandler := command.NewLogoutHandler()
+	getProfileHandler := query.NewGetProfileHandler(accountRepos)
 	return Buses{
-		Command: command.NewBus(loginUseCase, registerUseCase, logoutUseCase),
-		Query:   query.NewBus(getProfileUseCase),
+		Command: command.NewBus(loginHandler, registerHandler, logoutHandler),
+		Query:   query.NewBus(getProfileHandler),
 	}
 }

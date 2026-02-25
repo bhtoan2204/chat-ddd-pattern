@@ -4,7 +4,7 @@ package handler
 import (
 	"errors"
 	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/usecase"
+	"go-socket/core/modules/room/application/query"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/gin-gonic/gin"
@@ -12,12 +12,12 @@ import (
 )
 
 type listRoomsHandler struct {
-	roomUsecase usecase.RoomUsecase
+	queryBus query.Bus
 }
 
-func NewListRoomsHandler(roomUsecase usecase.RoomUsecase) *listRoomsHandler {
+func NewListRoomsHandler(queryBus query.Bus) *listRoomsHandler {
 	return &listRoomsHandler{
-		roomUsecase: roomUsecase,
+		queryBus: queryBus,
 	}
 }
 
@@ -33,7 +33,7 @@ func (h *listRoomsHandler) Handle(c *gin.Context) (interface{}, error) {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		return nil, errors.New("validate request failed")
 	}
-	result, err := h.roomUsecase.ListRooms(ctx, &request)
+	result, err := h.queryBus.ListRoom.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("ListRooms failed", zap.Error(err))
 		return nil, errors.New("ListRooms failed")

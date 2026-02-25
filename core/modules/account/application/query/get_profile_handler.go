@@ -13,17 +13,17 @@ import (
 	"go.uber.org/zap"
 )
 
-type getProfileUseCase struct {
+type getProfileHandler struct {
 	accountRepo repos.AccountRepository
 }
 
-func NewGetProfileUseCase(baseRepo repos.Repos) GetProfileHandler {
-	return &getProfileUseCase{
+func NewGetProfileHandler(baseRepo repos.Repos) GetProfileHandler {
+	return &getProfileHandler{
 		accountRepo: baseRepo.AccountRepository(),
 	}
 }
 
-func (u *getProfileUseCase) Handle(ctx context.Context, req *in.GetProfileRequest) (*out.GetProfileResponse, error) {
+func (u *getProfileHandler) Handle(ctx context.Context, req *in.GetProfileRequest) (*out.GetProfileResponse, error) {
 	_ = req
 	log := logging.FromContext(ctx).Named("GetProfile")
 	account := ctx.Value("account")
