@@ -101,6 +101,7 @@ func (r *roomRepoImpl) toEntity(m *models.RoomModel) *entity.Room {
 		Name:        m.Name,
 		Description: m.Description,
 		RoomType:    m.RoomType,
+		OwnerID:     m.OwnerID,
 		CreatedAt:   m.CreatedAt,
 		UpdatedAt:   m.UpdatedAt,
 	}
@@ -112,6 +113,7 @@ func (r *roomRepoImpl) toModel(e *entity.Room) *models.RoomModel {
 		Name:        e.Name,
 		Description: e.Description,
 		RoomType:    e.RoomType,
+		OwnerID:     e.OwnerID,
 		CreatedAt:   e.CreatedAt,
 		UpdatedAt:   e.UpdatedAt,
 	}

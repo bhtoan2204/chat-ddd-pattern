@@ -9,6 +9,7 @@ import (
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/utils"
+	"time"
 
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -41,6 +42,9 @@ func (h *listRoomHandler) Handle(ctx context.Context, req *in.ListRoomsRequest) 
 				Name:        room.Name,
 				Description: room.Description,
 				RoomType:    string(room.RoomType),
+				OwnerId:     room.OwnerID,
+				CreatedAt:   room.CreatedAt.Format(time.RFC3339),
+				UpdatedAt:   room.UpdatedAt.Format(time.RFC3339),
 			}
 		}),
 	}, nil

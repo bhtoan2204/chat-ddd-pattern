@@ -8,7 +8,6 @@ import (
 	"go-socket/core/modules/room/application/dto/out"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
-	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/logging"
 
@@ -37,12 +36,12 @@ func (h *createRoomHandler) Handle(ctx context.Context, req *in.CreateRoomReques
 		ID:          uuid.NewString(),
 		Name:        req.Name,
 		Description: req.Description,
-		RoomType:    types.RoomType(req.RoomType),
+		RoomType:    req.RoomType,
 		OwnerID:     account.AccountID,
 	}
 	err := h.roomRepo.CreateRoom(ctx, room)
 	if err != nil {
-		log.Errorw("Failed to create room", zap.Error(err))
+		log.Errorw("Failed to create room", zap.Error(err), zap.Any("room", room))
 		return nil, fmt.Errorf("create room failed: %w", err)
 	}
 	return &out.CreateRoomResponse{

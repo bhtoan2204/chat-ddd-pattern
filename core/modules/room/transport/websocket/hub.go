@@ -5,11 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	appCtx "go-socket/core/context"
+	"go-socket/core/shared/pkg/logging"
 	"strings"
 	"sync"
 
 	"github.com/redis/go-redis/v9"
-	"go.uber.org/zap"
 )
 
 const roomChannelPrefix = "room:"
@@ -33,7 +34,6 @@ func (s *roomSubscription) Close() error {
 
 type Hub struct {
 	redisClient *redis.Client
-	logger      *zap.SugaredLogger
 
 	mu            sync.RWMutex
 	clients       map[string]IClient
@@ -41,30 +41,22 @@ type Hub struct {
 	clientRooms   map[string]map[string]struct{}
 	subscriptions map[string]*roomSubscription
 
-	ctx      context.Context
-	cancel   context.CancelFunc
 	closeMu  sync.Once
 	isClosed bool
 }
 
-func NewHub(redisClient *redis.Client, logger *zap.SugaredLogger) *Hub {
-	if logger == nil {
-		logger = zap.NewNop().Sugar()
-	}
-	ctx, cancel := context.WithCancel(context.Background())
+func NewHub(ctx context.Context, appCtx *appCtx.AppContext) *Hub {
 	return &Hub{
-		redisClient:   redisClient,
-		logger:        logger,
+		redisClient:   appCtx.GetRedisClient(),
 		clients:       make(map[string]IClient),
 		rooms:         make(map[string]IRoom),
 		clientRooms:   make(map[string]map[string]struct{}),
 		subscriptions: make(map[string]*roomSubscription),
-		ctx:           ctx,
-		cancel:        cancel,
 	}
 }
 
-func (h *Hub) Register(client IClient) {
+func (h *Hub) Register(ctx context.Context, client IClient) {
+	log := logging.FromContext(ctx)
 	if client == nil {
 		return
 	}
@@ -73,7 +65,7 @@ func (h *Hub) Register(client IClient) {
 	defer h.mu.Unlock()
 
 	if h.isClosed {
-		client.Close()
+		client.Close(ctx)
 		return
 	}
 	h.clients[client.GetID()] = client
@@ -81,10 +73,11 @@ func (h *Hub) Register(client IClient) {
 		h.clientRooms[client.GetID()] = make(map[string]struct{})
 	}
 
-	h.logger.Infow("client registered", "client_id", client.GetID(), "user_id", client.GetUserID(), "clients", len(h.clients))
+	log.Infow("client registered", "client_id", client.GetID(), "user_id", client.GetUserID(), "clients", len(h.clients))
 }
 
-func (h *Hub) Unregister(client IClient) {
+func (h *Hub) Unregister(ctx context.Context, client IClient) {
+	log := logging.FromContext(ctx)
 	if client == nil {
 		return
 	}
@@ -94,7 +87,7 @@ func (h *Hub) Unregister(client IClient) {
 	h.mu.Lock()
 	if _, exists := h.clients[clientID]; !exists {
 		h.mu.Unlock()
-		client.Close()
+		client.Close(ctx)
 		return
 	}
 	delete(h.clients, clientID)
@@ -105,8 +98,8 @@ func (h *Hub) Unregister(client IClient) {
 	h.mu.Unlock()
 
 	for _, roomID := range roomIDs {
-		if err := h.LeaveRoom(context.Background(), client, roomID); err != nil {
-			h.logger.Warnw("failed to leave room while unregistering client", "client_id", clientID, "room_id", roomID, "error", err)
+		if err := h.LeaveRoom(ctx, client, roomID); err != nil {
+			log.Warnw("failed to leave room while unregistering client", "client_id", clientID, "room_id", roomID, "error", err)
 		}
 	}
 
@@ -115,11 +108,12 @@ func (h *Hub) Unregister(client IClient) {
 	remainingClients := len(h.clients)
 	h.mu.Unlock()
 
-	client.Close()
-	h.logger.Infow("client unregistered", "client_id", clientID, "clients", remainingClients)
+	client.Close(ctx)
+	log.Infow("client unregistered", "client_id", clientID, "clients", remainingClients)
 }
 
 func (h *Hub) JoinRoom(ctx context.Context, client IClient, roomID string) error {
+	log := logging.FromContext(ctx)
 	if client == nil {
 		return errors.New("client is nil")
 	}
@@ -138,10 +132,10 @@ func (h *Hub) JoinRoom(ctx context.Context, client IClient, roomID string) error
 	}
 	room, ok := h.rooms[roomID]
 	if !ok {
-		room = NewRoom(roomID, h.logger)
+		room = NewRoom(ctx, roomID)
 		h.rooms[roomID] = room
 	}
-	room.AddClient(client)
+	room.AddClient(ctx, client)
 
 	if _, ok := h.clientRooms[client.GetID()]; !ok {
 		h.clientRooms[client.GetID()] = make(map[string]struct{})
@@ -152,17 +146,17 @@ func (h *Hub) JoinRoom(ctx context.Context, client IClient, roomID string) error
 	h.mu.Unlock()
 
 	if !hasSubscription {
-		if err := h.subscribeRoom(roomID); err != nil {
+		if err := h.subscribeRoom(ctx, roomID); err != nil {
 			return err
 		}
 	}
 
-	h.logger.Infow("client joined room", "client_id", client.GetID(), "room_id", roomID)
+	log.Infow("client joined room", "client_id", client.GetID(), "room_id", roomID)
 	return nil
 }
 
 func (h *Hub) LeaveRoom(ctx context.Context, client IClient, roomID string) error {
-	_ = ctx
+	log := logging.FromContext(ctx)
 	if client == nil {
 		return errors.New("client is nil")
 	}
@@ -176,7 +170,7 @@ func (h *Hub) LeaveRoom(ctx context.Context, client IClient, roomID string) erro
 	h.mu.Lock()
 	room, exists := h.rooms[roomID]
 	if exists {
-		room.RemoveClient(client)
+		room.RemoveClient(ctx, client)
 		if room.IsEmpty() {
 			delete(h.rooms, roomID)
 			shouldUnsubscribe = true
@@ -192,10 +186,10 @@ func (h *Hub) LeaveRoom(ctx context.Context, client IClient, roomID string) erro
 	h.mu.Unlock()
 
 	if shouldUnsubscribe {
-		h.unsubscribeRoom(roomID)
+		h.unsubscribeRoom(ctx, roomID)
 	}
 
-	h.logger.Infow("client left room", "client_id", client.GetID(), "room_id", roomID)
+	log.Infow("client left room", "client_id", client.GetID(), "room_id", roomID)
 	return nil
 }
 
@@ -242,10 +236,9 @@ func (h *Hub) HandleMessage(ctx context.Context, client IClient, msg Message) er
 	return fmt.Errorf("unsupported websocket action: %s", msg.Action)
 }
 
-func (h *Hub) Close() {
+func (h *Hub) Close(ctx context.Context) {
+	log := logging.FromContext(ctx)
 	h.closeMu.Do(func() {
-		h.cancel()
-
 		h.mu.Lock()
 		h.isClosed = true
 		clients := make([]IClient, 0, len(h.clients))
@@ -265,18 +258,19 @@ func (h *Hub) Close() {
 
 		for _, sub := range subscriptions {
 			if err := sub.Close(); err != nil {
-				h.logger.Warnw("failed to close redis pubsub", "error", err)
+				log.Warnw("failed to close redis pubsub", "error", err)
 			}
 		}
 		for _, client := range clients {
-			client.Close()
+			client.Close(ctx)
 		}
 
-		h.logger.Infow("hub closed")
+		log.Infow("hub closed")
 	})
 }
 
-func (h *Hub) subscribeRoom(roomID string) error {
+func (h *Hub) subscribeRoom(ctx context.Context, roomID string) error {
+	log := logging.FromContext(ctx)
 	if h.redisClient == nil {
 		return errors.New("redis client is nil")
 	}
@@ -290,7 +284,7 @@ func (h *Hub) subscribeRoom(roomID string) error {
 		h.mu.Unlock()
 		return nil
 	}
-	subCtx, cancel := context.WithCancel(h.ctx)
+	subCtx, cancel := context.WithCancel(ctx)
 	pubsub := h.redisClient.Subscribe(subCtx, roomChannelName(roomID))
 	sub := &roomSubscription{
 		pubsub: pubsub,
@@ -300,61 +294,63 @@ func (h *Hub) subscribeRoom(roomID string) error {
 	h.mu.Unlock()
 
 	if _, err := pubsub.Receive(subCtx); err != nil {
-		h.removeSubscription(roomID, sub)
+		h.removeSubscription(subCtx, roomID, sub)
 		_ = sub.Close()
 		return fmt.Errorf("subscribe to redis room channel: %w", err)
 	}
 
-	go h.consumeRoomMessages(roomID, sub)
-	h.logger.Infow("subscribed redis room channel", "room_id", roomID, "channel", roomChannelName(roomID))
+	go h.consumeRoomMessages(subCtx, roomID, sub)
+	log.Infow("subscribed redis room channel", "room_id", roomID, "channel", roomChannelName(roomID))
 	return nil
 }
 
-func (h *Hub) unsubscribeRoom(roomID string) {
-	sub := h.detachSubscription(roomID)
+func (h *Hub) unsubscribeRoom(ctx context.Context, roomID string) {
+	log := logging.FromContext(ctx)
+	sub := h.detachSubscription(ctx, roomID)
 	if sub == nil {
 		return
 	}
 	if err := sub.Close(); err != nil {
-		h.logger.Warnw("failed to unsubscribe redis room channel", "room_id", roomID, "error", err)
+		log.Warnw("failed to unsubscribe redis room channel", "room_id", roomID, "error", err)
 		return
 	}
-	h.logger.Infow("unsubscribed redis room channel", "room_id", roomID, "channel", roomChannelName(roomID))
+	log.Infow("unsubscribed redis room channel", "room_id", roomID, "channel", roomChannelName(roomID))
 }
 
-func (h *Hub) consumeRoomMessages(roomID string, sub *roomSubscription) {
+func (h *Hub) consumeRoomMessages(ctx context.Context, roomID string, sub *roomSubscription) {
+	log := logging.FromContext(ctx)
 	defer func() {
-		h.removeSubscription(roomID, sub)
+		h.removeSubscription(ctx, roomID, sub)
 		if err := sub.Close(); err != nil {
-			h.logger.Debugw("error while closing redis pubsub from consumer", "room_id", roomID, "error", err)
+			log.Debugw("error while closing redis pubsub from consumer", "room_id", roomID, "error", err)
 		}
 	}()
 
 	channel := sub.pubsub.Channel()
 	for {
 		select {
-		case <-h.ctx.Done():
+		case <-ctx.Done():
 			return
 		case message, ok := <-channel:
 			if !ok {
 				return
 			}
-			h.broadcastLocal(roomID, []byte(message.Payload))
+			h.broadcastLocal(ctx, roomID, []byte(message.Payload))
 		}
 	}
 }
 
-func (h *Hub) broadcastLocal(roomID string, payload []byte) {
+func (h *Hub) broadcastLocal(ctx context.Context, roomID string, payload []byte) {
 	h.mu.RLock()
 	room, ok := h.rooms[roomID]
 	h.mu.RUnlock()
 	if !ok {
 		return
 	}
-	room.Broadcast(payload)
+	room.Broadcast(ctx, payload)
 }
 
-func (h *Hub) detachSubscription(roomID string) *roomSubscription {
+func (h *Hub) detachSubscription(ctx context.Context, roomID string) *roomSubscription {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
@@ -363,7 +359,7 @@ func (h *Hub) detachSubscription(roomID string) *roomSubscription {
 	return sub
 }
 
-func (h *Hub) removeSubscription(roomID string, expected *roomSubscription) {
+func (h *Hub) removeSubscription(ctx context.Context, roomID string, expected *roomSubscription) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 

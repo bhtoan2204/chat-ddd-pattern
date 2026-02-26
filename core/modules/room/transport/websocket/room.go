@@ -1,9 +1,9 @@
 package socket
 
 import (
+	"context"
+	"go-socket/core/shared/pkg/logging"
 	"sync"
-
-	"go.uber.org/zap"
 )
 
 var _ IRoom = (*Room)(nil)
@@ -12,17 +12,12 @@ type Room struct {
 	id      string
 	clients map[string]IClient
 	mu      sync.RWMutex
-	logger  *zap.SugaredLogger
 }
 
-func NewRoom(roomID string, logger *zap.SugaredLogger) *Room {
-	if logger == nil {
-		logger = zap.NewNop().Sugar()
-	}
+func NewRoom(ctx context.Context, roomID string) *Room {
 	return &Room{
 		id:      roomID,
 		clients: make(map[string]IClient),
-		logger:  logger,
 	}
 }
 
@@ -30,25 +25,27 @@ func (r *Room) GetID() string {
 	return r.id
 }
 
-func (r *Room) AddClient(client IClient) {
+func (r *Room) AddClient(ctx context.Context, client IClient) {
+	log := logging.FromContext(ctx)
 	r.mu.Lock()
 	r.clients[client.GetID()] = client
 	total := len(r.clients)
 	r.mu.Unlock()
 
-	r.logger.Debugw("client joined room", "room_id", r.id, "client_id", client.GetID(), "total_clients", total)
+	log.Debugw("client joined room", "room_id", r.id, "client_id", client.GetID(), "total_clients", total)
 }
 
-func (r *Room) RemoveClient(client IClient) {
+func (r *Room) RemoveClient(ctx context.Context, client IClient) {
+	log := logging.FromContext(ctx)
 	r.mu.Lock()
 	delete(r.clients, client.GetID())
 	total := len(r.clients)
 	r.mu.Unlock()
 
-	r.logger.Debugw("client left room", "room_id", r.id, "client_id", client.GetID(), "total_clients", total)
+	log.Debugw("client left room", "room_id", r.id, "client_id", client.GetID(), "total_clients", total)
 }
 
-func (r *Room) Broadcast(message []byte) {
+func (r *Room) Broadcast(ctx context.Context, message []byte) {
 	r.mu.RLock()
 	localClients := make([]IClient, 0, len(r.clients))
 	for _, client := range r.clients {
@@ -57,7 +54,7 @@ func (r *Room) Broadcast(message []byte) {
 	r.mu.RUnlock()
 
 	for _, client := range localClients {
-		client.Send(message)
+		client.Send(ctx, message)
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	roomquery "go-socket/core/modules/room/application/query"
 	roomassembly "go-socket/core/modules/room/assembly"
 	roomhttp "go-socket/core/modules/room/transport/http"
+	roomsocket "go-socket/core/modules/room/transport/websocket"
 	"go-socket/core/shared/infra/idempotency"
 	"go-socket/core/shared/pkg/server"
 	"go-socket/core/shared/transport/http/middleware"
@@ -37,6 +38,7 @@ type Server struct {
 	accountQuery   accountquery.Bus
 	roomCommand    roomcommand.Bus
 	roomQuery      roomquery.Bus
+	roomHub        roomsocket.IHub
 	appCtx         *appCtx.AppContext
 }
 
@@ -97,9 +99,13 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 }
 
 func (s *Server) Start(ctx context.Context, appCtx *appCtx.AppContext) error {
-	if err := s.buildUsecases(appCtx); err != nil {
+	if err := s.buildUsecases(ctx, appCtx); err != nil {
 		return err
 	}
+	if s.roomHub != nil {
+		defer s.roomHub.Close(context.Background())
+	}
+
 	srv, err := server.New(s.cfg.HttpConfig.Port)
 	if err != nil {
 		return err
@@ -108,13 +114,14 @@ func (s *Server) Start(ctx context.Context, appCtx *appCtx.AppContext) error {
 	return srv.ServeHTTPHandler(ctx, s.Routes(ctx, appCtx))
 }
 
-func (s *Server) buildUsecases(appContext *appCtx.AppContext) error {
+func (s *Server) buildUsecases(ctx context.Context, appContext *appCtx.AppContext) error {
 	accountBuses := accountassembly.BuildBuses(appContext)
 	s.accountCommand = accountBuses.Command
 	s.accountQuery = accountBuses.Query
 	roomUsecases := roomassembly.BuildBuses(appContext)
 	s.roomCommand = roomUsecases.Command
 	s.roomQuery = roomUsecases.Query
+	s.roomHub = roomsocket.NewHub(ctx, appContext)
 	return nil
 }
 
@@ -127,5 +134,5 @@ func (s *Server) registerPrivateAPI() {
 	apiV1 := s.router.Group("/api/v1")
 	apiV1.Use(middleware.AuthenMiddleware(s.appCtx))
 	accounthttp.RegisterPrivateRoutes(apiV1, s.accountCommand, s.accountQuery)
-	roomhttp.RegisterPrivateRoutes(apiV1, s.roomCommand, s.roomQuery)
+	roomhttp.RegisterPrivateRoutes(apiV1, s.roomCommand, s.roomQuery, s.roomHub)
 }
