@@ -15,7 +15,7 @@ type Buses struct {
 func BuildBuses(appCtx *appCtx.AppContext) Buses {
 	roomRepos := roomrepo.NewRepoImpl(appCtx)
 	joinRoomHandler := command.NewJoinRoomHandler(roomRepos.RoomRepository())
-	createRoomHandler := command.NewCreateRoomHandler(roomRepos.RoomRepository())
+	createRoomHandler := command.NewCreateRoomHandler(roomRepos)
 	updateRoomHandler := command.NewUpdateRoomHandler(roomRepos.RoomRepository())
 	deleteRoomHandler := command.NewDeleteRoomHandler(roomRepos.RoomRepository())
 	createMessageHandler := command.NewCreateMessageHandler(roomRepos.MessageRepository())

@@ -99,7 +99,7 @@ func (a *accountCache) SetByEmail(ctx context.Context, m *entity.Account) error 
 	if err != nil {
 		return fmt.Errorf("marshal account cache failed: %w", err)
 	}
-	return a.cache.Set(ctx, accountEmailCacheKey(m.Email), data)
+	return a.cache.Set(ctx, accountEmailCacheKey(m.Email.Value()), data)
 }
 
 func (a *accountCache) DeleteByEmail(ctx context.Context, email string) error {

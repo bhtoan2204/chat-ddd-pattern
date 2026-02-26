@@ -63,7 +63,7 @@ func (p *pasetoService) GenerateToken(ctx context.Context, account *entity.Accou
 		IssuedAt:   now.UTC(),
 		Expiration: exp.UTC(),
 	}
-	payload.Set("email", account.Email)
+	payload.Set("email", account.Email.Value())
 
 	token, err := p.paseto.Encrypt(p.symmetricKey, payload, nil)
 	if err != nil {

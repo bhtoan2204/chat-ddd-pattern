@@ -1,11 +1,14 @@
 package entity
 
-import "time"
+import (
+	valueobject "go-socket/core/modules/account/domain/value_object"
+	"time"
+)
 
 type Account struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	Password  string    `json:"password"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        string               `json:"id"`
+	Email     valueobject.Email    `json:"email"`
+	Password  valueobject.Password `json:"password"`
+	CreatedAt time.Time            `json:"created_at"`
+	UpdatedAt time.Time            `json:"updated_at"`
 }

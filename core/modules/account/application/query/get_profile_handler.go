@@ -44,7 +44,7 @@ func (u *getProfileHandler) Handle(ctx context.Context, req *in.GetProfileReques
 	}
 
 	return &out.GetProfileResponse{
-		Email:     accountEntity.Email,
+		Email:     accountEntity.Email.Value(),
 		CreatedAt: accountEntity.CreatedAt.Format(time.RFC3339),
 		UpdatedAt: accountEntity.UpdatedAt.Format(time.RFC3339),
 	}, nil

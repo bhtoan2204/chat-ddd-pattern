@@ -5,11 +5,11 @@ import (
 
 	"go-socket/core/modules/account/domain/entity"
 	accountrepos "go-socket/core/modules/account/domain/repos"
+	valueobject "go-socket/core/modules/account/domain/value_object"
 	accountcache "go-socket/core/modules/account/infra/cache"
 	"go-socket/core/modules/account/infra/persistent/models"
 	sharedcache "go-socket/core/shared/infra/cache"
 
-	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
 
@@ -39,9 +39,13 @@ func (r *accountRepoImpl) GetAccountByID(ctx context.Context, id string) (*entit
 		return nil, err
 	}
 
-	_ = r.accountCache.Set(ctx, r.toEntity(&m))
+	entity, err := r.toEntity(&m)
+	if err != nil {
+		return nil, err
+	}
+	_ = r.accountCache.Set(ctx, entity)
 
-	return r.toEntity(&m), nil
+	return entity, nil
 }
 
 func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (*entity.Account, error) {
@@ -55,8 +59,12 @@ func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (
 	if err != nil {
 		return nil, err
 	}
-	_ = r.accountCache.SetByEmail(ctx, r.toEntity(&m))
-	return r.toEntity(&m), nil
+	entity, err := r.toEntity(&m)
+	if err != nil {
+		return nil, err
+	}
+	_ = r.accountCache.SetByEmail(ctx, entity)
+	return entity, nil
 }
 
 func (r *accountRepoImpl) CreateAccount(ctx context.Context, account *entity.Account) error {
@@ -79,14 +87,19 @@ func (r *accountRepoImpl) UpdateAccount(ctx context.Context, account *entity.Acc
 		return err
 	}
 
-	_ = r.accountCache.Set(ctx, r.toEntity(m))
-	_ = r.accountCache.SetByEmail(ctx, r.toEntity(m))
+	entity, err := r.toEntity(m)
+	if err != nil {
+		return err
+	}
+	_ = r.accountCache.Set(ctx, entity)
+	_ = r.accountCache.SetByEmail(ctx, entity)
+
 	return nil
 }
 
 func (r *accountRepoImpl) DeleteAccount(ctx context.Context, id string) error {
 	if cached, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
-		_ = r.accountCache.DeleteByEmail(ctx, cached.Email)
+		_ = r.accountCache.DeleteByEmail(ctx, cached.Email.Value())
 	}
 	err := r.db.WithContext(ctx).
 		Delete(&models.AccountModel{}, "id = ?", id).Error
@@ -109,26 +122,42 @@ func (r *accountRepoImpl) ListAccountsByRoomID(ctx context.Context, roomID strin
 		return nil, err
 	}
 
-	return lo.Map(accounts, func(account *models.AccountModel, _ int) *entity.Account {
-		return r.toEntity(account)
-	}), nil
+	result := make([]*entity.Account, 0, len(accounts))
+
+	for _, account := range accounts {
+		e, err := r.toEntity(account)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, e)
+	}
+
+	return result, nil
 }
 
-func (r *accountRepoImpl) toEntity(m *models.AccountModel) *entity.Account {
+func (r *accountRepoImpl) toEntity(m *models.AccountModel) (*entity.Account, error) {
+	email, err := valueobject.NewEmail(m.Email)
+	if err != nil {
+		return nil, err
+	}
+	password, err := valueobject.NewPassword(m.Password)
+	if err != nil {
+		return nil, err
+	}
 	return &entity.Account{
 		ID:        m.ID,
-		Email:     m.Email,
-		Password:  m.Password,
+		Email:     email,
+		Password:  password,
 		CreatedAt: m.CreatedAt,
 		UpdatedAt: m.UpdatedAt,
-	}
+	}, nil
 }
 
 func (r *accountRepoImpl) toModel(e *entity.Account) *models.AccountModel {
 	return &models.AccountModel{
 		ID:        e.ID,
-		Email:     e.Email,
-		Password:  e.Password,
+		Email:     e.Email.Value(),
+		Password:  e.Password.Value(),
 		CreatedAt: e.CreatedAt,
 		UpdatedAt: e.UpdatedAt,
 	}

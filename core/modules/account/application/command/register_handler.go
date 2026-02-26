@@ -9,6 +9,7 @@ import (
 	"go-socket/core/modules/account/application/dto/out"
 	"go-socket/core/modules/account/domain/entity"
 	repos "go-socket/core/modules/account/domain/repos"
+	valueobject "go-socket/core/modules/account/domain/value_object"
 	"go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/infra/xpaseto"
 	eventpkg "go-socket/core/shared/pkg/event"
@@ -48,16 +49,34 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 		return nil, ErrAccountExists
 	}
 
-	hashedPassword, err := u.hasher.Hash(ctx, req.Password)
+	password, err := valueobject.NewPassword(req.Password)
+	if err != nil {
+		log.Errorw("Failed to create password", zap.Error(err))
+		return nil, err
+	}
+
+	hashedPassword, err := u.hasher.Hash(ctx, password.Value())
 	if err != nil {
 		log.Errorw("Failed to hash password", zap.Error(err))
 		return nil, err
 	}
 
+	email, err := valueobject.NewEmail(req.Email)
+	if err != nil {
+		log.Errorw("Failed to create email", zap.Error(err))
+		return nil, err
+	}
+
+	hashedPasswordVO, err := valueobject.NewPassword(hashedPassword)
+	if err != nil {
+		log.Errorw("Failed to create hashed password value object", zap.Error(err))
+		return nil, err
+	}
+
 	newAccountEntity := &entity.Account{
 		ID:       uuid.New().String(),
-		Email:    req.Email,
-		Password: hashedPassword,
+		Email:    email,
+		Password: hashedPasswordVO,
 	}
 
 	if txErr := u.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
@@ -68,7 +87,7 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 
 		payload := &events.AccountCreatedEvent{
 			AccountID: newAccountEntity.ID,
-			Email:     newAccountEntity.Email,
+			Email:     newAccountEntity.Email.Value(),
 			CreatedAt: time.Now(),
 		}
 		evt := eventpkg.Event{

@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/domain/aggregate"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/infra/xpaseto"
+	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
 
 	"github.com/google/uuid"
@@ -16,12 +18,12 @@ import (
 )
 
 type createRoomHandler struct {
-	roomRepo repos.RoomRepository
+	baseRepo repos.Repos
 }
 
-func NewCreateRoomHandler(roomRepo repos.RoomRepository) CreateRoomHandler {
+func NewCreateRoomHandler(baseRepo repos.Repos) CreateRoomHandler {
 	return &createRoomHandler{
-		roomRepo: roomRepo,
+		baseRepo: baseRepo,
 	}
 }
 
@@ -39,11 +41,37 @@ func (h *createRoomHandler) Handle(ctx context.Context, req *in.CreateRoomReques
 		RoomType:    req.RoomType,
 		OwnerID:     account.AccountID,
 	}
-	err := h.roomRepo.CreateRoom(ctx, room)
-	if err != nil {
+
+	if err := h.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
+		if err := txRepos.RoomRepository().CreateRoom(ctx, room); err != nil {
+			return fmt.Errorf("create room failed: %w", err)
+		}
+
+		roomAggregate := &aggregate.RoomAggregate{}
+		roomAggregate.SetAggregateType("room")
+		if err := roomAggregate.SetID(room.ID); err != nil {
+			return fmt.Errorf("set room aggregate id failed: %w", err)
+		}
+
+		if err := roomAggregate.ApplyChange(roomAggregate, &aggregate.EventRoomCreated{
+			RoomID:      room.ID,
+			RoomType:    room.RoomType,
+			MemberCount: 1,
+		}); err != nil {
+			return fmt.Errorf("apply room created event failed: %w", err)
+		}
+
+		publisher := eventpkg.NewPublisher(txRepos.RoomOutboxEventsRepository())
+		if err := publisher.PublishAggregate(ctx, roomAggregate); err != nil {
+			return fmt.Errorf("publish room created event failed: %w", err)
+		}
+
+		return nil
+	}); err != nil {
 		log.Errorw("Failed to create room", zap.Error(err), zap.Any("room", room))
-		return nil, fmt.Errorf("create room failed: %w", err)
+		return nil, err
 	}
+
 	return &out.CreateRoomResponse{
 		Id:   room.ID,
 		Name: room.Name,
