@@ -4,20 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 	"sync"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.uber.org/zap"
 )
-
-type Config struct {
-	Servers      string
-	Group        string
-	OffsetReset  string
-	ConsumeTopic []string
-	HandlerName  string
-	DLQ          bool
-}
 
 type Producer interface {
 	Produce(ctx context.Context, topic string, key string, v interface{}) error
@@ -35,7 +27,7 @@ func NewProducer(cfg *Config) (Producer, error) {
 		"bootstrap.servers": cfg.Servers,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	producer := &producer{

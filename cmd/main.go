@@ -8,7 +8,7 @@ import (
 	appCtx "go-socket/core/context"
 	"go-socket/core/shared/infra/db"
 	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/transport/http"
+	apptransport "go-socket/core/shared/transport/app"
 	"os/signal"
 	"syscall"
 )
@@ -29,25 +29,24 @@ func main() {
 		logger.Errorw("Failed to load config", "error", err)
 		return
 	}
-	appCtx, err := appCtx.LoadAppCtx(ctx, cfg)
+	appContext, err := appCtx.LoadAppCtx(ctx, cfg)
 	if err != nil {
 		logger.Errorw("Failed to create app context", "error", err)
 		return
 	}
+	defer appContext.Close()
 
 	migrateTool := db.NewMigrateTool()
 	pathMigration := flag.String("path", "migration/", "path to migrations folder")
+	flag.Parse()
 	if err := migrateTool.Migrate(fmt.Sprintf("file://%s", *pathMigration), cfg.DBConfig.ConnectionURL); err != nil {
 		logger.Errorw("Failed to migrate database", "error", err)
 		return
 	}
 
-	appHttp := http.NewServer(cfg)
-	if err := appHttp.Start(ctx, appCtx); err != nil {
-		logger.Errorw("Failed to start app http", "error", err)
+	appServer := apptransport.NewServer(cfg)
+	if err := appServer.Start(ctx, appContext); err != nil {
+		logger.Errorw("Failed to start app server", "error", err)
 		return
 	}
-
-	<-ctx.Done()
-	appCtx.Close()
 }

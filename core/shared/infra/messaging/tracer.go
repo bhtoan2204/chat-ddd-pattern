@@ -16,8 +16,9 @@ import (
 func (c *consumer) startSpan(msg *kafka.Message) (context.Context, trace.Span) {
 	carrier := NewMessageCarrier(msg)
 	ctx := otel.GetTextMapPropagator().Extract(context.Background(), carrier)
+	topic := topicFromMessage(msg)
 
-	namespan := fmt.Sprintf("%s receive", *msg.TopicPartition.Topic)
+	namespan := fmt.Sprintf("%s receive", topic)
 	opts := c.buildSpanOpts(msg)
 
 	return xtracer.StartSpan(ctx, namespan, opts...)
@@ -26,10 +27,11 @@ func (c *consumer) startSpan(msg *kafka.Message) (context.Context, trace.Span) {
 func (c *consumer) buildSpanOpts(msg *kafka.Message) []trace.SpanStartOption {
 	result := []trace.SpanStartOption{}
 	offset := strconv.FormatInt(int64(msg.TopicPartition.Offset), 10)
+	topic := topicFromMessage(msg)
 
 	result = append(result,
 		trace.WithAttributes(
-			semconv.MessagingSourceNameKey.String(*msg.TopicPartition.Topic),
+			semconv.MessagingSourceNameKey.String(topic),
 			semconv.MessagingMessageIDKey.String(offset),
 			semconv.MessagingKafkaMessageKeyKey.String(string(msg.Key)),
 			semconv.MessagingKafkaSourcePartitionKey.Int64(int64(msg.TopicPartition.Partition)),
@@ -38,4 +40,11 @@ func (c *consumer) buildSpanOpts(msg *kafka.Message) []trace.SpanStartOption {
 	)
 
 	return result
+}
+
+func topicFromMessage(msg *kafka.Message) string {
+	if msg.TopicPartition.Topic == nil {
+		return "unknown"
+	}
+	return *msg.TopicPartition.Topic
 }

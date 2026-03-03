@@ -7,6 +7,7 @@ import (
 	"go-socket/core/modules/room/application/dto/out"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 	"time"
 
 	"go.uber.org/zap"
@@ -27,13 +28,13 @@ func (h *updateRoomHandler) Handle(ctx context.Context, req *in.UpdateRoomReques
 	room, err := h.roomRepo.GetRoomByID(ctx, req.Id)
 	if err != nil {
 		log.Errorw("Failed to get room", zap.Error(err))
-		return nil, fmt.Errorf("get room failed: %w", err)
+		return nil, stackerr.Error(fmt.Errorf("get room failed: %w", err))
 	}
 	room.Name = req.Name
 	err = h.roomRepo.UpdateRoom(ctx, room)
 	if err != nil {
 		log.Errorw("Failed to update room", zap.Error(err))
-		return nil, fmt.Errorf("update room failed: %w", err)
+		return nil, stackerr.Error(fmt.Errorf("update room failed: %w", err))
 	}
 	return &out.UpdateRoomResponse{
 		Id:        room.ID,

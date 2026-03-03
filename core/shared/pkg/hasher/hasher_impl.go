@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 	"strings"
 
 	"golang.org/x/crypto/argon2"
@@ -24,7 +25,7 @@ func NewHasher() (Hasher, error) {
 func newHasher() (Hasher, error) {
 	salt, err := genSalt(32)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	return &hasherImpl{
 		Salt:    salt,

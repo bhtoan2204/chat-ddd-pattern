@@ -3,6 +3,7 @@ package redis
 import (
 	"fmt"
 	"go-socket/config"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -11,7 +12,7 @@ import (
 func NewStandaloneRedisClient(cfg *config.Config) (*redis.Client, error) {
 	opts, err := redis.ParseURL(cfg.RedisConfig.ConnectionURL)
 	if err != nil {
-		return nil, fmt.Errorf("parse url failed err=%w", err)
+		return nil, stackerr.Error(fmt.Errorf("parse url failed err=%w", err))
 	}
 	opts.PoolSize = cfg.RedisConfig.PoolSize
 	opts.DialTimeout = time.Duration(cfg.RedisConfig.DialTimeoutSeconds) * time.Second

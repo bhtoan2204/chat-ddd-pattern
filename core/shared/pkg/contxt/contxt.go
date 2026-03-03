@@ -2,6 +2,8 @@ package contxt
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 type ctxKey string
@@ -23,4 +25,12 @@ func RequestIDFromCtx(ctx context.Context) string {
 	}
 
 	return ""
+}
+
+func SetRequestID(ctx context.Context) context.Context {
+	reqID := RequestIDFromCtx(ctx)
+	if reqID == "" {
+		reqID = uuid.NewString()
+	}
+	return WithRequestID(ctx, reqID)
 }

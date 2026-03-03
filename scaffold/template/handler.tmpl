@@ -31,16 +31,16 @@ func (h *{{.StructName}}) Handle(c *gin.Context) (interface{}, error) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 {{- end}}
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	if err := request.Validate(); err != nil {
 		logger.Errorw("Validate request failed", zap.Error(err))
-		return nil, errors.New("validate request failed")
+		return nil, stackerr.Error(errors.New("validate request failed")
 	}
 	result, err := h.{{.UsecaseField}}.{{.UsecaseMethod}}(ctx, &request)
 	if err != nil {
 		logger.Errorw("{{.UsecaseMethod}} failed", zap.Error(err))
-		return nil, errors.New("{{.UsecaseMethod}} failed")
+		return nil, stackerr.Error(errors.New("{{.UsecaseMethod}} failed")
 	}
 	return result, nil
 }

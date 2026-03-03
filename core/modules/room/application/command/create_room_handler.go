@@ -12,6 +12,7 @@ import (
 	"go-socket/core/shared/infra/xpaseto"
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -32,7 +33,7 @@ func (h *createRoomHandler) Handle(ctx context.Context, req *in.CreateRoomReques
 	account := ctx.Value("account").(*xpaseto.PasetoPayload)
 	if account == nil {
 		log.Errorw("Account not found", zap.Error(errors.New("account not found")))
-		return nil, errors.New("account not found")
+		return nil, stackerr.Error(errors.New("account not found"))
 	}
 	room := &entity.Room{
 		ID:          uuid.NewString(),
@@ -69,7 +70,7 @@ func (h *createRoomHandler) Handle(ctx context.Context, req *in.CreateRoomReques
 		return nil
 	}); err != nil {
 		log.Errorw("Failed to create room", zap.Error(err), zap.Any("room", room))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	return &out.CreateRoomResponse{

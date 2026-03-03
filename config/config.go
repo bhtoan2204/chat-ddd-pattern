@@ -6,6 +6,7 @@ type Config struct {
 	HttpConfig   HttpConfig
 	DBConfig     DBConfig
 	AuthConfig   AuthConfig
+	KafkaConfig  KafkaConfig
 }
 
 type ServerConfig struct {
@@ -42,11 +43,13 @@ type AuthConfig struct {
 }
 
 type KafkaConfig struct {
-	KafkaServers       string `env:"KAFKA_SERVERS"`
-	KafkaOffsetReset   string `env:"KAFKA_OFFSET_RESET"`
-	KafkaConsumerGroup KafkaConsumerGroup
+	KafkaServers              string `env:"KAFKA_SERVERS"`
+	KafkaOffsetReset          string `env:"KAFKA_OFFSET_RESET"`
+	KafkaNotificationConsumer KafkaNotificationConsumer
 }
 
-type KafkaConsumerGroup struct {
-	Notification string `env:"KAFKA_NOTIFICATION_CONSUMER_GROUP"`
+type KafkaNotificationConsumer struct {
+	NotificationGroup string `env:"KAFKA_NOTIFICATION_CONSUMER_GROUP"`
+
+	AccountTopic string `env:"KAFKA_NOTIFICATION_CONSUMER_ACCOUNT_TOPIC"`
 }

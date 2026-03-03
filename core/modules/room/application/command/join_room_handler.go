@@ -6,6 +6,7 @@ import (
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
 	"go-socket/core/modules/room/domain/repos"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 )
 
 type joinRoomHandler struct {
@@ -19,5 +20,5 @@ func NewJoinRoomHandler(roomRepo repos.RoomRepository) JoinRoomHandler {
 }
 
 func (h *joinRoomHandler) Handle(ctx context.Context, req *in.JoinRoomRequest) (*out.JoinRoomResponse, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, stackerr.Error(fmt.Errorf("not implemented"))
 }

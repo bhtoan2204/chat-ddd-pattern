@@ -6,6 +6,7 @@ import (
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/query"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -27,16 +28,16 @@ func (h *getProfileHandler) Handle(c *gin.Context) (interface{}, error) {
 	var request in.GetProfileRequest
 	if err := c.ShouldBindQuery(&request); err != nil {
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	if err := request.Validate(); err != nil {
 		logger.Errorw("Validate request failed", zap.Error(err))
-		return nil, errors.New("validate request failed")
+		return nil, stackerr.Error(errors.New("validate request failed"))
 	}
 	result, err := h.queryBus.GetProfile.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("GetProfile failed", zap.Error(err))
-		return nil, errors.New("GetProfile failed")
+		return nil, stackerr.Error(errors.New("GetProfile failed"))
 	}
 	return result, nil
 }

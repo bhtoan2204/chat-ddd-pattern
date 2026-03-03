@@ -8,7 +8,8 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/logging"
-	"go-socket/utils"
+	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 	"time"
 
 	"github.com/samber/lo"
@@ -33,7 +34,7 @@ func (h *listRoomHandler) Handle(ctx context.Context, req *in.ListRoomsRequest) 
 	})
 	if err != nil {
 		log.Errorw("Failed to list rooms", zap.Error(err))
-		return nil, fmt.Errorf("list rooms failed: %w", err)
+		return nil, stackerr.Error(fmt.Errorf("list rooms failed: %w", err))
 	}
 	return &out.ListRoomsResponse{
 		Rooms: lo.Map(rooms, func(room *entity.Room, _ int) out.RoomResponse {

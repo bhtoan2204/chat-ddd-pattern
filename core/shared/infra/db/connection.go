@@ -7,6 +7,7 @@ import (
 
 	"go-socket/config"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 
 	oracle "github.com/godoes/gorm-oracle"
 	"go.uber.org/zap"
@@ -21,13 +22,13 @@ func NewConnection(ctx context.Context, cfg *config.Config) (*gorm.DB, error) {
 	db, err := gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
 		logger.Errorw("open gorm oracle failed", zap.Error(err))
-		return nil, fmt.Errorf("open gorm oracle failed: %w", err)
+		return nil, stackerr.Error(fmt.Errorf("open gorm oracle failed: %w", err))
 	}
 
 	sqlDB, err := db.DB()
 	if err != nil {
 		logger.Errorw("get sql db failed", zap.Error(err))
-		return nil, fmt.Errorf("get sql db failed: %w", err)
+		return nil, stackerr.Error(fmt.Errorf("get sql db failed: %w", err))
 	}
 
 	// Pool config
@@ -38,7 +39,7 @@ func NewConnection(ctx context.Context, cfg *config.Config) (*gorm.DB, error) {
 	// Health check
 	if err := sqlDB.PingContext(ctx); err != nil {
 		logger.Errorw("ping db failed", zap.Error(err))
-		return nil, fmt.Errorf("ping db failed: %w", err)
+		return nil, stackerr.Error(fmt.Errorf("ping db failed: %w", err))
 	}
 
 	return db, nil

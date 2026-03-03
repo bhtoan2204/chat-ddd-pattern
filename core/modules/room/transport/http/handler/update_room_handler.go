@@ -6,6 +6,7 @@ import (
 	"go-socket/core/modules/room/application/command"
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -27,16 +28,16 @@ func (h *updateRoomHandler) Handle(c *gin.Context) (interface{}, error) {
 	var request in.UpdateRoomRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	if err := request.Validate(); err != nil {
 		logger.Errorw("Validate request failed", zap.Error(err))
-		return nil, errors.New("validate request failed")
+		return nil, stackerr.Error(errors.New("validate request failed"))
 	}
 	result, err := h.commandBus.UpdateRoom.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("UpdateRoom failed", zap.Error(err))
-		return nil, errors.New("UpdateRoom failed")
+		return nil, stackerr.Error(errors.New("UpdateRoom failed"))
 	}
 	return result, nil
 }

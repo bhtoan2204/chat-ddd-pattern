@@ -3,6 +3,7 @@ package appCtx
 import (
 	"context"
 	"go-socket/core/shared/infra/cache"
+	"go-socket/core/shared/infra/smtp"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/hasher"
 
@@ -18,6 +19,7 @@ type AppContext struct {
 	cache       cache.Cache
 	hasher      hasher.Hasher
 	paseto      xpaseto.PasetoService
+	smtp        smtp.SMTP
 }
 
 func NewAppContext(ctx context.Context, opts ...Option) (*AppContext, error) {
@@ -58,6 +60,12 @@ func WithPaseto(paseto xpaseto.PasetoService) Option {
 	}
 }
 
+func WithSMTP(smtp smtp.SMTP) Option {
+	return func(appCtx *AppContext) {
+		appCtx.smtp = smtp
+	}
+}
+
 func (appCtx *AppContext) GetRedisClient() *redis.Client {
 	return appCtx.redisClient
 }
@@ -76,6 +84,10 @@ func (appCtx *AppContext) GetHasher() hasher.Hasher {
 
 func (appCtx *AppContext) GetPaseto() xpaseto.PasetoService {
 	return appCtx.paseto
+}
+
+func (appCtx *AppContext) GetSMTP() smtp.SMTP {
+	return appCtx.smtp
 }
 
 func (appCtx *AppContext) Close() {

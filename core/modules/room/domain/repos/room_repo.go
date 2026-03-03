@@ -3,7 +3,7 @@ package repos
 import (
 	"context"
 	"go-socket/core/modules/room/domain/entity"
-	"go-socket/utils"
+	"go-socket/core/shared/utils"
 )
 
 type RoomRepository interface {

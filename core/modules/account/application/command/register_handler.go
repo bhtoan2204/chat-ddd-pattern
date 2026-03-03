@@ -2,7 +2,6 @@ package command
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
@@ -15,11 +14,11 @@ import (
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/hasher"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 type registerHandler struct {
@@ -39,38 +38,38 @@ func NewRegisterHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos) Registe
 func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (*out.RegisterResponse, error) {
 	log := logging.FromContext(ctx).Named("Register")
 	accountRepo := u.baseRepo.AccountRepository()
-	_, err := accountRepo.GetAccountByEmail(ctx, req.Email)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	exists, err := accountRepo.IsEmailExists(ctx, req.Email)
+	if err != nil {
 		log.Errorw("Failed to check existing account", zap.Error(err))
-		return nil, ErrCheckAccountFailed
+		return nil, stackerr.Error(ErrCheckAccountFailed)
 	}
-	if err == nil {
+	if exists {
 		log.Errorw("Account already exists", zap.String("email", req.Email))
-		return nil, ErrAccountExists
+		return nil, stackerr.Error(ErrAccountExists)
 	}
 
 	password, err := valueobject.NewPassword(req.Password)
 	if err != nil {
 		log.Errorw("Failed to create password", zap.Error(err))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	hashedPassword, err := u.hasher.Hash(ctx, password.Value())
 	if err != nil {
 		log.Errorw("Failed to hash password", zap.Error(err))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	email, err := valueobject.NewEmail(req.Email)
 	if err != nil {
 		log.Errorw("Failed to create email", zap.Error(err))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	hashedPasswordVO, err := valueobject.NewPassword(hashedPassword)
 	if err != nil {
 		log.Errorw("Failed to create hashed password value object", zap.Error(err))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	newAccountEntity := &entity.Account{
@@ -82,7 +81,7 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 	if txErr := u.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.AccountRepository().CreateAccount(ctx, newAccountEntity); err != nil {
 			log.Errorw("Failed to create account", zap.Error(err))
-			return fmt.Errorf("create account failed: %w", err)
+			return stackerr.Error(fmt.Errorf("create account failed: %w", err))
 		}
 
 		payload := &events.AccountCreatedEvent{
@@ -101,18 +100,18 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 		publisher := eventpkg.NewPublisher(txRepos.AccountOutboxEventsRepository())
 		if err := publisher.Publish(ctx, evt); err != nil {
 			log.Errorw("Failed to append account created event", zap.Error(err))
-			return fmt.Errorf("append account created event failed: %w", err)
+			return stackerr.Error(fmt.Errorf("append account created event failed: %w", err))
 		}
 		return nil
 	}); txErr != nil {
 		log.Errorw("Failed to register account", zap.Error(txErr))
-		return nil, txErr
+		return nil, stackerr.Error(txErr)
 	}
 
 	token, expiresAt, err := u.paseto.GenerateToken(ctx, newAccountEntity)
 	if err != nil {
 		log.Errorw("Failed to generate token", zap.Error(err))
-		return nil, fmt.Errorf("generate token failed: %w", err)
+		return nil, stackerr.Error(fmt.Errorf("generate token failed: %w", err))
 	}
 
 	return &out.RegisterResponse{

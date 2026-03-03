@@ -9,7 +9,10 @@ import (
 	accountcache "go-socket/core/modules/account/infra/cache"
 	"go-socket/core/modules/account/infra/persistent/models"
 	sharedcache "go-socket/core/shared/infra/cache"
+	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -36,12 +39,12 @@ func (r *accountRepoImpl) GetAccountByID(ctx context.Context, id string) (*entit
 		First(&m).Error
 
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	entity, err := r.toEntity(&m)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	_ = r.accountCache.Set(ctx, entity)
 
@@ -57,23 +60,32 @@ func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (
 		Where("email = ?", email).
 		First(&m).Error
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	entity, err := r.toEntity(&m)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	_ = r.accountCache.SetByEmail(ctx, entity)
 	return entity, nil
 }
 
+func (r *accountRepoImpl) IsEmailExists(ctx context.Context, email string) (bool, error) {
+	err := r.db.WithContext(ctx).
+		Where("email = ?", email).
+		First(&models.AccountModel{}).Error
+	if err != nil {
+		return false, stackerr.Error(err)
+	}
+	return true, nil
+}
+
 func (r *accountRepoImpl) CreateAccount(ctx context.Context, account *entity.Account) error {
 	m := r.toModel(account)
 
-	err := r.db.WithContext(ctx).
-		Create(m).Error
-	if err != nil {
-		return err
+	if err := r.db.WithContext(ctx).
+		Create(m).Error; err != nil {
+		return stackerr.Error(err)
 	}
 	return nil
 }
@@ -81,45 +93,46 @@ func (r *accountRepoImpl) CreateAccount(ctx context.Context, account *entity.Acc
 func (r *accountRepoImpl) UpdateAccount(ctx context.Context, account *entity.Account) error {
 	m := r.toModel(account)
 
-	err := r.db.WithContext(ctx).
-		Save(m).Error
-	if err != nil {
-		return err
+	if err := r.db.WithContext(ctx).
+		Save(m).Error; err != nil {
+		return stackerr.Error(err)
 	}
 
-	entity, err := r.toEntity(m)
-	if err != nil {
-		return err
+	if entity, err := r.toEntity(m); err != nil {
+		return stackerr.Error(err)
+	} else {
+		_ = r.accountCache.Set(ctx, entity)
+		_ = r.accountCache.SetByEmail(ctx, entity)
 	}
-	_ = r.accountCache.Set(ctx, entity)
-	_ = r.accountCache.SetByEmail(ctx, entity)
-
 	return nil
 }
 
 func (r *accountRepoImpl) DeleteAccount(ctx context.Context, id string) error {
+	log := logging.FromContext(ctx).Named("DeleteAccount")
 	if cached, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
 		_ = r.accountCache.DeleteByEmail(ctx, cached.Email.Value())
 	}
-	err := r.db.WithContext(ctx).
-		Delete(&models.AccountModel{}, "id = ?", id).Error
-	if err != nil {
-		return err
+	if err := r.db.WithContext(ctx).
+		Delete(&models.AccountModel{}, "id = ?", id).Error; err != nil {
+		return stackerr.Error(err)
 	}
 
-	return r.accountCache.Delete(ctx, id)
+	if err := r.accountCache.Delete(ctx, id); err != nil {
+		log.Errorw("Failed to delete account cache", zap.Error(err))
+		return stackerr.Error(err)
+	}
+	return nil
 }
 
 func (r *accountRepoImpl) ListAccountsByRoomID(ctx context.Context, roomID string) ([]*entity.Account, error) {
 	var accounts []*models.AccountModel
-	err := r.db.WithContext(ctx).
+	if err := r.db.WithContext(ctx).
 		Model(&models.AccountModel{}).
 		Select("accounts.*").
 		Joins("JOIN room_members rm ON rm.account_id = accounts.id").
 		Where("rm.room_id = ?", roomID).
-		Find(&accounts).Error
-	if err != nil {
-		return nil, err
+		Find(&accounts).Error; err != nil {
+		return nil, stackerr.Error(err)
 	}
 
 	result := make([]*entity.Account, 0, len(accounts))
@@ -127,7 +140,7 @@ func (r *accountRepoImpl) ListAccountsByRoomID(ctx context.Context, roomID strin
 	for _, account := range accounts {
 		e, err := r.toEntity(account)
 		if err != nil {
-			return nil, err
+			return nil, stackerr.Error(err)
 		}
 		result = append(result, e)
 	}
@@ -138,11 +151,11 @@ func (r *accountRepoImpl) ListAccountsByRoomID(ctx context.Context, roomID strin
 func (r *accountRepoImpl) toEntity(m *models.AccountModel) (*entity.Account, error) {
 	email, err := valueobject.NewEmail(m.Email)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	password, err := valueobject.NewPassword(m.Password)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	return &entity.Account{
 		ID:        m.ID,

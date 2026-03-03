@@ -6,6 +6,7 @@ import (
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
 	"go-socket/core/modules/room/domain/repos"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 )
 
 type createMessageHandler struct {
@@ -19,5 +20,5 @@ func NewCreateMessageHandler(messageRepo repos.MessageRepository) CreateMessageH
 }
 
 func (h *createMessageHandler) Handle(ctx context.Context, req *in.CreateMessageRequest) (*out.CreateMessageResponse, error) {
-	return nil, fmt.Errorf("not implemented")
+	return nil, stackerr.Error(fmt.Errorf("not implemented"))
 }

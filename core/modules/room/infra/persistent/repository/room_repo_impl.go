@@ -9,7 +9,8 @@ import (
 	"go-socket/core/modules/room/infra/persistent/models"
 	sharedcache "go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/pkg/logging"
-	"go-socket/utils"
+	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -57,7 +58,7 @@ func (r *roomRepoImpl) ListRooms(ctx context.Context, options utils.QueryOptions
 
 	if err := tx.Find(&rooms).Error; err != nil {
 		logger.Errorw("list rooms failed", zap.Error(err))
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	return lo.Map(rooms, func(room *models.RoomModel, _ int) *entity.Room {
 		return r.toEntity(room)
@@ -73,7 +74,7 @@ func (r *roomRepoImpl) GetRoomByID(ctx context.Context, id string) (*entity.Room
 		Where("id = ?", id).
 		First(&m).Error
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	_ = r.roomCache.Set(ctx, r.toEntity(&m))
 	return r.toEntity(&m), nil

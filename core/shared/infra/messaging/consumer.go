@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 	"strings"
 	"sync"
 	"time"
@@ -38,8 +39,33 @@ type consumer struct {
 	dlq bool
 }
 
-func NewConsumer(config *kafka.ConfigMap) Consumer {
-	return &consumer{}
+func NewConsumer(cfg *Config) (Consumer, error) {
+	if err := cfg.Validate(); err != nil {
+		return nil, stackerr.Error(err)
+	}
+	cfgMap := &kafka.ConfigMap{
+		"bootstrap.servers":        cfg.Servers,
+		"group.id":                 cfg.Group,
+		"auto.offset.reset":        cfg.OffsetReset,
+		"enable.auto.offset.store": false,
+		"session.timeout.ms":       120000,
+		"heartbeat.interval.ms":    3000,
+		"max.poll.interval.ms":     600000,
+	}
+	c, err := kafka.NewConsumer(cfgMap)
+	if err != nil {
+		return nil, stackerr.Error(err)
+	}
+
+	if err := c.SubscribeTopics(cfg.ConsumeTopic, nil); err != nil {
+		return nil, stackerr.Error(err)
+	}
+	return &consumer{
+		instance:    c,
+		chanStop:    make(chan bool, 1),
+		handlerName: cfg.HandlerName,
+		dlq:         cfg.DLQ,
+	}, nil
 }
 
 func (c *consumer) Read(f CallBack) {
@@ -180,7 +206,7 @@ func GetDLQTopic(topic string) string {
 
 func processMessageWithRetry(ctx context.Context, f CallBack, msg *kafka.Message) error {
 	retryTimes := uint(3)
-	topic := *msg.TopicPartition.Topic
+	topic := topicFromMessage(msg)
 	if strings.HasSuffix(topic, DLQSuffix) {
 		retryTimes = 0
 	}

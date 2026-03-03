@@ -13,8 +13,6 @@ func NewLogoutHandler() LogoutHandler {
 }
 
 func (u *logoutHandler) Handle(ctx context.Context, req *in.LogoutRequest) (*out.LogoutResponse, error) {
-	_ = ctx
-	_ = req
 	return &out.LogoutResponse{
 		Message: "Logout successful",
 	}, nil
