@@ -9,7 +9,7 @@ type AccountCreatedEvent struct {
 }
 
 func (e *AccountCreatedEvent) GetName() string {
-	return "account.created"
+	return AccountCreatedEventName
 }
 
 func (e *AccountCreatedEvent) GetData() interface{} {

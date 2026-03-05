@@ -1,41 +1,61 @@
 package messaging
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"go-socket/core/shared/contracts/events"
+	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
+	"reflect"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
-type accountCreatedPayload struct {
-	AccountID string `json:"AccountID"`
-	Email     string `json:"Email"`
-	CreatedAt string `json:"CreatedAt"`
+var eventPayloadTypes = map[string]reflect.Type{
+	events.AccountCreatedEventName: reflect.TypeOf(events.AccountCreatedEvent{}),
 }
 
-func parseAccountCreatedPayload(raw []byte) (*accountCreatedPayload, error) {
-	if len(raw) == 0 {
-		return nil, stackerr.Error(fmt.Errorf("event_data is empty"))
+func decodeEventPayload(ctx context.Context, eventName string, raw []byte) (interface{}, error) {
+	logger := logging.FromContext(ctx)
+	payloadType, ok := eventPayloadTypes[eventName]
+	if !ok {
+		logger.Warnw("unsupported event_name", zap.String("event_name", eventName))
+		return nil, nil
 	}
 
-	var payload accountCreatedPayload
-	if err := json.Unmarshal(raw, &payload); err == nil {
-		return &payload, nil
+	payload := reflect.New(payloadType).Interface()
+	if err := unmarshalEventData(raw, payload); err != nil {
+		logger.Errorw("unmarshal event_data failed", zap.Error(err), zap.String("raw", string(raw)))
+		return nil, stackerr.Error(fmt.Errorf("unmarshal event_data failed: %w", err))
+	}
+
+	return payload, nil
+}
+
+func unmarshalEventData(raw []byte, target interface{}) error {
+	if len(raw) == 0 {
+		return stackerr.Error(fmt.Errorf("event_data is empty"))
+	}
+
+	if err := json.Unmarshal(raw, target); err == nil {
+		return nil
 	}
 
 	var encoded string
 	if err := json.Unmarshal(raw, &encoded); err != nil {
-		return nil, stackerr.Error(fmt.Errorf("unmarshal event_data as string failed: %w", err))
+		return stackerr.Error(fmt.Errorf("unmarshal event_data as string failed: %w", err))
 	}
 
 	encoded = strings.TrimSpace(encoded)
 	if encoded == "" {
-		return nil, stackerr.Error(fmt.Errorf("event_data is empty"))
+		return stackerr.Error(fmt.Errorf("event_data is empty"))
 	}
 
-	if err := json.Unmarshal([]byte(encoded), &payload); err != nil {
-		return nil, stackerr.Error(fmt.Errorf("unmarshal encoded event_data failed: %w", err))
+	if err := json.Unmarshal([]byte(encoded), target); err != nil {
+		return stackerr.Error(fmt.Errorf("unmarshal encoded event_data failed: %w", err))
 	}
 
-	return &payload, nil
+	return nil
 }
