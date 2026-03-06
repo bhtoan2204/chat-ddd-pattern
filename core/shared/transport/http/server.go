@@ -5,6 +5,7 @@ import (
 	"fmt"
 	appCtx "go-socket/core/context"
 	accountassembly "go-socket/core/modules/account/assembly"
+	notificationassembly "go-socket/core/modules/notification/assembly"
 	roomassembly "go-socket/core/modules/room/assembly"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/constant"
@@ -115,12 +116,17 @@ func (s *Server) buildModuleServers(ctx context.Context, appContext *appCtx.AppC
 		return fmt.Errorf("build account server failed: %w", err)
 	}
 
+	notificationServer, err := notificationassembly.BuildHTTPServer(appContext)
+	if err != nil {
+		return fmt.Errorf("build notification server failed: %w", err)
+	}
+
 	roomServer, err := roomassembly.BuildServer(ctx, appContext)
 	if err != nil {
 		return fmt.Errorf("build room server failed: %w", err)
 	}
 
-	s.moduleServers = []moduleServer{accountServer, roomServer}
+	s.moduleServers = []moduleServer{accountServer, notificationServer, roomServer}
 	return nil
 }
 

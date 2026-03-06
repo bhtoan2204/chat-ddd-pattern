@@ -8,6 +8,7 @@ type Config struct {
 	AuthConfig     AuthConfig
 	KafkaConfig    KafkaConfig
 	SecurityConfig SecurityConfig
+	WebPushConfig  WebPushConfig
 }
 
 type ServerConfig struct {
@@ -57,4 +58,10 @@ type KafkaNotificationConsumer struct {
 
 type SecurityConfig struct {
 	SecretKey string `env:"SECURITY_SECRET_KEY" json:"-"`
+}
+
+type WebPushConfig struct {
+	VAPIDPublicKey  string `env:"WEBPUSH_VAPID_PUBLIC_KEY"`
+	VAPIDPrivateKey string `env:"WEBPUSH_VAPID_PRIVATE_KEY" json:"-"`
+	TTL             int    `env:"WEBPUSH_TTL"`
 }

@@ -1,0 +1,5 @@
+Okay in this commit, i'd drafted some apis and features for notification module
+For now, I just wonder, should i implement service worker for realtime push notification instead of using Firebase
+I've never implemented service worker before and I don't know how it actually works?
+
+Maybe I’ll try building one to study and understand how a service worker interacts with the backend server.

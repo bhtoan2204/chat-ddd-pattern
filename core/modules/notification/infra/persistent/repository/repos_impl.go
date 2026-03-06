@@ -14,7 +14,8 @@ type repoImpl struct {
 	db     *gorm.DB
 	appCtx *appCtx.AppContext
 
-	notificationRepo repos.NotificationRepository
+	notificationRepo     repos.NotificationRepository
+	pushSubscriptionRepo repos.PushSubscriptionRepository
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
@@ -23,16 +24,22 @@ func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
 
 func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
 	notificationRepo := NewNotificationRepoImpl(db)
+	pushSubscriptionRepo := NewPushSubscriptionRepoImpl(db)
 	return &repoImpl{
 		appCtx: appCtx,
 		db:     db,
 
-		notificationRepo: notificationRepo,
+		notificationRepo:     notificationRepo,
+		pushSubscriptionRepo: pushSubscriptionRepo,
 	}
 }
 
 func (r *repoImpl) NotificationRepository() repos.NotificationRepository {
 	return r.notificationRepo
+}
+
+func (r *repoImpl) PushSubscriptionRepository() repos.PushSubscriptionRepository {
+	return r.pushSubscriptionRepo
 }
 
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) (err error) {
