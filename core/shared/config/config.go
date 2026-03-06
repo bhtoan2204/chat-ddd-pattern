@@ -1,12 +1,13 @@
 package config
 
 type Config struct {
-	ServerConfig ServerConfig
-	RedisConfig  RedisConfig
-	HttpConfig   HttpConfig
-	DBConfig     DBConfig
-	AuthConfig   AuthConfig
-	KafkaConfig  KafkaConfig
+	ServerConfig   ServerConfig
+	RedisConfig    RedisConfig
+	HttpConfig     HttpConfig
+	DBConfig       DBConfig
+	AuthConfig     AuthConfig
+	KafkaConfig    KafkaConfig
+	SecurityConfig SecurityConfig
 }
 
 type ServerConfig struct {
@@ -37,7 +38,7 @@ type DBConfig struct {
 }
 
 type AuthConfig struct {
-	PasetoKey             string `env:"AUTH_PASETO_KEY"`
+	PasetoKey             string `env:"AUTH_PASETO_KEY" json:"-"`
 	TokenIssuer           string `env:"AUTH_TOKEN_ISSUER"`
 	AccessTokenTTLSeconds int64  `env:"AUTH_ACCESS_TOKEN_TTL_SECONDS"`
 }
@@ -52,4 +53,8 @@ type KafkaNotificationConsumer struct {
 	NotificationGroup string `env:"KAFKA_NOTIFICATION_CONSUMER_GROUP"`
 
 	AccountTopic string `env:"KAFKA_NOTIFICATION_CONSUMER_ACCOUNT_TOPIC"`
+}
+
+type SecurityConfig struct {
+	SecretKey string `env:"SECURITY_SECRET_KEY" json:"-"`
 }

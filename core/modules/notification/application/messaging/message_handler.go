@@ -4,12 +4,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	appCtx "go-socket/core/context"
 	"go-socket/core/modules/notification/application/adapter"
+	"go-socket/core/modules/notification/domain/repos"
+	"go-socket/core/modules/notification/infra/persistent/repository"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/contracts/events"
 	infraMessaging "go-socket/core/shared/infra/messaging"
+	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 type MessageHandler interface {
@@ -20,6 +26,8 @@ type MessageHandler interface {
 type messageHandler struct {
 	consumer    []infraMessaging.Consumer
 	emailSender adapter.EmailSender
+
+	notificationRepo repos.NotificationRepository
 }
 
 type accountOutboxMessage struct {
@@ -70,14 +78,13 @@ func (m *accountOutboxMessage) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func NewMessageHandler(cfg *config.Config, emailSender adapter.EmailSender) (MessageHandler, error) {
-	if emailSender == nil {
-		return nil, stackerr.Error(fmt.Errorf("email sender can not be nil"))
-	}
+func NewMessageHandler(cfg *config.Config, appCtx *appCtx.AppContext) (MessageHandler, error) {
+	repos := repository.NewRepoImpl(appCtx)
 
 	instance := &messageHandler{
-		emailSender: emailSender,
-		consumer:    make([]infraMessaging.Consumer, 0),
+		consumer:         make([]infraMessaging.Consumer, 0),
+		emailSender:      appCtx.GetSMTP(),
+		notificationRepo: repos.NotificationRepository(),
 	}
 
 	consumeTopics := []string{cfg.KafkaConfig.KafkaNotificationConsumer.AccountTopic}
@@ -121,11 +128,12 @@ func (h *messageHandler) Stop() error {
 }
 
 func (h *messageHandler) handleAccountEvent(ctx context.Context, value []byte) error {
+	log := logging.FromContext(ctx).Named("handleAccountEvent")
 	var event accountOutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
 		return stackerr.Error(fmt.Errorf("unmarshal account outbox event failed: %w", err))
 	}
-
+	log.Infow("handle account event", zap.String("event_name", event.EventName))
 	switch event.EventName {
 	case events.AccountCreatedEventName:
 		if err := h.handleAccountCreatedEvent(ctx, event.EventData); err != nil {

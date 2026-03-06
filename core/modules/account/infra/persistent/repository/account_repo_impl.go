@@ -71,13 +71,14 @@ func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (
 }
 
 func (r *accountRepoImpl) IsEmailExists(ctx context.Context, email string) (bool, error) {
-	err := r.db.WithContext(ctx).
+	var count int64
+	if err := r.db.WithContext(ctx).
+		Model(&models.AccountModel{}).
 		Where("email = ?", email).
-		First(&models.AccountModel{}).Error
-	if err != nil {
+		Count(&count).Error; err != nil {
 		return false, stackerr.Error(err)
 	}
-	return true, nil
+	return count > 0, nil
 }
 
 func (r *accountRepoImpl) CreateAccount(ctx context.Context, account *entity.Account) error {
