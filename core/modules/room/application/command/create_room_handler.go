@@ -13,6 +13,7 @@ import (
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
+	"reflect"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -49,7 +50,8 @@ func (h *createRoomHandler) Handle(ctx context.Context, req *in.CreateRoomReques
 		}
 
 		roomAggregate := &aggregate.RoomAggregate{}
-		roomAggregate.SetAggregateType("room")
+		roomAggregateType := reflect.TypeOf(roomAggregate).Elem().Name()
+		roomAggregate.SetAggregateType(roomAggregateType)
 		if err := roomAggregate.SetID(room.ID); err != nil {
 			return fmt.Errorf("set room aggregate id failed: %w", err)
 		}

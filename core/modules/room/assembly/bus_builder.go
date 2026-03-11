@@ -18,7 +18,7 @@ func BuildBuses(appCtx *appCtx.AppContext) Buses {
 	createRoomHandler := command.NewCreateRoomHandler(roomRepos)
 	updateRoomHandler := command.NewUpdateRoomHandler(roomRepos.RoomRepository())
 	deleteRoomHandler := command.NewDeleteRoomHandler(roomRepos.RoomRepository())
-	createMessageHandler := command.NewCreateMessageHandler(roomRepos.MessageRepository())
+	createMessageHandler := command.NewCreateMessageHandler(roomRepos)
 
 	getRoomHandler := query.NewGetRoomHandler(roomRepos.RoomRepository())
 	listRoomHandler := query.NewListRoomHandler(roomRepos.RoomRepository())

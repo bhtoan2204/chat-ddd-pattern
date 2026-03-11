@@ -29,12 +29,15 @@ const (
 	NotLike            Operator = "not like"
 	IsNull             Operator = "is null"
 	IsNotNull          Operator = "is not null"
+	Raw                Operator = "raw"
 )
 
 func (c Condition) BuildCondition() string {
 	switch c.Operator {
 	case IsNull, IsNotNull:
 		return c.Field + " " + string(c.Operator)
+	case Raw:
+		return c.Field
 	default:
 		return c.Field + " " + string(c.Operator) + " " + "?"
 	}

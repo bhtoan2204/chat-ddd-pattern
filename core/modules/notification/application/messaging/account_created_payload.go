@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go-socket/core/shared/contracts/events"
+	"go-socket/core/modules/account/domain/aggregate"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
 	"reflect"
@@ -14,7 +14,7 @@ import (
 )
 
 var eventPayloadTypes = map[string]reflect.Type{
-	events.AccountCreatedEventName: reflect.TypeOf(events.AccountCreatedEvent{}),
+	"EventAccountCreated": reflect.TypeOf(aggregate.EventAccountCreated{}),
 }
 
 func decodeEventPayload(ctx context.Context, eventName string, raw []byte) (interface{}, error) {

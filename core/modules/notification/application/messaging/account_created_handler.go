@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go-socket/core/modules/account/domain/aggregate"
 	"go-socket/core/modules/notification/domain/entity"
 	"go-socket/core/modules/notification/types"
-	"go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
 
@@ -16,18 +16,18 @@ import (
 
 func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json.RawMessage) error {
 	log := logging.FromContext(ctx).Named("handleAccountCreatedEvent")
-	payloadAny, err := decodeEventPayload(ctx, events.AccountCreatedEventName, raw)
+	payloadAny, err := decodeEventPayload(ctx, "EventAccountCreated", raw)
 	if err != nil {
 		return stackerr.Error(fmt.Errorf("decode event payload failed: %w", err))
 	}
 
-	payload, ok := payloadAny.(*events.AccountCreatedEvent)
+	payload, ok := payloadAny.(*aggregate.EventAccountCreated)
 	if !ok {
-		return stackerr.Error(fmt.Errorf("invalid payload type for event %s", events.AccountCreatedEventName))
+		return stackerr.Error(fmt.Errorf("invalid payload type for event %s", "EventAccountCreated"))
 	}
 
 	subject := "Welcome to Go Socket"
-	body := fmt.Sprintf("Welcome %s!", payload.AccountID)
+	body := fmt.Sprintf("Welcome %s!", payload.Email)
 
 	notification := &entity.NotificationEntity{
 		ID:        uuid.New().String(),

@@ -9,7 +9,7 @@ import (
 func TestDecodeAccountCreatedPayloadObject(t *testing.T) {
 	raw := []byte(`{"AccountID":"acc-1","Email":"a@example.com","CreatedAt":"2026-03-03T13:05:32.218937909+07:00"}`)
 
-	payloadAny, err := decodeEventPayload(context.Background(), events.AccountCreatedEventName, raw)
+	payloadAny, err := decodeEventPayload(context.Background(), "EventAccountCreated", raw)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -28,7 +28,7 @@ func TestDecodeAccountCreatedPayloadObject(t *testing.T) {
 func TestDecodeAccountCreatedPayloadEncodedString(t *testing.T) {
 	raw := []byte(`"{\"AccountID\":\"acc-2\",\"Email\":\"b@example.com\",\"CreatedAt\":\"2026-03-03T13:05:32.218937909+07:00\"}"`)
 
-	payloadAny, err := decodeEventPayload(context.Background(), events.AccountCreatedEventName, raw)
+	payloadAny, err := decodeEventPayload(context.Background(), "EventAccountCreated", raw)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -45,7 +45,7 @@ func TestDecodeAccountCreatedPayloadEncodedString(t *testing.T) {
 }
 
 func TestDecodeAccountCreatedPayloadEmpty(t *testing.T) {
-	_, err := decodeEventPayload(context.Background(), events.AccountCreatedEventName, []byte(`""`))
+	_, err := decodeEventPayload(context.Background(), "EventAccountCreated", []byte(`""`))
 	if err == nil {
 		t.Fatalf("expected error when event_data is empty")
 	}

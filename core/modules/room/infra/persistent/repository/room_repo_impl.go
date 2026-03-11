@@ -32,7 +32,7 @@ func NewRoomRepoImpl(db *gorm.DB, sharedCache sharedcache.Cache) repos.RoomRepos
 func (r *roomRepoImpl) CreateRoom(ctx context.Context, room *entity.Room) error {
 	m := r.toModel(room)
 	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
-		return err
+		return stackerr.Error(err)
 	}
 	_ = r.roomCache.Set(ctx, r.toEntity(m))
 	return nil

@@ -159,20 +159,24 @@ func (r *accountRepoImpl) toEntity(m *models.AccountModel) (*entity.Account, err
 		return nil, stackerr.Error(err)
 	}
 	return &entity.Account{
-		ID:        m.ID,
-		Email:     email,
-		Password:  password,
-		CreatedAt: m.CreatedAt,
-		UpdatedAt: m.UpdatedAt,
+		ID:           m.ID,
+		Email:        email,
+		Password:     password,
+		CreatedAt:    m.CreatedAt,
+		UpdatedAt:    m.UpdatedAt,
+		BannedReason: m.BannedReason,
+		BannedUntil:  m.BannedUntil,
 	}, nil
 }
 
 func (r *accountRepoImpl) toModel(e *entity.Account) *models.AccountModel {
 	return &models.AccountModel{
-		ID:        e.ID,
-		Email:     e.Email.Value(),
-		Password:  e.Password.Value(),
-		CreatedAt: e.CreatedAt,
-		UpdatedAt: e.UpdatedAt,
+		ID:           e.ID,
+		Email:        e.Email.Value(),
+		Password:     e.Password.Value(),
+		CreatedAt:    e.CreatedAt,
+		UpdatedAt:    e.UpdatedAt,
+		BannedReason: e.BannedReason,
+		BannedUntil:  e.BannedUntil,
 	}
 }

@@ -37,6 +37,16 @@ func (r *notificationRepoImpl) ListNotifications(ctx context.Context, options ut
 		switch condition.Operator {
 		case utils.IsNull, utils.IsNotNull:
 			tx = tx.Where(condition.BuildCondition())
+		case utils.Raw:
+			if condition.Value == nil {
+				tx = tx.Where(condition.BuildCondition())
+				break
+			}
+			if values, ok := condition.Value.([]interface{}); ok {
+				tx = tx.Where(condition.BuildCondition(), values...)
+				break
+			}
+			tx = tx.Where(condition.BuildCondition(), condition.Value)
 		default:
 			tx = tx.Where(condition.BuildCondition(), condition.Value)
 		}

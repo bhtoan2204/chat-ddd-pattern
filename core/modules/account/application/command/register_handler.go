@@ -6,15 +6,16 @@ import (
 	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
+	"go-socket/core/modules/account/domain/aggregate"
 	"go-socket/core/modules/account/domain/entity"
 	repos "go-socket/core/modules/account/domain/repos"
 	valueobject "go-socket/core/modules/account/domain/value_object"
-	"go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/infra/xpaseto"
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/hasher"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
+	"reflect"
 	"time"
 
 	"github.com/google/uuid"
@@ -84,23 +85,24 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 			return stackerr.Error(fmt.Errorf("create account failed: %w", err))
 		}
 
-		payload := &events.AccountCreatedEvent{
+		accountAggregate := &aggregate.AccountAggregate{}
+		accountAggregateType := reflect.TypeOf(accountAggregate).Elem().Name()
+		accountAggregate.SetAggregateType(accountAggregateType)
+		if err := accountAggregate.SetID(newAccountEntity.ID); err != nil {
+			return fmt.Errorf("set account aggregate id failed: %w", err)
+		}
+
+		if err := accountAggregate.ApplyChange(accountAggregate, &aggregate.EventAccountCreated{
 			AccountID: newAccountEntity.ID,
 			Email:     newAccountEntity.Email.Value(),
 			CreatedAt: time.Now(),
+		}); err != nil {
+			return fmt.Errorf("apply account created event failed: %w", err)
 		}
-		evt := eventpkg.Event{
-			AggregateID:   newAccountEntity.ID,
-			AggregateType: "account",
-			Version:       1,
-			EventName:     payload.GetName(),
-			EventData:     payload,
-			CreatedAt:     payload.CreatedAt.Unix(),
-		}
+
 		publisher := eventpkg.NewPublisher(txRepos.AccountOutboxEventsRepository())
-		if err := publisher.Publish(ctx, evt); err != nil {
-			log.Errorw("Failed to append account created event", zap.Error(err))
-			return stackerr.Error(fmt.Errorf("append account created event failed: %w", err))
+		if err := publisher.PublishAggregate(ctx, accountAggregate); err != nil {
+			return fmt.Errorf("publish account created event failed: %w", err)
 		}
 		return nil
 	}); txErr != nil {

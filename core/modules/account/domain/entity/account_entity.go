@@ -6,9 +6,11 @@ import (
 )
 
 type Account struct {
-	ID        string               `json:"id"`
-	Email     valueobject.Email    `json:"email"`
-	Password  valueobject.Password `json:"password"`
-	CreatedAt time.Time            `json:"created_at"`
-	UpdatedAt time.Time            `json:"updated_at"`
+	ID           string               `json:"id"`
+	Email        valueobject.Email    `json:"email"`
+	Password     valueobject.Password `json:"password"`
+	CreatedAt    time.Time            `json:"created_at"`
+	UpdatedAt    time.Time            `json:"updated_at"`
+	BannedReason string               `json:"banned_reason"`
+	BannedUntil  *time.Time           `json:"banned_until"`
 }

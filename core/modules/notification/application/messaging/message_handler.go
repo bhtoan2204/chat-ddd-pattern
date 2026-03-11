@@ -9,7 +9,6 @@ import (
 	"go-socket/core/modules/notification/domain/repos"
 	"go-socket/core/modules/notification/infra/persistent/repository"
 	"go-socket/core/shared/config"
-	"go-socket/core/shared/contracts/events"
 	infraMessaging "go-socket/core/shared/infra/messaging"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
@@ -135,7 +134,7 @@ func (h *messageHandler) handleAccountEvent(ctx context.Context, value []byte) e
 	}
 	log.Infow("handle account event", zap.String("event_name", event.EventName))
 	switch event.EventName {
-	case events.AccountCreatedEventName:
+	case "EventAccountCreated":
 		if err := h.handleAccountCreatedEvent(ctx, event.EventData); err != nil {
 			return err
 		}
