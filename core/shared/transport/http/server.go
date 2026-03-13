@@ -97,7 +97,7 @@ func (s *Server) Start(ctx context.Context, appCtx *appCtx.AppContext) error {
 	}
 	defer s.stopModuleServers(ctx)
 
-	srv, err := server.New(s.cfg.HttpConfig.Port)
+	srv, err := server.New(s.cfg.ServerConfig.Port)
 	if err != nil {
 		return err
 	}

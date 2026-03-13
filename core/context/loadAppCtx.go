@@ -6,6 +6,7 @@ import (
 	"go-socket/core/shared/constant"
 	"go-socket/core/shared/infra/cache"
 	dbinfra "go-socket/core/shared/infra/db"
+	"go-socket/core/shared/infra/discovery"
 	"go-socket/core/shared/infra/redis"
 	"go-socket/core/shared/infra/smtp"
 	"go-socket/core/shared/infra/xpaseto"
@@ -46,6 +47,12 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 
 	smtpClient := smtp.NewSMTP()
 	opts = append(opts, WithSMTP(smtpClient))
+
+	consulClient, err := discovery.NewConsulClient(ctx, cfg)
+	if err != nil {
+		return nil, stackerr.Error(err)
+	}
+	opts = append(opts, WithConsulClient(consulClient))
 
 	return NewAppContext(ctx, opts...)
 }

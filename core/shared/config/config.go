@@ -3,16 +3,17 @@ package config
 type Config struct {
 	ServerConfig   ServerConfig
 	RedisConfig    RedisConfig
-	HttpConfig     HttpConfig
 	DBConfig       DBConfig
 	AuthConfig     AuthConfig
 	KafkaConfig    KafkaConfig
 	SecurityConfig SecurityConfig
 	WebPushConfig  WebPushConfig
+	ConsulConfig   ConsulConfig
 }
 
 type ServerConfig struct {
 	Environment string `env:"ENVIRONMENT"`
+	Port        int    `env:"SERVER_PORT,default=0"`
 }
 
 type RedisConfig struct {
@@ -24,10 +25,6 @@ type RedisConfig struct {
 	IdleTimeoutSeconds  int    `env:"REDIS_IDLE_TIMEOUT_SECONDS"`
 	MaxIdleConnNumber   int    `env:"REDIS_MAX_IDLE_CONN_NUMBER"`
 	MaxActiveConnNumber int    `env:"REDIS_MAX_ACTIVE_CONN_NUMBER"`
-}
-
-type HttpConfig struct {
-	Port int `env:"HTTP_PORT"`
 }
 
 type DBConfig struct {
@@ -71,4 +68,11 @@ type WebPushConfig struct {
 	VAPIDPublicKey  string `env:"WEBPUSH_VAPID_PUBLIC_KEY"`
 	VAPIDPrivateKey string `env:"WEBPUSH_VAPID_PRIVATE_KEY" json:"-"`
 	TTL             int    `env:"WEBPUSH_TTL"`
+}
+
+type ConsulConfig struct {
+	Address    string `env:"CONSUL_ADDRESS"`
+	Scheme     string `env:"CONSUL_SCHEME"`
+	DataCenter string `env:"CONSUL_DATA_CENTER"`
+	Token      string `env:"CONSUL_TOKEN"`
 }

@@ -13,7 +13,10 @@ import (
 	"go-socket/core/shared/infra/db"
 	"go-socket/core/shared/pkg/logging"
 	apptransport "go-socket/core/shared/transport/app"
+	"go-socket/core/shared/utils"
+	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 )
 
@@ -54,6 +57,43 @@ func main() {
 		roomassembly.BuildHTTPServer,
 		paymentassembly.BuildHTTPServer,
 	))
+
+	serviceName := "go-socket"
+	serviceAddress, err := utils.GetInternalIP()
+	if err != nil {
+		logger.Errorw("Failed to detect internal IP, fallback to localhost", "error", err)
+		serviceAddress = "127.0.0.1"
+	}
+
+	servicePort := cfg.ServerConfig.Port
+	serviceID := fmt.Sprintf("%s-%s-%d", serviceName, serviceAddress, servicePort)
+	if hostName, hostErr := os.Hostname(); hostErr == nil {
+		serviceID = fmt.Sprintf("%s-%s-%d", serviceName, hostName, servicePort)
+	}
+
+	if err := appContext.GetConsulClient().RegisterService(ctx, serviceID, serviceName, serviceAddress, servicePort); err != nil {
+		logger.Errorw("Failed to register service with consul",
+			"serviceID", serviceID,
+			"serviceName", serviceName,
+			"serviceAddress", serviceAddress,
+			"servicePort", servicePort,
+			"error", err,
+		)
+		return
+	}
+	defer func() {
+		if err := appContext.GetConsulClient().UnregisterService(ctx, serviceID); err != nil {
+			logger.Errorw("Failed to unregister service from consul", "serviceID", serviceID, "error", err)
+		}
+	}()
+
+	logger.Infow("Registered service with consul",
+		"serviceID", serviceID,
+		"serviceName", serviceName,
+		"serviceAddress", serviceAddress,
+		"servicePort", strconv.Itoa(servicePort),
+	)
+
 	if err := appServer.Start(ctx, appContext); err != nil {
 		logger.Errorw("Failed to start app server", "error", err)
 		return

@@ -3,6 +3,7 @@ package appCtx
 import (
 	"context"
 	"go-socket/core/shared/infra/cache"
+	"go-socket/core/shared/infra/discovery"
 	"go-socket/core/shared/infra/smtp"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/hasher"
@@ -14,12 +15,13 @@ import (
 type Option func(*AppContext)
 
 type AppContext struct {
-	redisClient *redis.Client
-	db          *gorm.DB
-	cache       cache.Cache
-	hasher      hasher.Hasher
-	paseto      xpaseto.PasetoService
-	smtp        smtp.SMTP
+	redisClient  *redis.Client
+	db           *gorm.DB
+	cache        cache.Cache
+	hasher       hasher.Hasher
+	paseto       xpaseto.PasetoService
+	smtp         smtp.SMTP
+	consulClient discovery.ConsulClient
 }
 
 func NewAppContext(ctx context.Context, opts ...Option) (*AppContext, error) {
@@ -66,6 +68,12 @@ func WithSMTP(smtp smtp.SMTP) Option {
 	}
 }
 
+func WithConsulClient(consulClient discovery.ConsulClient) Option {
+	return func(appCtx *AppContext) {
+		appCtx.consulClient = consulClient
+	}
+}
+
 func (appCtx *AppContext) GetRedisClient() *redis.Client {
 	return appCtx.redisClient
 }
@@ -88,6 +96,10 @@ func (appCtx *AppContext) GetPaseto() xpaseto.PasetoService {
 
 func (appCtx *AppContext) GetSMTP() smtp.SMTP {
 	return appCtx.smtp
+}
+
+func (appCtx *AppContext) GetConsulClient() discovery.ConsulClient {
+	return appCtx.consulClient
 }
 
 func (appCtx *AppContext) Close() {

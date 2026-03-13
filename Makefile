@@ -1,5 +1,6 @@
 run:
 	@./script/bin.sh run
+	@./gateway/script/bin.sh run
 .PHONY: run
 
 up:
