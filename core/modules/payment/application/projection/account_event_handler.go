@@ -45,12 +45,6 @@ func (p *processor) handleAccountCreatedEvent(ctx context.Context, raw json.RawM
 		return stackerr.Error(fmt.Errorf("invalid payload type for event %s", "EventAccountCreated"))
 	}
 
-	existing, err := p.accountProjectionRepo.GetAccountProjectionByAccountID(ctx, payload.AccountID)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-		log.Errorw("get account projection failed", zap.Error(err))
-		return stackerr.Error(fmt.Errorf("get account projection failed: %w", err))
-	}
-
 	projection := &entity.PaymentAccount{
 		ID:        payload.AccountID,
 		AccountID: payload.AccountID,
@@ -59,19 +53,9 @@ func (p *processor) handleAccountCreatedEvent(ctx context.Context, raw json.RawM
 		UpdatedAt: payload.CreatedAt,
 	}
 
-	if existing == nil {
-		if err := p.accountProjectionRepo.CreateAccountProjection(ctx, projection); err != nil {
-			log.Errorw("create account projection failed", zap.Error(err))
-			return stackerr.Error(fmt.Errorf("create account projection failed: %w", err))
-		}
-		return nil
-	}
-
-	existing.Email = payload.Email
-	existing.AccountID = payload.AccountID
-	if err := p.accountProjectionRepo.UpdateAccountProjection(ctx, existing); err != nil {
-		log.Errorw("update account projection failed", zap.Error(err))
-		return stackerr.Error(fmt.Errorf("update account projection failed: %w", err))
+	if err := p.accountProjectionRepo.UpsertAccountProjection(ctx, projection); err != nil {
+		log.Errorw("upsert account projection failed", zap.Error(err))
+		return stackerr.Error(fmt.Errorf("upsert account projection failed: %w", err))
 	}
 	return nil
 }

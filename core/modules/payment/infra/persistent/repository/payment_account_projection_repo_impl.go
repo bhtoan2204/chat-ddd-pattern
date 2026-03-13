@@ -8,6 +8,7 @@ import (
 	"go-socket/core/modules/payment/infra/persistent/model"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type paymentAccountProjectionRepoImpl struct {
@@ -84,4 +85,20 @@ func toProjectionModel(accountProjection *entity.PaymentAccount) (model.PaymentA
 		Email:     accountProjection.Email,
 		CreatedAt: accountProjection.CreatedAt,
 	}, nil
+}
+
+func (p *paymentAccountProjectionRepoImpl) UpsertAccountProjection(ctx context.Context, accountProjection *entity.PaymentAccount) error {
+	if accountProjection == nil {
+		return fmt.Errorf("account projection is nil")
+	}
+
+	modelProjection, err := toProjectionModel(accountProjection)
+	if err != nil {
+		return err
+	}
+
+	return p.db.WithContext(ctx).Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "account_id"}},
+		UpdateAll: true,
+	}).Create(&modelProjection).Error
 }

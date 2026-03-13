@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	"errors"
+	"go-socket/core/modules/payment/domain/types"
 	"go-socket/core/shared/pkg/event"
 	"time"
 )
@@ -10,11 +11,11 @@ type PaymentTransactionAggregate struct {
 	event.AggregateRoot
 
 	PaymentTransactionID         string
-	PaymentTransactionType       string
+	PaymentTransactionType       types.TransactionType
 	PaymentTransactionAmount     int64
 	PaymentTransactionSenderID   string
 	PaymentTransactionReceiverID string
-	PaymentTransactionSourceType string
+	PaymentTransactionSourceType types.SourceType
 	PaymentTransactionCreatedAt  time.Time
 	PaymentTransactionUpdatedAt  time.Time
 }

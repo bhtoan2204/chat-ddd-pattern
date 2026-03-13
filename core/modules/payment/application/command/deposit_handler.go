@@ -17,6 +17,7 @@ import (
 	stackerr "go-socket/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type depositHandler struct {
@@ -32,27 +33,10 @@ func NewDepositHandler(repos repos.Repos) DepositHandler {
 func (h *depositHandler) Handle(ctx context.Context, req *in.DepositRequest) (*out.DepositResponse, error) {
 	log := logging.FromContext(ctx).Named("Deposit")
 
-	if req == nil {
-		err := errors.New("deposit request is nil")
-		log.Errorw("Invalid deposit request", "error", err)
-		return nil, stackerr.Error(err)
-	}
-	if err := req.Validate(); err != nil {
-		log.Errorw("Invalid deposit request", "error", err)
-		return nil, stackerr.Error(err)
-	}
-
 	account, ok := ctx.Value("account").(*xpaseto.PasetoPayload)
 	if !ok || account == nil || account.AccountID == "" {
-		err := errors.New("account not found")
-		log.Errorw("Account not found", "error", err)
-		return nil, stackerr.Error(err)
-	}
-
-	if h.outboxRepo == nil {
-		err := errors.New("payment outbox repository is nil")
-		log.Errorw("Outbox repository not initialized", "error", err)
-		return nil, stackerr.Error(err)
+		log.Errorw("Account not found")
+		return nil, stackerr.Error(errors.New("account not found"))
 	}
 
 	now := time.Now().UTC()
@@ -62,8 +46,8 @@ func (h *depositHandler) Handle(ctx context.Context, req *in.DepositRequest) (*o
 	aggType := reflect.TypeOf(agg).Elem().Name()
 	agg.SetAggregateType(aggType)
 	if err := agg.SetID(transactionID); err != nil {
-		log.Errorw("Failed to set aggregate id", "error", err)
-		return nil, stackerr.Error(err)
+		log.Errorw("Failed to set aggregate id", zap.Error(err))
+		return nil, stackerr.Error(errors.New("failed to set aggregate id"))
 	}
 
 	if err := agg.ApplyChange(agg, &aggregate.EventPaymentTransactionDeposited{
@@ -73,13 +57,13 @@ func (h *depositHandler) Handle(ctx context.Context, req *in.DepositRequest) (*o
 		PaymentTransactionCreatedAt:  now,
 		PaymentTransactionUpdatedAt:  now,
 	}); err != nil {
-		log.Errorw("Failed to apply deposit event", "error", err)
+		log.Errorw("Failed to apply deposit event", zap.Error(err))
 		return nil, stackerr.Error(err)
 	}
 
 	publisher := eventpkg.NewPublisher(h.outboxRepo)
 	if err := publisher.PublishAggregate(ctx, agg); err != nil {
-		log.Errorw("Failed to publish deposit event", "error", err)
+		log.Errorw("Failed to publish deposit event", zap.Error(err))
 		return nil, stackerr.Error(err)
 	}
 

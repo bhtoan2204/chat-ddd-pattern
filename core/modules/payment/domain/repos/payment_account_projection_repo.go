@@ -10,4 +10,5 @@ type PaymentAccountProjectionRepository interface {
 	CreateAccountProjection(ctx context.Context, accountProjection *entity.PaymentAccount) error
 	UpdateAccountProjection(ctx context.Context, accountProjection *entity.PaymentAccount) error
 	DeleteAccountProjection(ctx context.Context, accountID string) error
+	UpsertAccountProjection(ctx context.Context, accountProjection *entity.PaymentAccount) error
 }
