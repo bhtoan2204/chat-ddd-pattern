@@ -24,19 +24,19 @@ func (p *processor) handleAccountEvent(ctx context.Context, value []byte) error 
 	log.Infow("handle account event", zap.String("event_name", event.EventName))
 	switch event.EventName {
 	case "EventAccountCreated":
-		return p.handleAccountCreatedEvent(ctx, event.EventData)
+		return p.handleAccountCreatedEvent(ctx, &event)
 	case "EventAccountUpdated":
-		return p.handleAccountUpdatedEvent(ctx, event.EventData)
+		return p.handleAccountUpdatedEvent(ctx, &event)
 	case "EventAccountBanned":
-		return p.handleAccountBannedEvent(ctx, event.EventData)
+		return p.handleAccountBannedEvent(ctx, &event)
 	default:
 		return nil
 	}
 }
 
-func (p *processor) handleAccountCreatedEvent(ctx context.Context, raw json.RawMessage) error {
+func (p *processor) handleAccountCreatedEvent(ctx context.Context, event *accountOutboxMessage) error {
 	log := logging.FromContext(ctx).Named("handleAccountCreatedEvent")
-	payloadAny, err := decodeEventPayload(ctx, "EventAccountCreated", raw)
+	payloadAny, err := decodeEventPayload(ctx, p.eventSerializer, event.AggregateType, event.EventName, event.EventData)
 	if err != nil {
 		return stackerr.Error(fmt.Errorf("decode event payload failed: %w", err))
 	}
@@ -60,9 +60,9 @@ func (p *processor) handleAccountCreatedEvent(ctx context.Context, raw json.RawM
 	return nil
 }
 
-func (p *processor) handleAccountUpdatedEvent(ctx context.Context, raw json.RawMessage) error {
+func (p *processor) handleAccountUpdatedEvent(ctx context.Context, event *accountOutboxMessage) error {
 	log := logging.FromContext(ctx).Named("handleAccountUpdatedEvent")
-	payloadAny, err := decodeEventPayload(ctx, "EventAccountUpdated", raw)
+	payloadAny, err := decodeEventPayload(ctx, p.eventSerializer, event.AggregateType, event.EventName, event.EventData)
 	if err != nil {
 		return stackerr.Error(fmt.Errorf("decode event payload failed: %w", err))
 	}
@@ -102,9 +102,9 @@ func (p *processor) handleAccountUpdatedEvent(ctx context.Context, raw json.RawM
 	return nil
 }
 
-func (p *processor) handleAccountBannedEvent(ctx context.Context, raw json.RawMessage) error {
+func (p *processor) handleAccountBannedEvent(ctx context.Context, event *accountOutboxMessage) error {
 	log := logging.FromContext(ctx).Named("handleAccountBannedEvent")
-	payloadAny, err := decodeEventPayload(ctx, "EventAccountBanned", raw)
+	payloadAny, err := decodeEventPayload(ctx, p.eventSerializer, event.AggregateType, event.EventName, event.EventData)
 	if err != nil {
 		return stackerr.Error(fmt.Errorf("decode event payload failed: %w", err))
 	}

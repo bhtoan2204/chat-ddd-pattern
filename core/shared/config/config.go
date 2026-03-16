@@ -57,7 +57,8 @@ type KafkaNotificationConsumer struct {
 type KafkaPaymentConsumer struct {
 	PaymentGroup string `env:"KAFKA_PAYMENT_CONSUMER_GROUP"`
 
-	AccountTopic string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
+	AccountTopic       string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
+	PaymentEventsTopic string `env:"KAFKA_CONSUMER_PAYMENT_EVENTS_TOPIC"`
 }
 
 type SecurityConfig struct {

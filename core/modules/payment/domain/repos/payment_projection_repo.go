@@ -1,0 +1,27 @@
+package repos
+
+import (
+	"context"
+	"time"
+
+	"go-socket/core/modules/payment/domain/types"
+)
+
+type ProjectionRebuildMode string
+
+const (
+	ProjectionRebuildModeFull     ProjectionRebuildMode = "full"
+	ProjectionRebuildModeSnapshot ProjectionRebuildMode = "snapshot"
+)
+
+type ProjectionRebuildResult struct {
+	Accounts            int
+	EventsReplayed      int
+	TransactionsRebuilt int
+	BalancesRebuilt     int
+}
+
+type PaymentProjectionRepository interface {
+	ProjectTransaction(ctx context.Context, eventID, transactionID, accountID string, amount, balanceDelta int64, transactionType types.TransactionType, createdAt time.Time) error
+	RebuildProjection(ctx context.Context, accountID string, mode ProjectionRebuildMode) (*ProjectionRebuildResult, error)
+}

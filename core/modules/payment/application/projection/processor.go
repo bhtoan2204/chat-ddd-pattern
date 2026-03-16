@@ -10,6 +10,7 @@ import (
 	"go-socket/core/modules/payment/infra/persistent/repository"
 	"go-socket/core/shared/config"
 	infraMessaging "go-socket/core/shared/infra/messaging"
+	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
 )
@@ -21,21 +22,35 @@ type Processor interface {
 
 type processor struct {
 	consumer              []infraMessaging.Consumer
+	repos                 paymentrepos.Repos
 	accountProjectionRepo paymentrepos.PaymentAccountProjectionRepository
+	eventSerializer       eventpkg.Serializer
 }
 
 func NewProcessor(cfg *config.Config, appCtx *appCtx.AppContext) (Processor, error) {
 	repos := repository.NewRepoImpl(appCtx)
+	eventSerializer, err := newProjectionSerializer()
+	if err != nil {
+		return nil, stackerr.Error(err)
+	}
 
 	instance := &processor{
 		consumer:              make([]infraMessaging.Consumer, 0),
+		repos:                 repos,
 		accountProjectionRepo: repos.PaymentAccountProjectionRepository(),
+		eventSerializer:       eventSerializer,
 	}
 
-	consumeTopics := []string{cfg.KafkaConfig.KafkaPaymentConsumer.AccountTopic}
+	consumeTopics := []string{
+		cfg.KafkaConfig.KafkaPaymentConsumer.AccountTopic,
+		cfg.KafkaConfig.KafkaPaymentConsumer.PaymentEventsTopic,
+	}
 	mapHandler := map[string]infraMessaging.Handler{
 		fmt.Sprintf("payment-%s-handler", strings.ToLower(cfg.KafkaConfig.KafkaPaymentConsumer.AccountTopic)): func(ctx context.Context, value []byte) error {
 			return instance.handleAccountEvent(ctx, value)
+		},
+		fmt.Sprintf("payment-%s-handler", strings.ToLower(cfg.KafkaConfig.KafkaPaymentConsumer.PaymentEventsTopic)): func(ctx context.Context, value []byte) error {
+			return instance.handlePaymentEvent(ctx, value)
 		},
 	}
 

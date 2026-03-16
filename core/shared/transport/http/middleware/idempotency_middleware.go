@@ -22,10 +22,6 @@ func IdempotencyMiddleware(manager *idempotency.Manager) gin.HandlerFunc {
 			return
 		}
 		key := strings.TrimSpace(c.GetHeader(idempotencyHeader))
-		if key == "" {
-			c.Next()
-			return
-		}
 		ok, err := manager.Begin(c.Request.Context(), key)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

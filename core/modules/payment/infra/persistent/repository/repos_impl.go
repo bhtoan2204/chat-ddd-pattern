@@ -14,8 +14,11 @@ type repoImpl struct {
 	appCtx *appCtx.AppContext
 	db     *gorm.DB
 
+	paymentBalanceAggregateRepo  repos.PaymentBalanceAggregateRepository
+	paymentProjectionRepo        repos.PaymentProjectionRepository
 	paymentOutboxEventsRepo      repos.PaymentOutboxEventsRepository
 	paymentAccountProjectionRepo repos.PaymentAccountProjectionRepository
+	paymentHistoryRepo           repos.PaymentHistoryRepository
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
@@ -23,15 +26,29 @@ func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
 }
 
 func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
+	paymentBalanceAggregateRepo := NewPaymentBalanceAggregateRepoImpl(db)
+	paymentProjectionRepo := NewPaymentProjectionRepoImpl(db)
 	paymentOutboxEventsRepo := NewPaymentOutboxEventsRepoImpl(db)
 	paymentAccountProjectionRepo := NewPaymentAccountProjectionRepoImpl(db)
+	paymentHistoryRepo := NewPaymentHistoryRepoImpl(db)
 	return &repoImpl{
 		appCtx: appCtx,
 		db:     db,
 
+		paymentBalanceAggregateRepo:  paymentBalanceAggregateRepo,
+		paymentProjectionRepo:        paymentProjectionRepo,
 		paymentOutboxEventsRepo:      paymentOutboxEventsRepo,
 		paymentAccountProjectionRepo: paymentAccountProjectionRepo,
+		paymentHistoryRepo:           paymentHistoryRepo,
 	}
+}
+
+func (r *repoImpl) PaymentBalanceAggregateRepository() repos.PaymentBalanceAggregateRepository {
+	return r.paymentBalanceAggregateRepo
+}
+
+func (r *repoImpl) PaymentProjectionRepository() repos.PaymentProjectionRepository {
+	return r.paymentProjectionRepo
 }
 
 func (r *repoImpl) PaymentOutboxEventsRepository() repos.PaymentOutboxEventsRepository {
@@ -42,8 +59,12 @@ func (r *repoImpl) PaymentAccountProjectionRepository() repos.PaymentAccountProj
 	return r.paymentAccountProjectionRepo
 }
 
+func (r *repoImpl) PaymentHistoryRepository() repos.PaymentHistoryRepository {
+	return r.paymentHistoryRepo
+}
+
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) (err error) {
-	log := logging.FromContext(ctx).Named("StartRoomTransaction")
+	log := logging.FromContext(ctx).Named("StartPaymentTransaction")
 	tx := r.db.WithContext(ctx).Begin()
 	if beginErr := tx.Error; beginErr != nil {
 		log.Errorw("failed to begin transaction", zap.Error(beginErr))

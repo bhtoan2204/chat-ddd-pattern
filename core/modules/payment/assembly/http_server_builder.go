@@ -8,6 +8,8 @@ import (
 )
 
 func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
-	commandBus := BuildBuses(appContext)
-	return paymentserver.NewHTTPServer(commandBus)
+	buses := BuildBuses(appContext)
+	commandBus := buses.commandBus
+	queryBus := buses.queryBus
+	return paymentserver.NewHTTPServer(commandBus, queryBus)
 }

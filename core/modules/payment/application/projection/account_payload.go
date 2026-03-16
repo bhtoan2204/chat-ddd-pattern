@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go-socket/core/modules/account/domain/aggregate"
+	accountaggregate "go-socket/core/modules/account/domain/aggregate"
+	paymentaggregate "go-socket/core/modules/payment/domain/aggregate"
+	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
 	"reflect"
@@ -13,27 +15,60 @@ import (
 	"go.uber.org/zap"
 )
 
-var eventPayloadTypes = map[string]reflect.Type{
-	"EventAccountCreated": reflect.TypeOf(aggregate.EventAccountCreated{}),
-	"EventAccountUpdated": reflect.TypeOf(aggregate.EventAccountUpdated{}),
-	"EventAccountBanned":  reflect.TypeOf(aggregate.EventAccountBanned{}),
+func newProjectionSerializer() (eventpkg.Serializer, error) {
+	serializer := eventpkg.NewSerializer()
+	aggregates := []eventpkg.BaseAggregate{
+		&accountaggregate.AccountAggregate{},
+		&paymentaggregate.PaymentBalanceAggregate{},
+		&paymentaggregate.PaymentTransactionAggregate{},
+	}
+
+	for _, agg := range aggregates {
+		if err := serializer.RegisterAggregate(agg); err != nil {
+			return nil, err
+		}
+	}
+
+	return serializer, nil
 }
 
-func decodeEventPayload(ctx context.Context, eventName string, raw []byte) (interface{}, error) {
+func decodeEventPayload(ctx context.Context, serializer eventpkg.Serializer, aggregateType, eventName string, raw []byte) (interface{}, error) {
 	logger := logging.FromContext(ctx)
-	payloadType, ok := eventPayloadTypes[eventName]
+	if serializer == nil {
+		return nil, stackerr.Error(fmt.Errorf("event serializer is nil"))
+	}
+
+	payloadFactory, ok := serializer.Type(aggregateType, eventName)
 	if !ok {
-		logger.Warnw("unsupported event_name", zap.String("event_name", eventName))
+		logger.Warnw("unsupported event_name",
+			zap.String("aggregate_type", aggregateType),
+			zap.String("event_name", eventName),
+		)
 		return nil, nil
 	}
 
-	payload := reflect.New(payloadType).Interface()
+	payload := clonePayload(payloadFactory())
+	if payload == nil {
+		return nil, stackerr.Error(fmt.Errorf("event payload prototype is nil"))
+	}
+
 	if err := unmarshalEventData(raw, payload); err != nil {
 		logger.Errorw("unmarshal event_data failed", zap.Error(err), zap.String("raw", string(raw)))
 		return nil, stackerr.Error(fmt.Errorf("unmarshal event_data failed: %w", err))
 	}
 
 	return payload, nil
+}
+
+func clonePayload(prototype interface{}) interface{} {
+	payloadType := reflect.TypeOf(prototype)
+	if payloadType == nil {
+		return nil
+	}
+	if payloadType.Kind() == reflect.Ptr {
+		return reflect.New(payloadType.Elem()).Interface()
+	}
+	return reflect.New(payloadType).Interface()
 }
 
 func unmarshalEventData(raw []byte, target interface{}) error {

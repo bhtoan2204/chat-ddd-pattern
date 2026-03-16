@@ -31,3 +31,12 @@ type EventPaymentTransactionRefunded struct {
 	PaymentTransactionCreatedAt time.Time
 	PaymentTransactionUpdatedAt time.Time
 }
+
+type EventPaymentTransactionReceived struct {
+	PaymentTransactionID         string
+	PaymentTransactionAmount     int64
+	PaymentTransactionSenderID   string
+	PaymentTransactionReceiverID string
+	PaymentTransactionCreatedAt  time.Time
+	PaymentTransactionUpdatedAt  time.Time
+}

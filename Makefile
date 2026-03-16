@@ -1,7 +1,10 @@
 run:
-	@go run cmd/main.go
-	@cd gateway && make run
+	@script/bin.sh run
 .PHONY: run
+
+run-gateway:
+	@cd gateway && make run
+.PHONY: run-gateway
 
 up:
 	@docker compose up -d

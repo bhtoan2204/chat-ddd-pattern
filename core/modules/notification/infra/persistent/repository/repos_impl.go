@@ -43,7 +43,7 @@ func (r *repoImpl) PushSubscriptionRepository() repos.PushSubscriptionRepository
 }
 
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) (err error) {
-	log := logging.FromContext(ctx).Named("StartRoomTransaction")
+	log := logging.FromContext(ctx).Named("StartNotificationTransaction")
 	tx := r.db.WithContext(ctx).Begin()
 	if beginErr := tx.Error; beginErr != nil {
 		log.Errorw("failed to begin transaction", zap.Error(beginErr))

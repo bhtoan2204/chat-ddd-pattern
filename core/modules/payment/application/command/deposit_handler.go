@@ -2,17 +2,11 @@ package command
 
 import (
 	"context"
-	"errors"
-	"reflect"
 	"time"
 
 	"go-socket/core/modules/payment/application/dto/in"
 	"go-socket/core/modules/payment/application/dto/out"
-	"go-socket/core/modules/payment/domain/aggregate"
 	"go-socket/core/modules/payment/domain/repos"
-	paymentrepos "go-socket/core/modules/payment/domain/repos"
-	"go-socket/core/shared/infra/xpaseto"
-	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
 
@@ -21,53 +15,57 @@ import (
 )
 
 type depositHandler struct {
-	outboxRepo paymentrepos.PaymentOutboxEventsRepository
+	baseRepo repos.Repos
 }
 
 func NewDepositHandler(repos repos.Repos) DepositHandler {
 	return &depositHandler{
-		outboxRepo: repos.PaymentOutboxEventsRepository(),
+		baseRepo: repos,
 	}
 }
 
 func (h *depositHandler) Handle(ctx context.Context, req *in.DepositRequest) (*out.DepositResponse, error) {
 	log := logging.FromContext(ctx).Named("Deposit")
 
-	account, ok := ctx.Value("account").(*xpaseto.PasetoPayload)
-	if !ok || account == nil || account.AccountID == "" {
+	accountID, err := accountIDFromContext(ctx)
+	if err != nil {
 		log.Errorw("Account not found")
-		return nil, stackerr.Error(errors.New("account not found"))
+		return nil, stackerr.Error(err)
 	}
 
 	now := time.Now().UTC()
 	transactionID := uuid.NewString()
+	var (
+		balance int64
+		version int
+	)
 
-	agg := &aggregate.PaymentTransactionAggregate{}
-	aggType := reflect.TypeOf(agg).Elem().Name()
-	agg.SetAggregateType(aggType)
-	if err := agg.SetID(transactionID); err != nil {
-		log.Errorw("Failed to set aggregate id", zap.Error(err))
-		return nil, stackerr.Error(errors.New("failed to set aggregate id"))
-	}
+	if err := h.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
+		agg, err := txRepos.PaymentBalanceAggregateRepository().Load(ctx, accountID)
+		if err != nil {
+			return stackerr.Error(err)
+		}
 
-	if err := agg.ApplyChange(agg, &aggregate.EventPaymentTransactionDeposited{
-		PaymentTransactionID:         transactionID,
-		PaymentTransactionAmount:     req.Amount,
-		PaymentTransactionReceiverID: account.AccountID,
-		PaymentTransactionCreatedAt:  now,
-		PaymentTransactionUpdatedAt:  now,
+		if err := agg.Deposit(transactionID, req.Amount, now); err != nil {
+			return stackerr.Error(err)
+		}
+
+		if err := txRepos.PaymentBalanceAggregateRepository().Save(ctx, agg); err != nil {
+			return stackerr.Error(err)
+		}
+
+		balance = agg.Balance
+		version = agg.Root().Version()
+		return nil
 	}); err != nil {
-		log.Errorw("Failed to apply deposit event", zap.Error(err))
-		return nil, stackerr.Error(err)
-	}
-
-	publisher := eventpkg.NewPublisher(h.outboxRepo)
-	if err := publisher.PublishAggregate(ctx, agg); err != nil {
-		log.Errorw("Failed to publish deposit event", zap.Error(err))
+		log.Errorw("Failed to deposit", zap.Error(err))
 		return nil, stackerr.Error(err)
 	}
 
 	return &out.DepositResponse{
-		Message: "Deposit successful",
+		Message:       "Deposit successful",
+		TransactionID: transactionID,
+		Balance:       balance,
+		Version:       version,
 	}, nil
 }

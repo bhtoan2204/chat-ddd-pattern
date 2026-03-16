@@ -15,6 +15,9 @@ func Wrap(h interface {
 			return
 		}
 		data, err := h.Handle(c)
+		if c.Writer.Written() {
+			return
+		}
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
