@@ -24,6 +24,8 @@ func GenerateRequest(endpoints []models.Endpoint) (string, error) {
 	}
 
 	seen := make(map[string]bool)
+	created := 0
+	skipped := 0
 	for _, ep := range endpoints {
 		if ep.Request.Struct == "" {
 			continue
@@ -50,6 +52,10 @@ func GenerateRequest(endpoints []models.Endpoint) (string, error) {
 		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
 			return "", err
 		}
+		if fileExists(dst) {
+			skipped++
+			continue
+		}
 		var buf bytes.Buffer
 		if err := tmpl.Execute(&buf, data); err != nil {
 			return "", err
@@ -61,9 +67,10 @@ func GenerateRequest(endpoints []models.Endpoint) (string, error) {
 		if err := os.WriteFile(dst, formatted, 0o644); err != nil {
 			return "", err
 		}
+		created++
 	}
 
-	return fmt.Sprintf("generated %d request DTO(s)", len(seen)), nil
+	return fmt.Sprintf("generated %d request DTO(s), skipped %d existing file(s)", created, skipped), nil
 }
 
 type requestTemplateData struct {

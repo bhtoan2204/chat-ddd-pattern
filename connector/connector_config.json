@@ -17,7 +17,7 @@
     "schema.include.list": "APPUSER",
     "table.include.list": "APPUSER.ACCOUNT_OUTBOX_EVENTS,APPUSER.ROOM_OUTBOX_EVENTS",
     "topic.prefix": "CHATAPP",
-    "snapshot.mode": "no_data",
+    "snapshot.mode": "initial",
     "include.schema.changes": "false",
     "lob.enabled": "true",
     "decimal.handling.mode": "double",

@@ -38,6 +38,9 @@ CREATE TABLE payment_events (
     created_at     TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
 );
 
+GRANT SELECT ON payment_events TO C##DBZUSER;
+ALTER TABLE payment_events ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+
 CREATE UNIQUE INDEX idx_agg_ver
 ON payment_events(aggregate_id, version);
 CREATE INDEX idx_payment_events_event_name ON payment_events(event_name);

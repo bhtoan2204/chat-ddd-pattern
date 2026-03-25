@@ -3,21 +3,22 @@ package {{.PackageName}}
 
 import (
 	"errors"
+	"{{.BusImport}}"
 	"{{.RequestDtoImport}}"
-	"{{.UsecaseImport}}"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 type {{.StructName}} struct {
-	{{.UsecaseField}} usecase.{{.UsecaseName}}
+	{{.BusField}} {{.BusPackage}}.Bus
 }
 
-func New{{.HandlerName}}({{.UsecaseField}} usecase.{{.UsecaseName}}) *{{.StructName}} {
+func New{{.HandlerName}}({{.BusField}} {{.BusPackage}}.Bus) *{{.StructName}} {
 	return &{{.StructName}}{
-		{{.UsecaseField}}: {{.UsecaseField}},
+		{{.BusField}}: {{.BusField}},
 	}
 }
 
@@ -35,12 +36,12 @@ func (h *{{.StructName}}) Handle(c *gin.Context) (interface{}, error) {
 	}
 	if err := request.Validate(); err != nil {
 		logger.Errorw("Validate request failed", zap.Error(err))
-		return nil, stackerr.Error(errors.New("validate request failed")
+		return nil, stackerr.Error(errors.New("validate request failed"))
 	}
-	result, err := h.{{.UsecaseField}}.{{.UsecaseMethod}}(ctx, &request)
+	result, err := h.{{.BusField}}.{{.UsecaseMethod}}.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("{{.UsecaseMethod}} failed", zap.Error(err))
-		return nil, stackerr.Error(errors.New("{{.UsecaseMethod}} failed")
+		return nil, stackerr.Error(errors.New("{{.UsecaseMethod}} failed"))
 	}
 	return result, nil
 }

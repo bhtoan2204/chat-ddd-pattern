@@ -1,0 +1,74 @@
+version: 1
+basePath: /api/v1
+
+endpoints:
+  - name: NotificationSavePushSubscription
+    method: POST
+    path: /notification/push-subscriptions
+    handler: SavePushSubscriptionHandler
+    auth: true
+    usecase:
+      name: NotificationUsecase
+      method: SavePushSubscription
+    request:
+      struct: SavePushSubscriptionRequest
+      fields:
+        - name: endpoint
+          type: string
+          required: true
+        - name: keys
+          type: object
+          required: true
+    response:
+      struct: SavePushSubscriptionResponse
+      fields:
+        - name: message
+          type: string
+
+  - name: NotificationList
+    method: GET
+    path: /notification/list
+    handler: ListNotificationHandler
+    auth: true
+    usecase:
+      name: NotificationUsecase
+      method: ListNotification
+    request:
+      struct: ListNotificationRequest
+      fields:
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+    response:
+      struct: ListNotificationResponse
+      fields:
+        - name: notifications
+          type: array
+          items:
+            struct: NotificationResponse
+            fields:
+              - name: id
+                type: string
+              - name: account_id
+                type: string
+              - name: type
+                type: string
+              - name: subject
+                type: string
+              - name: body
+                type: string
+              - name: is_read
+                type: bool
+              - name: read_at
+                type: string
+              - name: created_at
+                type: string
+        - name: next_cursor
+          type: string
+        - name: has_more
+          type: bool
+        - name: total
+          type: int
+        - name: limit
+          type: int

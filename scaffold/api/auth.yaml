@@ -77,7 +77,7 @@ endpoints:
       method: GetProfile
     request:
       struct: GetProfileRequest
-      fields:
+      fields: []
     response:
       struct: GetProfileResponse
       fields:

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"go/format"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -25,6 +24,8 @@ func GenerateHandler(endpoints []models.Endpoint) (string, error) {
 	}
 
 	seen := make(map[string]bool)
+	created := 0
+	skipped := 0
 	for _, ep := range endpoints {
 		if !shouldGenerateHandler(ep) {
 			continue
@@ -38,12 +39,18 @@ func GenerateHandler(endpoints []models.Endpoint) (string, error) {
 			continue
 		}
 		seen[key] = true
-		if err := writeHandlerFile(tmpl, module, ep); err != nil {
+		written, err := writeHandlerFile(tmpl, module, ep)
+		if err != nil {
 			return "", err
+		}
+		if written {
+			created++
+		} else {
+			skipped++
 		}
 	}
 
-	return fmt.Sprintf("generated %d handler(s)", len(seen)), nil
+	return fmt.Sprintf("generated %d handler(s), skipped %d existing file(s)", created, skipped), nil
 }
 
 func shouldGenerateHandler(ep models.Endpoint) bool {
@@ -53,47 +60,61 @@ func shouldGenerateHandler(ep models.Endpoint) bool {
 	return true
 }
 
-func writeHandlerFile(tmpl *template.Template, module modulePaths, ep models.Endpoint) error {
+func writeHandlerFile(tmpl *template.Template, module modulePaths, ep models.Endpoint) (bool, error) {
+	busKind := busKindForEndpoint(ep)
 	data := handlerTemplateData{
 		PackageName:      "handler",
 		HandlerName:      ep.Handler,
 		StructName:       lowerFirst(strings.TrimSuffix(ep.Handler, "Handler")) + "Handler",
-		UsecaseName:      ep.Usecase.Name,
-		UsecaseField:     lowerFirst(ep.Usecase.Name),
+		BusField:         busKind + "Bus",
+		BusPackage:       busKind,
 		UsecaseMethod:    ep.Usecase.Method,
 		Method:           strings.ToUpper(ep.Method),
 		RequestStruct:    ep.Request.Struct,
-		UsecaseImport:    path.Join(module.ImportRoot, "application/usecase"),
-		RequestDtoImport: path.Join(module.ImportRoot, "application/dto/in"),
+		BusImport:        module.ImportRoot + "/application/" + busKind,
+		RequestDtoImport: module.ImportRoot + "/application/dto/in",
 	}
 
 	fileName := utils.Snake(ep.Handler) + "_handler.go"
 	dst := filepath.Join(module.FsRoot, "transport/http/handler", fileName)
 	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return err
+		return false, err
+	}
+	if fileExists(dst) {
+		return false, nil
 	}
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		return err
+		return false, err
 	}
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		return fmt.Errorf("format handler failed: %w", err)
+		return false, fmt.Errorf("format handler failed: %w", err)
 	}
-	return os.WriteFile(dst, formatted, 0o644)
+	if err := os.WriteFile(dst, formatted, 0o644); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 type handlerTemplateData struct {
 	PackageName      string
 	HandlerName      string
 	StructName       string
-	UsecaseName      string
-	UsecaseField     string
+	BusField         string
+	BusPackage       string
 	UsecaseMethod    string
 	Method           string
 	RequestStruct    string
-	UsecaseImport    string
+	BusImport        string
 	RequestDtoImport string
+}
+
+func busKindForEndpoint(ep models.Endpoint) string {
+	if strings.EqualFold(ep.Method, "GET") {
+		return "query"
+	}
+	return "command"
 }
 
 func lowerFirst(s string) string {

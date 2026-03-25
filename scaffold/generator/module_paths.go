@@ -1,6 +1,9 @@
 package generator
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type modulePaths struct {
 	FsRoot     string
@@ -8,16 +11,27 @@ type modulePaths struct {
 }
 
 func moduleForUsecase(usecaseName string) (modulePaths, error) {
-	switch usecaseName {
-	case "AuthUsecase":
+	moduleName := strings.TrimSuffix(usecaseName, "Usecase")
+	switch moduleName {
+	case "Auth":
 		return modulePaths{
-			FsRoot:     "core/account",
+			FsRoot:     "core/modules/account",
 			ImportRoot: "go-socket/core/modules/account",
 		}, nil
-	case "RoomUsecase", "MessageUsecase":
+	case "Room", "Message":
 		return modulePaths{
-			FsRoot:     "core/room",
+			FsRoot:     "core/modules/room",
 			ImportRoot: "go-socket/core/modules/room",
+		}, nil
+	case "Notification":
+		return modulePaths{
+			FsRoot:     "core/modules/notification",
+			ImportRoot: "go-socket/core/modules/notification",
+		}, nil
+	case "Payment":
+		return modulePaths{
+			FsRoot:     "core/modules/payment",
+			ImportRoot: "go-socket/core/modules/payment",
 		}, nil
 	default:
 		return modulePaths{}, fmt.Errorf("unknown usecase: %s", usecaseName)

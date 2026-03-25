@@ -11,6 +11,9 @@ CREATE TABLE account_outbox_events (
     created_at      TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
 );
 
+GRANT SELECT ON account_outbox_events TO C##DBZUSER;
+ALTER TABLE account_outbox_events ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
+
 CREATE INDEX idx_acc_outbox_aggregate_id ON account_outbox_events(aggregate_id);
 CREATE INDEX idx_acc_outbox_aggregate_type ON account_outbox_events(aggregate_type);
 CREATE INDEX idx_acc_outbox_event_name ON account_outbox_events(event_name);
