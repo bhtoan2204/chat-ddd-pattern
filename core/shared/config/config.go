@@ -9,6 +9,7 @@ type Config struct {
 	SecurityConfig SecurityConfig
 	WebPushConfig  WebPushConfig
 	ConsulConfig   ConsulConfig
+	LedgerConfig   LedgerConfig
 }
 
 type ServerConfig struct {
@@ -76,4 +77,8 @@ type ConsulConfig struct {
 	Scheme     string `env:"CONSUL_SCHEME"`
 	DataCenter string `env:"CONSUL_DATA_CENTER"`
 	Token      string `env:"CONSUL_TOKEN"`
+}
+
+type LedgerConfig struct {
+	MockWebhookSecret string `env:"LEDGER_MOCK_WEBHOOK_SECRET,default=mock-secret"`
 }
