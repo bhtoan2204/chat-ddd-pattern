@@ -56,7 +56,7 @@ func (h *createMessageHandler) Handle(ctx context.Context, req *in.CreateMessage
 		}
 
 		roomAggregate := &aggregate.RoomAggregate{}
-		roomAggregateType := reflect.TypeOf(roomAggregate).Name()
+		roomAggregateType := reflect.TypeOf(roomAggregate).Elem().Name()
 		roomAggregate.SetAggregateType(roomAggregateType)
 		if err := roomAggregate.SetID(message.RoomID); err != nil {
 			return fmt.Errorf("set room aggregate id failed: %w", err)

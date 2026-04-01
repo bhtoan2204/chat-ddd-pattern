@@ -110,13 +110,16 @@ func (ar *AggregateRoot) ApplyChangeWithMetadata(agg Aggregate, data interface{}
 	return agg.Transition(event)
 }
 
-func (ar *AggregateRoot) LoadFromHistory(agg Aggregate, events []Event) {
+func (ar *AggregateRoot) LoadFromHistory(agg Aggregate, events []Event) error {
 	for _, e := range events {
-		agg.Transition(e)
+		if err := agg.Transition(e); err != nil {
+			return err
+		}
 		ar.aggregateID = e.AggregateID
 		ar.version = e.Version
 		ar.baseVersion = e.Version
 	}
+	return nil
 }
 
 func (ar *AggregateRoot) Update() {
@@ -136,5 +139,5 @@ func (ar *AggregateRoot) SetInternal(id string, baseVersion, version int) {
 }
 
 func (ar *AggregateRoot) nextVersion() int {
-	return ar.version + 1
+	return ar.Version() + 1
 }
