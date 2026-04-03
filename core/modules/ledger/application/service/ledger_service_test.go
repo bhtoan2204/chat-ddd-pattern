@@ -117,6 +117,7 @@ func (r *fakeLedgerRepo) InsertEntries(_ context.Context, entries []*entity.Ledg
 	for _, entry := range entries {
 		stored := *entry
 		stored.ID = r.nextEntryID
+		entry.ID = r.nextEntryID
 		r.nextEntryID++
 		r.transactions[stored.TransactionID].Entries = append(r.transactions[stored.TransactionID].Entries, &stored)
 	}

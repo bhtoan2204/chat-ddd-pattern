@@ -36,7 +36,13 @@ func (r *ledgerRepoImpl) InsertEntries(ctx context.Context, entries []*entity.Le
 			CreatedAt:     entry.CreatedAt,
 		})
 	}
-	return mapError(r.db.WithContext(ctx).Create(&models).Error)
+	if err := r.db.WithContext(ctx).Create(&models).Error; err != nil {
+		return mapError(err)
+	}
+	for i, entry := range entries {
+		entry.ID = models[i].ID
+	}
+	return nil
 }
 
 func (r *ledgerRepoImpl) GetBalance(ctx context.Context, accountID string) (int64, error) {
