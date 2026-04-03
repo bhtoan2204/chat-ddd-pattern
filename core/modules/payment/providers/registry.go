@@ -29,7 +29,7 @@ func (r *ProviderRegistry) Get(name string) (PaymentProvider, error) {
 
 	provider, ok := r.providers[strings.ToLower(strings.TrimSpace(name))]
 	if !ok {
-		return nil, fmt.Errorf("%w: %s", ErrProviderNotFound, name)
+		return nil, fmt.Errorf("%v: %s", ErrProviderNotFound, name)
 	}
 	return provider, nil
 }

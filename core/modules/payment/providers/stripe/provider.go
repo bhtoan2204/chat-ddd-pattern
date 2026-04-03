@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/ledger/domain/entity"
-	"go-socket/core/modules/ledger/providers"
+	"go-socket/core/modules/payment/domain/entity"
+	"go-socket/core/modules/payment/providers"
 	"go-socket/core/shared/config"
 
 	stripe "github.com/stripe/stripe-go/v75"

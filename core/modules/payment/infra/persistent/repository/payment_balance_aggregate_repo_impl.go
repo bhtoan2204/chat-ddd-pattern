@@ -88,7 +88,9 @@ func (p *paymentBalanceAggregateRepoImpl) Load(ctx context.Context, accountID st
 		events = append(events, domainEvent)
 	}
 
-	agg.LoadFromHistory(agg, events)
+	if err := agg.LoadFromHistory(agg, events); err != nil {
+		return nil, stackerr.Error(err)
+	}
 	if agg.Root().Version() != aggregateModel.Version {
 		return nil, fmt.Errorf("payment aggregate version mismatch: aggregate=%d events=%d", aggregateModel.Version, agg.Root().Version())
 	}
