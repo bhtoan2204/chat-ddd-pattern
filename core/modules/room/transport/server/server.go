@@ -49,7 +49,15 @@ func (s *roomServer) RegisterPublicRoutes(_ *gin.RouterGroup) {
 }
 
 func (s *roomServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {
-	roomhttp.RegisterPrivateRoutes(routes, s.createRoom, s.updateRoom, s.deleteRoom, s.getRoom, s.listRoom, s.roomHub)
+	roomhttp.RegisterPrivateRoutes(
+		routes,
+		s.createRoom,
+		s.updateRoom,
+		s.deleteRoom,
+		s.getRoom,
+		s.listRoom,
+		roomsocket.NewWSHandler(s.roomHub).Handle,
+	)
 }
 
 func (s *roomServer) Stop(ctx context.Context) error {

@@ -5,15 +5,14 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"go-socket/core/modules/payment/domain/entity"
+	"go-socket/core/modules/payment/providers"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
-
-	"go-socket/core/modules/ledger/domain/entity"
-	"go-socket/core/modules/ledger/providers"
 
 	stripewebhook "github.com/stripe/stripe-go/v75/webhook"
 )
