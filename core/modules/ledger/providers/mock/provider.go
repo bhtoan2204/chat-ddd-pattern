@@ -10,6 +10,8 @@ import (
 	"go-socket/core/modules/ledger/providers"
 )
 
+var _ providers.PaymentProvider = (*Provider)(nil)
+
 const ProviderName = "mock"
 
 type Provider struct {

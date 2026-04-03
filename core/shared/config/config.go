@@ -85,6 +85,7 @@ type LedgerConfig struct {
 }
 
 type LedgerStripeConfig struct {
+	PublicKey     string `env:"LEDGER_STRIPE_PUBLIC_KEY"`
 	SecretKey     string `env:"LEDGER_STRIPE_SECRET_KEY"`
 	WebhookSecret string `env:"LEDGER_STRIPE_WEBHOOK_SECRET"`
 	SuccessURL    string `env:"LEDGER_STRIPE_SUCCESS_URL"`

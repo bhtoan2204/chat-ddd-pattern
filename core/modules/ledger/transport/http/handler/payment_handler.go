@@ -3,6 +3,7 @@ package handler
 import (
 	"io"
 	"net/http"
+	"strings"
 
 	ledgerin "go-socket/core/modules/ledger/application/dto/in"
 	"go-socket/core/modules/ledger/application/service"
@@ -55,7 +56,7 @@ func (h *PaymentHandler) HandleWebhook(c *gin.Context) {
 		c.Request.Context(),
 		c.Param("provider"),
 		payload,
-		c.GetHeader("X-Signature"),
+		webhookSignature(c.Param("provider"), c.Request.Header),
 	)
 	if err != nil {
 		writeError(c, err)
@@ -63,4 +64,18 @@ func (h *PaymentHandler) HandleWebhook(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+func webhookSignature(provider string, header http.Header) string {
+	if strings.EqualFold(strings.TrimSpace(provider), "stripe") {
+		if signature := strings.TrimSpace(header.Get("Stripe-Signature")); signature != "" {
+			return signature
+		}
+	}
+
+	if signature := strings.TrimSpace(header.Get("X-Signature")); signature != "" {
+		return signature
+	}
+
+	return strings.TrimSpace(header.Get("Stripe-Signature"))
 }

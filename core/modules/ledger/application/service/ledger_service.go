@@ -103,14 +103,7 @@ func (s *LedgerService) createTransaction(ctx context.Context, repo ledgerrepos.
 	if err := repo.InsertEntries(ctx, ledgerEntries); err != nil {
 		return nil, err
 	}
-
-	transaction, err := repo.GetTransaction(ctx, transaction.TransactionID)
-	if errors.Is(err, ledgerrepo.ErrNotFound) {
-		return nil, fmt.Errorf("%w: %s", ErrTransactionNotFound, transactionID)
-	}
-	if err != nil {
-		return nil, err
-	}
+	transaction.Entries = ledgerEntries
 
 	logging.FromContext(ctx).Infow("ledger transaction created",
 		"transaction_id", transaction.TransactionID,

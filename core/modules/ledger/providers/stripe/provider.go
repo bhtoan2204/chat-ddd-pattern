@@ -2,15 +2,10 @@ package stripe
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"crypto/subtle"
-	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -18,12 +13,17 @@ import (
 	"go-socket/core/modules/ledger/domain/entity"
 	"go-socket/core/modules/ledger/providers"
 	"go-socket/core/shared/config"
+
+	stripe "github.com/stripe/stripe-go/v75"
+	stripeclient "github.com/stripe/stripe-go/v75/client"
+	stripewebhook "github.com/stripe/stripe-go/v75/webhook"
 )
+
+var _ providers.PaymentProvider = (*Provider)(nil)
 
 const (
 	ProviderName = "stripe"
 	apiVersion   = "2026-02-25.clover"
-	apiBaseURL   = "https://api.stripe.com"
 )
 
 type Provider struct {
@@ -32,18 +32,26 @@ type Provider struct {
 	successURL    string
 	cancelURL     string
 	httpClient    *http.Client
+	apiBaseURL    string
+	client        *stripeclient.API
 }
 
 func NewProvider(cfg config.LedgerStripeConfig) *Provider {
-	return &Provider{
+	httpClient := &http.Client{
+		Timeout: 15 * time.Second,
+	}
+
+	provider := &Provider{
 		secretKey:     strings.TrimSpace(cfg.SecretKey),
 		webhookSecret: strings.TrimSpace(cfg.WebhookSecret),
 		successURL:    strings.TrimSpace(cfg.SuccessURL),
 		cancelURL:     strings.TrimSpace(cfg.CancelURL),
-		httpClient: &http.Client{
-			Timeout: 15 * time.Second,
-		},
+		httpClient:    httpClient,
+		apiBaseURL:    stripe.APIURL,
 	}
+
+	provider.client = newStripeClient(provider.secretKey, provider.httpClient, provider.apiBaseURL)
+	return provider
 }
 
 func (p *Provider) Name() string {
@@ -65,46 +73,71 @@ func (p *Provider) CreatePayment(ctx context.Context, req providers.CreatePaymen
 		return nil, fmt.Errorf("stripe success_url and cancel_url are required")
 	}
 
-	form := url.Values{}
-	form.Set("mode", "payment")
-	form.Set("success_url", successURL)
-	form.Set("cancel_url", cancelURL)
-	form.Set("client_reference_id", req.TransactionID)
-	form.Set("line_items[0][quantity]", "1")
-	form.Set("line_items[0][price_data][currency]", strings.ToLower(req.Currency))
-	form.Set("line_items[0][price_data][unit_amount]", strconv.FormatInt(req.Amount, 10))
-	form.Set("line_items[0][price_data][product_data][name]", firstNonEmpty(req.Metadata["product_name"], "Wallet deposit"))
-	form.Set("metadata[transaction_id]", req.TransactionID)
-	form.Set("metadata[debit_account_id]", req.DebitAccountID)
-	form.Set("metadata[credit_account_id]", req.CreditAccountID)
+	params := &stripe.CheckoutSessionParams{
+		Params: stripe.Params{
+			Context: ctx,
+			Headers: http.Header{
+				"Stripe-Version": []string{apiVersion},
+			},
+		},
+		Mode:              stripe.String(string(stripe.CheckoutSessionModePayment)),
+		SuccessURL:        stripe.String(successURL),
+		CancelURL:         stripe.String(cancelURL),
+		ClientReferenceID: stripe.String(req.TransactionID),
+		Metadata: map[string]string{
+			"transaction_id":    req.TransactionID,
+			"debit_account_id":  req.DebitAccountID,
+			"credit_account_id": req.CreditAccountID,
+		},
+		LineItems: []*stripe.CheckoutSessionLineItemParams{
+			{
+				Quantity: stripe.Int64(1),
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Currency:   stripe.String(strings.ToLower(req.Currency)),
+					UnitAmount: stripe.Int64(req.Amount),
+					ProductData: &stripe.CheckoutSessionLineItemPriceDataProductDataParams{
+						Name: stripe.String(firstNonEmpty(req.Metadata["product_name"], "Wallet deposit")),
+					},
+				},
+			},
+		},
+		PaymentIntentData: &stripe.CheckoutSessionPaymentIntentDataParams{
+			Metadata: map[string]string{
+				"transaction_id":    req.TransactionID,
+				"debit_account_id":  req.DebitAccountID,
+				"credit_account_id": req.CreditAccountID,
+			},
+		},
+	}
 
 	if email := strings.TrimSpace(req.Metadata["customer_email"]); email != "" {
-		form.Set("customer_email", email)
+		params.CustomerEmail = stripe.String(email)
 	}
 	if destination := strings.TrimSpace(req.Metadata["destination_account"]); destination != "" {
-		form.Set("payment_intent_data[transfer_data][destination]", destination)
+		params.PaymentIntentData.TransferData = &stripe.CheckoutSessionPaymentIntentDataTransferDataParams{
+			Destination: stripe.String(destination),
+		}
 	}
 	if onBehalfOf := strings.TrimSpace(req.Metadata["on_behalf_of"]); onBehalfOf != "" {
-		form.Set("payment_intent_data[on_behalf_of]", onBehalfOf)
+		params.PaymentIntentData.OnBehalfOf = stripe.String(onBehalfOf)
 	}
 	if applicationFee := strings.TrimSpace(req.Metadata["application_fee_amount"]); applicationFee != "" {
-		form.Set("payment_intent_data[application_fee_amount]", applicationFee)
+		feeAmount, err := strconv.ParseInt(applicationFee, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid application_fee_amount: %w", err)
+		}
+		params.PaymentIntentData.ApplicationFeeAmount = stripe.Int64(feeAmount)
 	}
 	if statementDescriptor := strings.TrimSpace(req.Metadata["statement_descriptor"]); statementDescriptor != "" {
-		form.Set("payment_intent_data[statement_descriptor_suffix]", statementDescriptor)
+		params.PaymentIntentData.StatementDescriptorSuffix = stripe.String(statementDescriptor)
 	}
 
-	respBody, statusCode, err := p.doFormRequest(ctx, http.MethodPost, apiBaseURL+"/v1/checkout/sessions", form)
+	session, err := p.stripeClient().CheckoutSessions.New(params)
 	if err != nil {
 		return nil, err
 	}
-
-	var session checkoutSession
-	if err := json.Unmarshal(respBody, &session); err != nil {
-		return nil, fmt.Errorf("decode stripe checkout session: %w", err)
-	}
 	if session.ID == "" {
-		return nil, fmt.Errorf("stripe checkout session response missing id: status=%d", statusCode)
+		return nil, fmt.Errorf("stripe checkout session response missing id")
 	}
 
 	return &providers.CreatePaymentResponse{
@@ -121,118 +154,92 @@ func (p *Provider) VerifyWebhook(_ context.Context, payload []byte, signature st
 		return nil, fmt.Errorf("stripe webhook secret is not configured")
 	}
 
-	timestamp, expected, err := parseStripeSignature(signature)
+	event, err := stripewebhook.ConstructEventWithOptions(payload, signature, p.webhookSecret, stripewebhook.ConstructEventOptions{
+		IgnoreAPIVersionMismatch: true,
+	})
 	if err != nil {
-		return nil, providers.ErrInvalidWebhookSignature
+		switch {
+		case errors.Is(err, stripewebhook.ErrInvalidHeader),
+			errors.Is(err, stripewebhook.ErrNoValidSignature),
+			errors.Is(err, stripewebhook.ErrNotSigned),
+			errors.Is(err, stripewebhook.ErrTooOld):
+			return nil, providers.ErrInvalidWebhookSignature
+		default:
+			return nil, err
+		}
 	}
 
-	mac := hmac.New(sha256.New, []byte(p.webhookSecret))
-	_, _ = mac.Write([]byte(timestamp))
-	_, _ = mac.Write([]byte("."))
-	_, _ = mac.Write(payload)
-	actual := hex.EncodeToString(mac.Sum(nil))
-	if subtle.ConstantTimeCompare([]byte(actual), []byte(expected)) != 1 {
-		return nil, providers.ErrInvalidWebhookSignature
-	}
-
-	var envelope stripeEventEnvelope
-	if err := json.Unmarshal(payload, &envelope); err != nil {
-		return nil, fmt.Errorf("decode stripe webhook payload: %w", err)
+	rawObject := ""
+	if event.Data != nil {
+		rawObject = string(event.Data.Raw)
 	}
 
 	return &providers.WebhookEvent{
 		Provider:  ProviderName,
-		EventID:   envelope.ID,
-		EventType: envelope.Type,
+		EventID:   event.ID,
+		EventType: string(event.Type),
 		Attributes: map[string]string{
-			"object": string(envelope.Data.Object),
+			"api_version": event.APIVersion,
+			"object":      rawObject,
 		},
 	}, nil
 }
 
 func (p *Provider) ParseEvent(_ context.Context, event *providers.WebhookEvent) (*providers.PaymentResult, error) {
-	switch event.EventType {
-	case "checkout.session.completed", "checkout.session.async_payment_succeeded", "checkout.session.async_payment_failed", "checkout.session.expired":
-		var session checkoutSession
+	switch stripe.EventType(event.EventType) {
+	case stripe.EventTypeCheckoutSessionCompleted,
+		stripe.EventTypeCheckoutSessionAsyncPaymentSucceeded,
+		stripe.EventTypeCheckoutSessionAsyncPaymentFailed,
+		stripe.EventTypeCheckoutSessionExpired:
+		var session stripe.CheckoutSession
 		if err := json.Unmarshal([]byte(event.Attributes["object"]), &session); err != nil {
 			return nil, fmt.Errorf("decode stripe checkout session event: %w", err)
 		}
 
 		return &providers.PaymentResult{
 			TransactionID: strings.TrimSpace(session.ClientReferenceID),
-			Status:        stripeSessionStatus(event.EventType, session.PaymentStatus),
+			Status:        stripeSessionStatus(event.EventType, string(session.PaymentStatus)),
 			Amount:        session.AmountTotal,
-			Currency:      session.Currency,
+			Currency:      string(session.Currency),
 			ExternalRef:   session.ID,
 		}, nil
-	case "payment_intent.succeeded", "payment_intent.payment_failed":
-		var intent paymentIntentObject
+	case stripe.EventTypePaymentIntentSucceeded,
+		stripe.EventTypePaymentIntentPaymentFailed:
+		var intent stripe.PaymentIntent
 		if err := json.Unmarshal([]byte(event.Attributes["object"]), &intent); err != nil {
 			return nil, fmt.Errorf("decode stripe payment intent event: %w", err)
 		}
 
 		return &providers.PaymentResult{
-			TransactionID: strings.TrimSpace(intent.Metadata.TransactionID),
-			Status:        stripePaymentIntentStatus(event.EventType, intent.Status),
+			TransactionID: strings.TrimSpace(intent.Metadata["transaction_id"]),
+			Status:        stripePaymentIntentStatus(event.EventType, string(intent.Status)),
 			Amount:        intent.Amount,
-			Currency:      intent.Currency,
+			Currency:      string(intent.Currency),
 			ExternalRef:   intent.ID,
+		}, nil
+	case stripe.EventTypeChargeSucceeded, stripe.EventTypeChargeFailed:
+		var charge stripe.Charge
+		if err := json.Unmarshal([]byte(event.Attributes["object"]), &charge); err != nil {
+			return nil, fmt.Errorf("decode stripe charge event: %w", err)
+		}
+
+		return &providers.PaymentResult{
+			TransactionID: stripeChargeTransactionID(&charge),
+			Status:        stripeChargeStatus(event.EventType, string(charge.Status), charge.Paid),
+			Amount:        charge.Amount,
+			Currency:      string(charge.Currency),
+			ExternalRef:   charge.ID,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported stripe event type: %s", event.EventType)
 	}
 }
 
-func (p *Provider) doFormRequest(ctx context.Context, method, endpoint string, form url.Values) ([]byte, int, error) {
-	req, err := http.NewRequestWithContext(ctx, method, endpoint, strings.NewReader(form.Encode()))
-	if err != nil {
-		return nil, 0, fmt.Errorf("build stripe request: %w", err)
+func (p *Provider) stripeClient() *stripeclient.API {
+	if p.client == nil {
+		p.client = newStripeClient(p.secretKey, p.httpClient, p.apiBaseURL)
 	}
-
-	req.Header.Set("Authorization", "Bearer "+p.secretKey)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Stripe-Version", apiVersion)
-
-	resp, err := p.httpClient.Do(req)
-	if err != nil {
-		return nil, 0, fmt.Errorf("call stripe api: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, resp.StatusCode, fmt.Errorf("read stripe response: %w", err)
-	}
-
-	if resp.StatusCode >= http.StatusBadRequest {
-		return nil, resp.StatusCode, fmt.Errorf("stripe api error: status=%d body=%s", resp.StatusCode, strings.TrimSpace(string(body)))
-	}
-
-	return body, resp.StatusCode, nil
-}
-
-func parseStripeSignature(signature string) (string, string, error) {
-	var timestamp string
-	var v1 string
-
-	for _, part := range strings.Split(signature, ",") {
-		key, value, ok := strings.Cut(strings.TrimSpace(part), "=")
-		if !ok {
-			continue
-		}
-		switch key {
-		case "t":
-			timestamp = value
-		case "v1":
-			v1 = value
-		}
-	}
-
-	if timestamp == "" || v1 == "" {
-		return "", "", fmt.Errorf("invalid stripe signature")
-	}
-
-	return timestamp, v1, nil
+	return p.client
 }
 
 func stripeSessionStatus(eventType, paymentStatus string) string {
@@ -264,6 +271,40 @@ func stripePaymentIntentStatus(eventType, status string) string {
 	}
 }
 
+func stripeChargeTransactionID(charge *stripe.Charge) string {
+	if charge == nil {
+		return ""
+	}
+	if transactionID := strings.TrimSpace(charge.Metadata["transaction_id"]); transactionID != "" {
+		return transactionID
+	}
+	if charge.PaymentIntent != nil {
+		return strings.TrimSpace(charge.PaymentIntent.Metadata["transaction_id"])
+	}
+	return ""
+}
+
+func stripeChargeStatus(eventType, status string, paid bool) string {
+	switch eventType {
+	case "charge.succeeded":
+		return entity.PaymentStatusSuccess
+	case "charge.failed":
+		return entity.PaymentStatusFailed
+	}
+
+	switch strings.ToLower(strings.TrimSpace(status)) {
+	case "succeeded":
+		return entity.PaymentStatusSuccess
+	case "failed":
+		return entity.PaymentStatusFailed
+	}
+
+	if paid {
+		return entity.PaymentStatusSuccess
+	}
+	return entity.PaymentStatusPending
+}
+
 func firstNonEmpty(values ...string) string {
 	for _, value := range values {
 		if strings.TrimSpace(value) != "" {
@@ -273,29 +314,30 @@ func firstNonEmpty(values ...string) string {
 	return ""
 }
 
-type stripeEventEnvelope struct {
-	ID   string `json:"id"`
-	Type string `json:"type"`
-	Data struct {
-		Object json.RawMessage `json:"object"`
-	} `json:"data"`
-}
+func newStripeClient(secretKey string, httpClient *http.Client, apiBaseURL string) *stripeclient.API {
+	if httpClient == nil {
+		httpClient = &http.Client{
+			Timeout: 15 * time.Second,
+		}
+	}
 
-type checkoutSession struct {
-	ID                string `json:"id"`
-	URL               string `json:"url"`
-	ClientReferenceID string `json:"client_reference_id"`
-	PaymentStatus     string `json:"payment_status"`
-	AmountTotal       int64  `json:"amount_total"`
-	Currency          string `json:"currency"`
-}
+	baseURL := strings.TrimRight(strings.TrimSpace(apiBaseURL), "/")
+	if baseURL == "" {
+		baseURL = stripe.APIURL
+	}
 
-type paymentIntentObject struct {
-	ID       string `json:"id"`
-	Status   string `json:"status"`
-	Amount   int64  `json:"amount"`
-	Currency string `json:"currency"`
-	Metadata struct {
-		TransactionID string `json:"transaction_id"`
-	} `json:"metadata"`
+	backends := &stripe.Backends{
+		API: stripe.GetBackendWithConfig(stripe.APIBackend, &stripe.BackendConfig{
+			HTTPClient: httpClient,
+			URL:        stripe.String(baseURL),
+		}),
+		Connect: stripe.GetBackendWithConfig(stripe.ConnectBackend, &stripe.BackendConfig{
+			HTTPClient: httpClient,
+		}),
+		Uploads: stripe.GetBackendWithConfig(stripe.UploadsBackend, &stripe.BackendConfig{
+			HTTPClient: httpClient,
+		}),
+	}
+
+	return stripeclient.New(secretKey, backends)
 }

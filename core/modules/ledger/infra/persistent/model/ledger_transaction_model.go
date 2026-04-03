@@ -3,8 +3,8 @@ package model
 import "time"
 
 type LedgerTransactionModel struct {
-	TransactionID string    `gorm:"column:transaction_id;primaryKey"`
-	CreatedAt     time.Time `gorm:"column:created_at;autoCreateTime"`
+	TransactionID string    `gorm:"primaryKey"`
+	CreatedAt     time.Time `gorm:"autoCreateTime"`
 }
 
 func (LedgerTransactionModel) TableName() string {

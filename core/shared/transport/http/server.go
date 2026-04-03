@@ -83,7 +83,30 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 	}
 	r.GET("/health-check", pingHandler)
 	r.HEAD("/health-check", pingHandler)
-
+	r.GET("/successful", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"data": gin.H{
+				"data":     "successful",
+				"clientIP": ctx.ClientIP(),
+			},
+		})
+	})
+	r.GET("/failure", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"data": gin.H{
+				"data":     "failure",
+				"clientIP": ctx.ClientIP(),
+			},
+		})
+	})
+	r.GET("/cancel", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, gin.H{
+			"data": gin.H{
+				"data":     "cancel",
+				"clientIP": ctx.ClientIP(),
+			},
+		})
+	})
 	s.router = r
 	s.appCtx = appCtx
 

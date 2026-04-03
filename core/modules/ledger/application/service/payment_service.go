@@ -14,6 +14,9 @@ import (
 	ledgerrepo "go-socket/core/modules/ledger/infra/persistent/repository"
 	"go-socket/core/modules/ledger/providers"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
+
+	"go.uber.org/zap"
 )
 
 type PaymentService struct {
@@ -31,14 +34,15 @@ func NewPaymentService(baseRepo ledgerrepos.Repos, ledgerService *LedgerService,
 }
 
 func (s *PaymentService) CreatePayment(ctx context.Context, req *ledgerin.CreatePaymentRequest) (*ledgerout.CreatePaymentResponse, error) {
+	log := logging.FromContext(ctx)
 	req.Normalize()
 	if err := wrapValidation(req.Validate()); err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	provider, err := s.providerRegistry.Get(req.Provider)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	now := time.Now().UTC()
@@ -54,16 +58,11 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *ledgerin.Create
 		UpdatedAt:       now,
 	}
 
-	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
-		if err := txRepos.PaymentRepository().CreateIntent(ctx, intent); err != nil {
-			if errors.Is(err, ledgerrepo.ErrDuplicate) {
-				return fmt.Errorf("%w: %s", ErrDuplicatePayment, req.TransactionID)
-			}
-			return err
+	if err := s.baseRepo.PaymentRepository().CreateIntent(ctx, intent); err != nil {
+		if errors.Is(err, ledgerrepo.ErrDuplicate) {
+			return nil, fmt.Errorf("%w: %s", ErrDuplicatePayment, req.TransactionID)
 		}
-		return nil
-	}); err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	response, err := provider.CreatePayment(ctx, providers.CreatePaymentRequest{
@@ -75,13 +74,13 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *ledgerin.Create
 		Metadata:        req.Metadata,
 	})
 	if err != nil {
-		logging.FromContext(ctx).Errorw("provider create payment failed",
-			"provider", provider.Name(),
-			"transaction_id", req.TransactionID,
-			"error", err,
+		log.Errorw("provider create payment failed",
+			zap.String("provider", provider.Name()),
+			zap.String("transaction_id", req.TransactionID),
+			zap.Error(err),
 		)
 		_ = s.updateIntentStatus(ctx, req.TransactionID, entity.PaymentStatusFailed)
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	targetStatus := normalizePaymentStatus(response.Status)
@@ -90,37 +89,35 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *ledgerin.Create
 	}
 
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
-		persistedIntent, err := txRepos.PaymentRepository().GetIntentByTransactionID(ctx, req.TransactionID)
-		if err != nil {
+		if err := txRepos.PaymentRepository().UpdateIntentProviderState(ctx, intent.TransactionID, response.ExternalRef, targetStatus); err != nil {
 			if errors.Is(err, ledgerrepo.ErrNotFound) {
-				return fmt.Errorf("%w: %s", ErrPaymentIntentNotFound, req.TransactionID)
+				return stackerr.Error(fmt.Errorf("%w: %s", ErrPaymentIntentNotFound, req.TransactionID))
 			}
-			return err
+			return stackerr.Error(err)
 		}
 
-		if err := txRepos.PaymentRepository().UpdateIntentProviderState(ctx, persistedIntent.TransactionID, response.ExternalRef, targetStatus); err != nil {
-			return err
-		}
+		intent.ExternalRef = response.ExternalRef
+		intent.Status = targetStatus
 
 		if targetStatus == entity.PaymentStatusSuccess {
-			_, _, err := s.finalizeSuccessfulPayment(ctx, txRepos, persistedIntent, &providers.PaymentResult{
+			_, _, err := s.finalizeSuccessfulPayment(ctx, txRepos, intent, &providers.PaymentResult{
 				TransactionID: response.TransactionID,
 				Status:        targetStatus,
-				Amount:        persistedIntent.Amount,
-				Currency:      persistedIntent.Currency,
+				Amount:        intent.Amount,
+				Currency:      intent.Currency,
 				ExternalRef:   response.ExternalRef,
 			})
 			if err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 		}
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
-	logging.FromContext(ctx).Infow("payment created",
+	log.Infow("payment created",
 		"provider", provider.Name(),
 		"transaction_id", response.TransactionID,
 		"status", targetStatus,
@@ -137,19 +134,20 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *ledgerin.Create
 }
 
 func (s *PaymentService) HandleWebhook(ctx context.Context, providerName string, payload []byte, signature string) (*ledgerout.ProcessWebhookResponse, error) {
+	log := logging.FromContext(ctx)
 	provider, err := s.providerRegistry.Get(providerName)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	event, err := provider.VerifyWebhook(ctx, payload, signature)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	result, err := provider.ParseEvent(ctx, event)
 	if err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 	result.Status = normalizePaymentStatus(result.Status)
 
@@ -157,15 +155,15 @@ func (s *PaymentService) HandleWebhook(ctx context.Context, providerName string,
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
 		intent, err := s.findIntent(ctx, txRepos.PaymentRepository(), strings.ToLower(provider.Name()), result)
 		if err != nil {
-			return err
+			return stackerr.Error(err)
 		}
 		if err := validateResultAgainstIntent(intent, result); err != nil {
-			return err
+			return stackerr.Error(err)
 		}
 
 		if result.Status != entity.PaymentStatusSuccess {
 			if err := txRepos.PaymentRepository().UpdateIntentProviderState(ctx, intent.TransactionID, result.ExternalRef, result.Status); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			response = &ledgerout.ProcessWebhookResponse{
 				Provider:      intent.Provider,
@@ -178,7 +176,7 @@ func (s *PaymentService) HandleWebhook(ctx context.Context, providerName string,
 
 		ledgerPosted, duplicate, err := s.finalizeSuccessfulPayment(ctx, txRepos, intent, result)
 		if err != nil {
-			return err
+			return stackerr.Error(err)
 		}
 
 		response = &ledgerout.ProcessWebhookResponse{
@@ -190,7 +188,7 @@ func (s *PaymentService) HandleWebhook(ctx context.Context, providerName string,
 			LedgerPosted:  ledgerPosted,
 		}
 
-		logging.FromContext(ctx).Infow("payment webhook processed",
+		log.Infow("payment webhook processed",
 			"provider", intent.Provider,
 			"transaction_id", intent.TransactionID,
 			"duplicate", duplicate,
@@ -199,7 +197,7 @@ func (s *PaymentService) HandleWebhook(ctx context.Context, providerName string,
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, stackerr.Error(err)
 	}
 
 	return response, nil
@@ -255,7 +253,7 @@ func (s *PaymentService) findIntent(ctx context.Context, repo ledgerrepos.Paymen
 			return intent, nil
 		}
 		if !errors.Is(err, ledgerrepo.ErrNotFound) {
-			return nil, err
+			return nil, stackerr.Error(err)
 		}
 	}
 
@@ -265,7 +263,7 @@ func (s *PaymentService) findIntent(ctx context.Context, repo ledgerrepos.Paymen
 			return intent, nil
 		}
 		if !errors.Is(err, ledgerrepo.ErrNotFound) {
-			return nil, err
+			return nil, stackerr.Error(err)
 		}
 	}
 
@@ -273,17 +271,15 @@ func (s *PaymentService) findIntent(ctx context.Context, repo ledgerrepos.Paymen
 }
 
 func (s *PaymentService) updateIntentStatus(ctx context.Context, transactionID, status string) error {
-	return s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
-		return txRepos.PaymentRepository().UpdateIntentStatus(ctx, transactionID, status)
-	})
+	return s.baseRepo.PaymentRepository().UpdateIntentStatus(ctx, transactionID, status)
 }
 
 func validateResultAgainstIntent(intent *entity.PaymentIntent, result *providers.PaymentResult) error {
 	if result.Amount != 0 && result.Amount != intent.Amount {
-		return fmt.Errorf("%w: provider amount does not match reserved payment", ErrValidation)
+		return stackerr.Error(fmt.Errorf("%w: provider amount does not match reserved payment", ErrValidation))
 	}
 	if currency := strings.TrimSpace(result.Currency); currency != "" && !strings.EqualFold(currency, intent.Currency) {
-		return fmt.Errorf("%w: provider currency does not match reserved payment", ErrValidation)
+		return stackerr.Error(fmt.Errorf("%w: provider currency does not match reserved payment", ErrValidation))
 	}
 	return nil
 }

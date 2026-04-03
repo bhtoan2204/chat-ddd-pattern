@@ -19,6 +19,7 @@ require (
 	github.com/samber/lo v1.52.0
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/sijms/go-ora/v2 v2.9.0
+	github.com/stripe/stripe-go/v75 v75.11.0
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/trace v1.38.0
 	go.uber.org/zap v1.27.1
