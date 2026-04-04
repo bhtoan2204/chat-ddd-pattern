@@ -47,6 +47,7 @@ type KafkaConfig struct {
 	KafkaOffsetReset          string `env:"KAFKA_OFFSET_RESET"`
 	KafkaNotificationConsumer KafkaNotificationConsumer
 	KafkaPaymentConsumer      KafkaPaymentConsumer
+	KafkaLedgerConsumer       KafkaLedgerConsumer
 }
 
 type KafkaNotificationConsumer struct {
@@ -60,6 +61,12 @@ type KafkaPaymentConsumer struct {
 
 	AccountTopic       string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
 	PaymentEventsTopic string `env:"KAFKA_CONSUMER_PAYMENT_EVENTS_TOPIC"`
+}
+
+type KafkaLedgerConsumer struct {
+	LedgerGroup string `env:"KAFKA_LEDGER_CONSUMER_GROUP"`
+
+	PaymentOutboxTopic string `env:"KAFKA_CONSUMER_PAYMENT_OUTBOX_TOPIC"`
 }
 
 type SecurityConfig struct {

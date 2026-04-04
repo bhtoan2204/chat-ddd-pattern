@@ -26,14 +26,6 @@ func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 	listTransaction := cqrs.NewDispatcher(paymentquery.NewListTransactionHandler(paymentRepos))
 
 	intentStore := paymentrepo.NewProviderPaymentRepoImpl(appContext.GetDB())
-	registeredGateway, ok := appContext.GetService("payment.ledger_gateway")
-	if !ok {
-		return nil, ErrMissingLedgerGateway
-	}
-	ledgerGateway, ok := registeredGateway.(paymentservice.LedgerGateway)
-	if !ok {
-		return nil, ErrInvalidLedgerGateway
-	}
 
 	providerRegistry := providers.NewProviderRegistry()
 	providerRegistry.Register(mock.NewProvider(appContext.GetConfig().LedgerConfig.MockWebhookSecret))
@@ -41,7 +33,7 @@ func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 		providerRegistry.Register(stripe)
 	}
 
-	providerPaymentService := paymentservice.NewPaymentService(intentStore, ledgerGateway, providerRegistry)
+	providerPaymentService := paymentservice.NewPaymentService(intentStore, providerRegistry)
 	providerPaymentHandler := handler.NewProviderPaymentHandler(providerPaymentService)
 
 	return paymentserver.NewHTTPServer(deposit, rebuildProjection, transfer, withdrawal, listTransaction, providerPaymentHandler)

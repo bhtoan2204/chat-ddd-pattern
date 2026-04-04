@@ -198,6 +198,8 @@ func (p *Provider) ParseEvent(_ context.Context, event *providers.WebhookEvent) 
 
 		return &providers.PaymentResult{
 			TransactionID: strings.TrimSpace(session.ClientReferenceID),
+			EventID:       event.EventID,
+			EventType:     event.EventType,
 			Status:        stripeSessionStatus(event.EventType, string(session.PaymentStatus)),
 			Amount:        session.AmountTotal,
 			Currency:      string(session.Currency),
@@ -212,6 +214,8 @@ func (p *Provider) ParseEvent(_ context.Context, event *providers.WebhookEvent) 
 
 		return &providers.PaymentResult{
 			TransactionID: strings.TrimSpace(intent.Metadata["transaction_id"]),
+			EventID:       event.EventID,
+			EventType:     event.EventType,
 			Status:        stripePaymentIntentStatus(event.EventType, string(intent.Status)),
 			Amount:        intent.Amount,
 			Currency:      string(intent.Currency),
@@ -225,6 +229,8 @@ func (p *Provider) ParseEvent(_ context.Context, event *providers.WebhookEvent) 
 
 		return &providers.PaymentResult{
 			TransactionID: stripeChargeTransactionID(&charge),
+			EventID:       event.EventID,
+			EventType:     event.EventType,
 			Status:        stripeChargeStatus(event.EventType, string(charge.Status), charge.Paid),
 			Amount:        charge.Amount,
 			Currency:      string(charge.Currency),

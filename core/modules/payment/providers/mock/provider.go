@@ -76,6 +76,8 @@ func (p *Provider) ParseEvent(_ context.Context, event *providers.WebhookEvent) 
 
 	return &providers.PaymentResult{
 		TransactionID: strings.TrimSpace(event.Attributes["transaction_id"]),
+		EventID:       event.EventID,
+		EventType:     event.EventType,
 		Status:        strings.TrimSpace(event.Attributes["status"]),
 		Amount:        amount,
 		Currency:      strings.TrimSpace(event.Attributes["currency"]),

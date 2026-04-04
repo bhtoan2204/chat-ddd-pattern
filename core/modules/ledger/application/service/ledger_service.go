@@ -12,6 +12,7 @@ import (
 	"go-socket/core/modules/ledger/domain/entity"
 	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
 	ledgerrepo "go-socket/core/modules/ledger/infra/persistent/repository"
+	sharedevents "go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
 )
@@ -73,6 +74,73 @@ func (s *LedgerService) GetTransaction(ctx context.Context, transactionID string
 	}
 
 	return toTransactionResponse(transaction), nil
+}
+
+func (s *LedgerService) RecordPaymentSucceeded(ctx context.Context, evt *sharedevents.PaymentSucceededEvent) error {
+	if evt == nil {
+		return stackerr.Error(fmt.Errorf("%v: payment event is required", ErrValidation))
+	}
+
+	paymentID := strings.TrimSpace(evt.PaymentID)
+	if paymentID == "" {
+		paymentID = strings.TrimSpace(evt.TransactionID)
+	}
+	if paymentID == "" {
+		return stackerr.Error(fmt.Errorf("%v: payment_id is required", ErrValidation))
+	}
+	if strings.TrimSpace(evt.DebitAccountID) == "" || strings.TrimSpace(evt.CreditAccountID) == "" {
+		return stackerr.Error(fmt.Errorf("%v: debit_account_id and credit_account_id are required", ErrValidation))
+	}
+	if evt.Amount <= 0 {
+		return stackerr.Error(fmt.Errorf("%v: amount must be positive", ErrValidation))
+	}
+
+	idempotencyKey := strings.TrimSpace(evt.IdempotencyKey)
+	if idempotencyKey == "" {
+		idempotencyKey = fmt.Sprintf("payment.succeeded:%s", paymentID)
+	}
+
+	return s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
+		processed, err := txRepos.PaymentRepository().IsProcessed(ctx, "payment-service", idempotencyKey)
+		if err != nil {
+			return stackerr.Error(err)
+		}
+		if processed {
+			return nil
+		}
+
+		alreadyBooked := false
+		if _, err := s.createTransaction(ctx, txRepos.LedgerRepository(), ledgerTransactionIDForPaymentSucceeded(paymentID), []entity.LedgerEntryInput{
+			{AccountID: strings.TrimSpace(evt.DebitAccountID), Amount: -evt.Amount},
+			{AccountID: strings.TrimSpace(evt.CreditAccountID), Amount: evt.Amount},
+		}); err != nil {
+			if errors.Is(err, ErrDuplicateTransaction) {
+				alreadyBooked = true
+			} else {
+				return err
+			}
+		}
+
+		if err := txRepos.PaymentRepository().MarkProcessed(ctx, &entity.ProcessedPaymentEvent{
+			Provider:       "payment-service",
+			IdempotencyKey: idempotencyKey,
+			TransactionID:  paymentID,
+			CreatedAt:      time.Now().UTC(),
+		}); err != nil {
+			if errors.Is(err, ledgerrepo.ErrDuplicate) {
+				return nil
+			}
+			return stackerr.Error(err)
+		}
+
+		logging.FromContext(ctx).Infow("payment booked into ledger",
+			"payment_id", paymentID,
+			"ledger_transaction_id", ledgerTransactionIDForPaymentSucceeded(paymentID),
+			"idempotency_key", idempotencyKey,
+			"already_booked", alreadyBooked,
+		)
+		return nil
+	})
 }
 
 func (s *LedgerService) createTransaction(ctx context.Context, repo ledgerrepos.LedgerRepository, transactionID string, entries []entity.LedgerEntryInput) (*entity.LedgerTransaction, error) {
@@ -181,4 +249,8 @@ func wrapValidation(err error) error {
 		return nil
 	}
 	return fmt.Errorf("%v: %s", ErrValidation, err.Error())
+}
+
+func ledgerTransactionIDForPaymentSucceeded(paymentID string) string {
+	return fmt.Sprintf("payment:%s:succeeded", strings.TrimSpace(paymentID))
 }

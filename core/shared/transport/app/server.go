@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	appCtx "go-socket/core/context"
+	ledgerassembly "go-socket/core/modules/ledger/assembly"
 	notificationassembly "go-socket/core/modules/notification/assembly"
 	paymentassembly "go-socket/core/modules/payment/assembly"
 	"go-socket/core/shared/config"
@@ -73,12 +74,17 @@ func (s *appServer) buildModuleServers(appContext *appCtx.AppContext) error {
 		return fmt.Errorf("build notification server failed: %w", err)
 	}
 
+	ledgerServer, err := ledgerassembly.BuildServer(s.cfg, appContext)
+	if err != nil {
+		return fmt.Errorf("build ledger server failed: %w", err)
+	}
+
 	paymentProcessor, err := paymentassembly.BuildProcessors(s.cfg, appContext)
 	if err != nil {
 		return fmt.Errorf("build payment processor failed: %w", err)
 	}
 
-	s.moduleServers = []moduleServer{notificationServer, paymentProcessor}
+	s.moduleServers = []moduleServer{notificationServer, ledgerServer, paymentProcessor}
 	return nil
 }
 

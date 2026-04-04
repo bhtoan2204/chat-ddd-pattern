@@ -36,6 +36,8 @@ type WebhookEvent struct {
 
 type PaymentResult struct {
 	TransactionID string
+	EventID       string
+	EventType     string
 	Status        string
 	Amount        int64
 	Currency      string
