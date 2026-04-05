@@ -8,7 +8,7 @@ import (
 	"go-socket/core/modules/ledger/application/dto/out"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -45,7 +45,7 @@ func (h *createTransactionHandler) Handle(c *gin.Context) (interface{}, error) {
 	result, err := h.createTransaction.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("CreateTransaction failed", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return result, nil

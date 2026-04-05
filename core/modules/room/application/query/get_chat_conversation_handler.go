@@ -9,6 +9,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type getChatConversationHandler struct {
@@ -22,14 +23,14 @@ func NewGetChatConversationHandler(chatService *roomservice.ChatQueryService) cq
 func (h *getChatConversationHandler) Handle(ctx context.Context, req *in.GetChatConversationRequest) (*out.ChatConversationResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	res, err := h.chatService.GetConversation(ctx, accountID, apptypes.GetConversationQuery{
 		RoomID: req.RoomID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return roomsupport.ToConversationResponse(res), nil

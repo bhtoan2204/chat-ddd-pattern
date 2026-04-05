@@ -8,7 +8,7 @@ import (
 	roomtypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )
@@ -30,7 +30,7 @@ func (h *updateRoomHandler) Handle(ctx context.Context, req *in.UpdateRoomReques
 	})
 	if err != nil {
 		log.Errorw("Failed to get room", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	return &out.UpdateRoomResponse{
 		Id:        room.ID,

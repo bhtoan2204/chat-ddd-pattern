@@ -8,6 +8,7 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/modules/room/infra/persistent/models"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
 
 	"github.com/samber/lo"
@@ -69,7 +70,7 @@ func (r *roomReadRepoImpl) ListRooms(ctx context.Context, options utils.QueryOpt
 		tx = tx.Order(options.OrderBy + " " + options.OrderDirection)
 	}
 	if err := tx.Find(&rooms).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return lo.Map(rooms, func(room *models.RoomReadModel, _ int) *entity.Room {
@@ -99,7 +100,7 @@ func (r *roomReadRepoImpl) ListRoomsByAccount(ctx context.Context, accountID str
 		tx = tx.Order("rr.updated_at DESC")
 	}
 	if err := tx.Find(&rooms).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return lo.Map(rooms, func(room *models.RoomReadModel, _ int) *entity.Room {
@@ -110,7 +111,7 @@ func (r *roomReadRepoImpl) ListRoomsByAccount(ctx context.Context, accountID str
 func (r *roomReadRepoImpl) GetRoomByID(ctx context.Context, id string) (*entity.Room, error) {
 	var room models.RoomReadModel
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&room).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return r.toEntity(&room), nil
 }

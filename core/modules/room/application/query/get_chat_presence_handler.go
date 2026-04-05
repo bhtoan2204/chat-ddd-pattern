@@ -9,6 +9,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type getChatPresenceHandler struct {
@@ -22,7 +23,7 @@ func NewGetChatPresenceHandler(chatService *roomservice.ChatQueryService) cqrs.H
 func (h *getChatPresenceHandler) Handle(ctx context.Context, req *in.GetChatPresenceRequest) (*out.ChatPresenceResponse, error) {
 	res, err := h.chatService.GetPresence(ctx, apptypes.GetPresenceQuery{AccountID: req.AccountID})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return roomsupport.ToPresenceResponse(res), nil

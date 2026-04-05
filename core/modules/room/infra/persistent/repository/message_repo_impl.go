@@ -5,6 +5,7 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/modules/room/infra/persistent/models"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )
@@ -20,7 +21,7 @@ func NewMessageRepoImpl(db *gorm.DB) repos.MessageRepository {
 func (r *messageRepoImpl) CreateMessage(ctx context.Context, message *entity.MessageEntity) error {
 	m := r.toModel(message)
 	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	return nil
 }
@@ -47,7 +48,7 @@ func (r *messageRepoImpl) UpdateMessage(ctx context.Context, message *entity.Mes
 func (r *messageRepoImpl) GetMessageByID(ctx context.Context, id string) (*entity.MessageEntity, error) {
 	var m models.MessageModel
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&m).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return r.toEntity(&m), nil
 }

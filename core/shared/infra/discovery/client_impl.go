@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/hashicorp/consul/api"
 )
@@ -32,7 +32,7 @@ func (c *consulClientImpl) RegisterService(ctx context.Context, serviceID string
 	err := c.client.Agent().ServiceRegister(registration)
 	if err != nil {
 		log.Errorw("Failed to register service", "serviceID", serviceID, "error", err)
-		return stackerr.Error(err)
+		return stackErr.Error(err)
 	}
 
 	log.Infow("Service registered successfully", "serviceID", serviceID)
@@ -45,7 +45,7 @@ func (c *consulClientImpl) UnregisterService(ctx context.Context, serviceID stri
 	err := c.client.Agent().ServiceDeregister(serviceID)
 	if err != nil {
 		log.Errorw("Failed to unregister service", "serviceID", serviceID, "error", err)
-		return stackerr.Error(err)
+		return stackErr.Error(err)
 	}
 
 	return nil
@@ -54,7 +54,7 @@ func (c *consulClientImpl) UnregisterService(ctx context.Context, serviceID stri
 func (c *consulClientImpl) GetService(ctx context.Context, serviceID string) (*api.AgentService, error) {
 	services, err := c.client.Agent().Services()
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	service, exists := services[serviceID]
@@ -68,7 +68,7 @@ func (c *consulClientImpl) GetService(ctx context.Context, serviceID string) (*a
 func (c *consulClientImpl) GetServices(ctx context.Context) ([]*api.AgentService, error) {
 	servicesMap, err := c.client.Agent().Services()
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	var servicesList []*api.AgentService
@@ -84,7 +84,7 @@ func (c *consulClientImpl) GetServiceHealth(ctx context.Context, serviceID strin
 	svc, err := c.GetService(ctx, serviceID)
 	if err != nil {
 		log.Errorw("Failed to get service", "serviceID", serviceID, "error", err)
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	checks, _, err := c.client.Health().Checks(svc.Service, &api.QueryOptions{
@@ -92,7 +92,7 @@ func (c *consulClientImpl) GetServiceHealth(ctx context.Context, serviceID strin
 	})
 	if err != nil {
 		log.Errorw("Failed to get service health", "serviceID", serviceID, "error", err)
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return checks, nil

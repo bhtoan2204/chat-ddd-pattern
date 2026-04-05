@@ -9,6 +9,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type markChatMessageStatusHandler struct {
@@ -22,13 +23,13 @@ func NewMarkChatMessageStatusHandler(messageService *roomservice.MessageCommandS
 func (h *markChatMessageStatusHandler) Handle(ctx context.Context, req *in.MarkChatMessageStatusRequest) (*out.MarkChatMessageStatusResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	if err := h.messageService.MarkMessageStatus(ctx, accountID, req.MessageID, apptypes.MarkMessageStatusCommand{
 		Status: req.Status,
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return &out.MarkChatMessageStatusResponse{OK: true}, nil

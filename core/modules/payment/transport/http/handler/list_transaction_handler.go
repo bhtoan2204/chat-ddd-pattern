@@ -6,7 +6,7 @@ import (
 	"go-socket/core/modules/payment/application/dto/out"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -39,7 +39,7 @@ func (h *listTransactionHandler) Handle(c *gin.Context) (interface{}, error) {
 	result, err := h.listTransaction.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("List failed", zap.Error(err))
-		return nil, stackerr.Error(errors.New("list failed"))
+		return nil, stackErr.Error(errors.New("list failed"))
 	}
 	return result, nil
 }

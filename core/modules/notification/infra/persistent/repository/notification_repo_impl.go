@@ -6,7 +6,7 @@ import (
 	"go-socket/core/modules/notification/domain/entity"
 	"go-socket/core/modules/notification/domain/repos"
 	"go-socket/core/modules/notification/infra/persistent/models"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
 
 	"gorm.io/gorm"
@@ -23,7 +23,7 @@ func NewNotificationRepoImpl(db *gorm.DB) repos.NotificationRepository {
 func (r *notificationRepoImpl) CreateNotification(ctx context.Context, notification *entity.NotificationEntity) error {
 	m := r.toModel(notification)
 	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	return nil
 }
@@ -65,7 +65,7 @@ func (r *notificationRepoImpl) ListNotifications(ctx context.Context, options ut
 	}
 
 	if err := tx.Find(&notifications).Error; err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	responses := make([]*out.NotificationResponse, 0, len(notifications))

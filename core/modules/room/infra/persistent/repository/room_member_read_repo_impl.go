@@ -6,6 +6,7 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/modules/room/infra/persistent/models"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/samber/lo"
 	"gorm.io/gorm"
@@ -35,7 +36,7 @@ func (r *roomMemberReadRepoImpl) DeleteRoomMember(ctx context.Context, roomID, a
 func (r *roomMemberReadRepoImpl) ListRoomMembers(ctx context.Context, roomID string) ([]*entity.RoomMemberEntity, error) {
 	var members []*models.RoomMemberReadModel
 	if err := r.db.WithContext(ctx).Where("room_id = ?", roomID).Order("created_at ASC").Find(&members).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return lo.Map(members, func(member *models.RoomMemberReadModel, _ int) *entity.RoomMemberEntity {
 		return r.toEntity(member)
@@ -45,7 +46,7 @@ func (r *roomMemberReadRepoImpl) ListRoomMembers(ctx context.Context, roomID str
 func (r *roomMemberReadRepoImpl) GetRoomMemberByAccount(ctx context.Context, roomID, accountID string) (*entity.RoomMemberEntity, error) {
 	var member models.RoomMemberReadModel
 	if err := r.db.WithContext(ctx).Where("room_id = ? AND account_id = ?", roomID, accountID).First(&member).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return r.toEntity(&member), nil
 }

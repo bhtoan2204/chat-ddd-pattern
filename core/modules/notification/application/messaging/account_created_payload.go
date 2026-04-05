@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"go-socket/core/modules/account/domain/aggregate"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"reflect"
 	"strings"
 
@@ -28,7 +28,7 @@ func decodeEventPayload(ctx context.Context, eventName string, raw []byte) (inte
 	payload := reflect.New(payloadType).Interface()
 	if err := unmarshalEventData(raw, payload); err != nil {
 		logger.Errorw("unmarshal event_data failed", zap.Error(err), zap.String("raw", string(raw)))
-		return nil, stackerr.Error(fmt.Errorf("unmarshal event_data failed: %w", err))
+		return nil, stackErr.Error(fmt.Errorf("unmarshal event_data failed: %w", err))
 	}
 
 	return payload, nil
@@ -36,7 +36,7 @@ func decodeEventPayload(ctx context.Context, eventName string, raw []byte) (inte
 
 func unmarshalEventData(raw []byte, target interface{}) error {
 	if len(raw) == 0 {
-		return stackerr.Error(fmt.Errorf("event_data is empty"))
+		return stackErr.Error(fmt.Errorf("event_data is empty"))
 	}
 
 	if err := json.Unmarshal(raw, target); err == nil {
@@ -45,16 +45,16 @@ func unmarshalEventData(raw []byte, target interface{}) error {
 
 	var encoded string
 	if err := json.Unmarshal(raw, &encoded); err != nil {
-		return stackerr.Error(fmt.Errorf("unmarshal event_data as string failed: %w", err))
+		return stackErr.Error(fmt.Errorf("unmarshal event_data as string failed: %w", err))
 	}
 
 	encoded = strings.TrimSpace(encoded)
 	if encoded == "" {
-		return stackerr.Error(fmt.Errorf("event_data is empty"))
+		return stackErr.Error(fmt.Errorf("event_data is empty"))
 	}
 
 	if err := json.Unmarshal([]byte(encoded), target); err != nil {
-		return stackerr.Error(fmt.Errorf("unmarshal encoded event_data failed: %w", err))
+		return stackErr.Error(fmt.Errorf("unmarshal encoded event_data failed: %w", err))
 	}
 
 	return nil

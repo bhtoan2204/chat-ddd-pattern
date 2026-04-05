@@ -8,6 +8,7 @@ import (
 	"go-socket/core/shared/infra/idempotency"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/server"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/transport/http/middleware"
 	"net/http"
 
@@ -118,13 +119,13 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 
 func (s *Server) Start(ctx context.Context, appCtx *appCtx.AppContext) error {
 	if err := s.buildModuleServers(ctx, appCtx); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	defer s.stopModuleServers(ctx)
 
 	srv, err := server.New(s.cfg.ServerConfig.Port)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	return srv.ServeHTTPHandler(ctx, s.Routes(ctx, appCtx))
@@ -138,7 +139,7 @@ func (s *Server) buildModuleServers(ctx context.Context, appContext *appCtx.AppC
 
 	servers, err := BuildModuleServers(ctx, appContext, s.moduleBuilders...)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	s.moduleServers = servers
 	return nil

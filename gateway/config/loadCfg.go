@@ -2,7 +2,7 @@ package config
 
 import (
 	"context"
-	stackerr "gateway/pkg/stackErr"
+	stackErr "gateway/pkg/stackErr"
 
 	"github.com/sethvargo/go-envconfig"
 )
@@ -13,7 +13,7 @@ func LoadConfig(ctx context.Context) (*Config, error) {
 		Target:   cfg,
 		Lookuper: envconfig.OsLookuper(),
 	}); err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	return cfg, nil
 }

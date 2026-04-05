@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go-socket/core/shared/pkg/event"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 var (
@@ -27,7 +27,7 @@ func NewPaymentBalanceAggregate(accountID string) (*PaymentBalanceAggregate, err
 	agg := &PaymentBalanceAggregate{}
 	agg.SetAggregateType(reflect.TypeOf(agg).Elem().Name())
 	if err := agg.SetID(accountID); err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return agg, nil

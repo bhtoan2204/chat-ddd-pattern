@@ -4,14 +4,15 @@ import (
 	"context"
 	"go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"time"
 
 	"go-socket/core/modules/payment/application/dto/in"
 	"go-socket/core/modules/payment/application/dto/out"
 
-	"github.com/google/uuid"
 	"go-socket/core/shared/pkg/cqrs"
+
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -31,7 +32,7 @@ func (h *withdrawalHandler) Handle(ctx context.Context, req *in.WithdrawalReques
 	accountID, err := accountIDFromContext(ctx)
 	if err != nil {
 		log.Errorw("Account not found")
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	now := time.Now().UTC()
@@ -44,15 +45,15 @@ func (h *withdrawalHandler) Handle(ctx context.Context, req *in.WithdrawalReques
 	if err := h.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		agg, err := txRepos.PaymentBalanceAggregateRepository().Load(ctx, accountID)
 		if err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		if err := agg.Withdraw(transactionID, req.Amount, now); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		if err := txRepos.PaymentBalanceAggregateRepository().Save(ctx, agg); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		balance = agg.Balance
@@ -60,7 +61,7 @@ func (h *withdrawalHandler) Handle(ctx context.Context, req *in.WithdrawalReques
 		return nil
 	}); err != nil {
 		log.Errorw("Failed to withdraw", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &out.WithdrawalResponse{

@@ -8,7 +8,7 @@ import (
 	notificationrepo "go-socket/core/modules/notification/infra/persistent/repository"
 	notificationserver "go-socket/core/modules/notification/transport/server"
 	"go-socket/core/shared/pkg/cqrs"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/transport/http"
 )
 
@@ -18,7 +18,7 @@ func BuildHTTPServer(_ context.Context, appCtx *appCtx.AppContext) (http.HTTPSer
 	listNotification := cqrs.NewDispatcher(notificationquery.NewListNotificationHandler(notificationRepos))
 	server, err := notificationserver.NewHTTPServer(savePushSubscription, listNotification)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return server, nil

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"gateway/config"
 	"gateway/infra/proxy"
-	stackerr "gateway/pkg/stackErr"
+	stackErr "gateway/pkg/stackErr"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -23,7 +23,7 @@ type HTTPTransport struct {
 func NewHTTPTransport(ctx context.Context, cfg *config.Config) (*HTTPTransport, error) {
 	consulClient, err := proxy.NewConsulClient(ctx, cfg)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &HTTPTransport{

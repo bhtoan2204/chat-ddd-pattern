@@ -9,7 +9,7 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )
@@ -29,7 +29,7 @@ func (h *listRoomHandler) Handle(ctx context.Context, req *in.ListRoomsRequest) 
 	rooms, err := h.roomQueryService.ListRooms(ctx, apptypes.ListRoomsQuery{Page: req.Page, Limit: req.Limit})
 	if err != nil {
 		log.Errorw("Failed to list rooms", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	return roomsupport.ToListRoomsResponse(rooms), nil
 }

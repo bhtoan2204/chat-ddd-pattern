@@ -8,6 +8,7 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 func buildRoomResult(room *entity.Room) *apptypes.RoomResult {
@@ -29,7 +30,7 @@ func buildRoomResult(room *entity.Room) *apptypes.RoomResult {
 func buildConversationResult(ctx context.Context, readRepos repos.QueryRepos, viewerID string, room *entity.Room, includeMembers bool) (*apptypes.ConversationResult, error) {
 	members, err := readRepos.RoomMemberReadRepository().ListRoomMembers(ctx, room.ID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	var viewerMember *entity.RoomMemberEntity
@@ -45,7 +46,7 @@ func buildConversationResult(ctx context.Context, readRepos repos.QueryRepos, vi
 
 	unreadCount, err := readRepos.MessageReadRepository().CountUnreadMessages(ctx, room.ID, viewerID, viewerMember.LastReadAt)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	name := room.Name
@@ -85,7 +86,7 @@ func buildConversationResult(ctx context.Context, readRepos repos.QueryRepos, vi
 	if err == nil && lastMessage != nil {
 		result.LastMessage, err = buildMessageResult(ctx, readRepos, viewerID, lastMessage)
 		if err != nil {
-			return nil, err
+			return nil, stackErr.Error(err)
 		}
 	}
 
@@ -97,14 +98,14 @@ func buildMessageResult(ctx context.Context, readRepos repos.QueryRepos, viewerI
 	if message.SenderID == viewerID {
 		seenCount, err := readRepos.MessageReadRepository().CountMessageReceiptsByStatus(ctx, message.ID, "seen")
 		if err != nil {
-			return nil, err
+			return nil, stackErr.Error(err)
 		}
 		if seenCount > 0 {
 			status = "seen"
 		} else {
 			deliveredCount, err := readRepos.MessageReadRepository().CountMessageReceiptsByStatus(ctx, message.ID, "delivered")
 			if err != nil {
-				return nil, err
+				return nil, stackErr.Error(err)
 			}
 			if deliveredCount > 0 {
 				status = "delivered"

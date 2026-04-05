@@ -10,7 +10,7 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )
@@ -28,7 +28,7 @@ func (h *createMessageHandler) Handle(ctx context.Context, req *in.CreateMessage
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
 		log.Errorw("Account not found", zap.Error(err))
-		return nil, stackerr.Error(errors.New("account not found"))
+		return nil, stackErr.Error(errors.New("account not found"))
 	}
 
 	res, err := h.messageService.CreateMessage(ctx, accountID, apptypes.SendMessageCommand{
@@ -37,7 +37,7 @@ func (h *createMessageHandler) Handle(ctx context.Context, req *in.CreateMessage
 	})
 	if err != nil {
 		log.Errorw("Failed to create message", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &out.CreateMessageResponse{

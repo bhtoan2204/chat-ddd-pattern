@@ -10,7 +10,7 @@ import (
 	roomserver "go-socket/core/modules/room/transport/server"
 	roomsocket "go-socket/core/modules/room/transport/websocket"
 	"go-socket/core/shared/pkg/cqrs"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/transport/http"
 )
 
@@ -66,7 +66,7 @@ func BuildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.H
 		roomHub,
 	)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return server, nil

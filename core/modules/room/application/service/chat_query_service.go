@@ -7,6 +7,7 @@ import (
 
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/domain/repos"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
 
 	"github.com/redis/go-redis/v9"
@@ -38,14 +39,14 @@ func (s *ChatQueryService) ListConversations(ctx context.Context, accountID stri
 		OrderDirection: "DESC",
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	out := make([]apptypes.ConversationResult, 0, len(rooms))
 	for _, room := range rooms {
 		item, err := buildConversationResult(ctx, s.repos, accountID, room, true)
 		if err != nil {
-			return nil, err
+			return nil, stackErr.Error(err)
 		}
 		out = append(out, *item)
 	}
@@ -55,7 +56,7 @@ func (s *ChatQueryService) ListConversations(ctx context.Context, accountID stri
 func (s *ChatQueryService) GetConversation(ctx context.Context, accountID string, query apptypes.GetConversationQuery) (*apptypes.ConversationResult, error) {
 	room, err := s.repos.RoomReadRepository().GetRoomByID(ctx, query.RoomID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return buildConversationResult(ctx, s.repos, accountID, room, true)
 }
@@ -80,14 +81,14 @@ func (s *ChatQueryService) ListMessages(ctx context.Context, accountID string, q
 		Ascending: query.Ascending,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	out := make([]apptypes.MessageResult, 0, len(messages))
 	for _, message := range messages {
 		item, err := buildMessageResult(ctx, s.repos, accountID, message)
 		if err != nil {
-			return nil, err
+			return nil, stackErr.Error(err)
 		}
 		out = append(out, *item)
 	}
@@ -101,7 +102,7 @@ func (s *ChatQueryService) GetPresence(ctx context.Context, query apptypes.GetPr
 	}
 	exists, err := s.redis.Exists(ctx, presenceKey(accountID)).Result()
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	status := "offline"
 	if exists > 0 {

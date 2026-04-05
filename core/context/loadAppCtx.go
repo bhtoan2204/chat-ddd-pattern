@@ -11,7 +11,7 @@ import (
 	"go-socket/core/shared/infra/smtp"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/hasher"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"time"
 )
 
@@ -21,13 +21,13 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 
 	db, err := dbinfra.NewConnection(ctx, cfg)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	opts = append(opts, WithDB(db))
 
 	redisClient, err := redis.NewStandaloneRedisClient(cfg)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	opts = append(opts, WithRedisClient(redisClient))
 
@@ -36,13 +36,13 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 
 	hasher, err := hasher.NewHasher()
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	opts = append(opts, WithHasher(hasher))
 
 	paseto, err := xpaseto.NewPaseto(cfg.AuthConfig.PasetoKey, cfg.AuthConfig.TokenIssuer, time.Duration(cfg.AuthConfig.AccessTokenTTLSeconds)*time.Second)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	opts = append(opts, WithPaseto(paseto))
 
@@ -51,7 +51,7 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 
 	consulClient, err := discovery.NewConsulClient(ctx, cfg)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	opts = append(opts, WithConsulClient(consulClient))
 

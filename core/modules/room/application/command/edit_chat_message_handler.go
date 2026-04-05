@@ -9,6 +9,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type editChatMessageHandler struct {
@@ -22,14 +23,14 @@ func NewEditChatMessageHandler(messageService *roomservice.MessageCommandService
 func (h *editChatMessageHandler) Handle(ctx context.Context, req *in.EditChatMessageRequest) (*out.ChatMessageResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	res, err := h.messageService.EditMessage(ctx, accountID, req.MessageID, apptypes.EditMessageCommand{
 		Message: req.Message,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return roomsupport.ToMessageResponse(res), nil

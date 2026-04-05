@@ -9,7 +9,7 @@ import (
 	"go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -31,7 +31,7 @@ func (h *depositHandler) Handle(ctx context.Context, req *in.DepositRequest) (*o
 	accountID, err := accountIDFromContext(ctx)
 	if err != nil {
 		log.Errorw("Account not found")
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	now := time.Now().UTC()
@@ -44,15 +44,15 @@ func (h *depositHandler) Handle(ctx context.Context, req *in.DepositRequest) (*o
 	if err := h.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		agg, err := txRepos.PaymentBalanceAggregateRepository().Load(ctx, accountID)
 		if err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		if err := agg.Deposit(transactionID, req.Amount, now); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		if err := txRepos.PaymentBalanceAggregateRepository().Save(ctx, agg); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		balance = agg.Balance
@@ -60,7 +60,7 @@ func (h *depositHandler) Handle(ctx context.Context, req *in.DepositRequest) (*o
 		return nil
 	}); err != nil {
 		log.Errorw("Failed to deposit", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &out.DepositResponse{

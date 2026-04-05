@@ -3,6 +3,7 @@ package valueobject
 import (
 	"encoding/json"
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -28,12 +29,12 @@ func (p Password) MarshalJSON() ([]byte, error) {
 func (p *Password) UnmarshalJSON(data []byte) error {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	password, err := NewPassword(value)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	*p = password

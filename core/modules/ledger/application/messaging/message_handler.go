@@ -14,7 +14,7 @@ import (
 	infraMessaging "go-socket/core/shared/infra/messaging"
 	"go-socket/core/shared/pkg/contxt"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )
@@ -50,7 +50,7 @@ func NewMessageHandler(cfg *config.Config, appCtx *appCtx.AppContext) (MessageHa
 		DLQ:          true,
 	})
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	consumer.SetHandler(func(ctx context.Context, value []byte) error {
 		return instance.handlePaymentOutboxEvent(ctx, value)
@@ -79,7 +79,7 @@ func (h *messageHandler) handlePaymentOutboxEvent(ctx context.Context, value []b
 
 	var event paymentOutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackerr.Error(fmt.Errorf("unmarshal payment outbox event failed: %w", err))
+		return stackErr.Error(fmt.Errorf("unmarshal payment outbox event failed: %w", err))
 	}
 
 	log.Infow("handle payment outbox event",
@@ -91,7 +91,7 @@ func (h *messageHandler) handlePaymentOutboxEvent(ctx context.Context, value []b
 	case sharedevents.EventPaymentSucceeded:
 		var payload sharedevents.PaymentSucceededEvent
 		if err := json.Unmarshal(event.EventData, &payload); err != nil {
-			return stackerr.Error(fmt.Errorf("unmarshal payment succeeded payload failed: %w", err))
+			return stackErr.Error(fmt.Errorf("unmarshal payment succeeded payload failed: %w", err))
 		}
 		if payload.PaymentID == "" {
 			payload.PaymentID = event.AggregateID
@@ -114,17 +114,17 @@ func (h *messageHandler) processMessage(consume infraMessaging.Consumer) infraMe
 
 		defer func() {
 			if r := recover(); r != nil {
-				err = stackerr.Error(fmt.Errorf("panic recovered: %v", r))
+				err = stackErr.Error(fmt.Errorf("panic recovered: %v", r))
 			}
 		}()
 
 		handler := consume.GetHandler()
 		if handler == nil {
-			return stackerr.Error(fmt.Errorf("consumer handler is nil"))
+			return stackErr.Error(fmt.Errorf("consumer handler is nil"))
 		}
 
 		if err = handler(ctx, vals); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		return nil

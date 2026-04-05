@@ -13,6 +13,7 @@ import (
 	"go-socket/core/modules/payment/domain/entity"
 	"go-socket/core/modules/payment/providers"
 	"go-socket/core/shared/config"
+	"go-socket/core/shared/pkg/stackErr"
 
 	stripe "github.com/stripe/stripe-go/v75"
 	stripeclient "github.com/stripe/stripe-go/v75/client"
@@ -134,7 +135,7 @@ func (p *Provider) CreatePayment(ctx context.Context, req providers.CreatePaymen
 
 	session, err := p.stripeClient().CheckoutSessions.New(params)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if session.ID == "" {
 		return nil, fmt.Errorf("stripe checkout session response missing id")
@@ -165,7 +166,7 @@ func (p *Provider) VerifyWebhook(_ context.Context, payload []byte, signature st
 			errors.Is(err, stripewebhook.ErrTooOld):
 			return nil, providers.ErrInvalidWebhookSignature
 		default:
-			return nil, err
+			return nil, stackErr.Error(err)
 		}
 	}
 

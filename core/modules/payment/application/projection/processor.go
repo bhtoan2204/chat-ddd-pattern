@@ -12,7 +12,7 @@ import (
 	infraMessaging "go-socket/core/shared/infra/messaging"
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type Processor interface {
@@ -31,7 +31,7 @@ func NewProcessor(cfg *config.Config, appCtx *appCtx.AppContext) (Processor, err
 	repos := repository.NewRepoImpl(appCtx)
 	eventSerializer, err := newProjectionSerializer()
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	instance := &processor{
@@ -64,7 +64,7 @@ func NewProcessor(cfg *config.Config, appCtx *appCtx.AppContext) (Processor, err
 			DLQ:          true,
 		})
 		if err != nil {
-			return nil, stackerr.Error(err)
+			return nil, stackErr.Error(err)
 		}
 		consumer.SetHandler(mapHandler[fmt.Sprintf("payment-%s-handler", strings.ToLower(topic))])
 		instance.consumer = append(instance.consumer, consumer)

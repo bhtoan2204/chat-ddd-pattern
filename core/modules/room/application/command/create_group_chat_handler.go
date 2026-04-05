@@ -8,6 +8,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type createGroupChatHandler struct {
@@ -21,7 +22,7 @@ func NewCreateGroupChatHandler(roomService *roomservice.RoomCommandService) cqrs
 func (h *createGroupChatHandler) Handle(ctx context.Context, req *in.CreateGroupChatRequest) (*out.ChatConversationResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	res, err := h.roomService.CreateGroup(ctx, accountID, apptypes.CreateGroupCommand{
 		Name:        req.Name,
@@ -29,7 +30,7 @@ func (h *createGroupChatHandler) Handle(ctx context.Context, req *in.CreateGroup
 		MemberIDs:   req.MemberIDs,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return roomsupport.ToConversationResponse(res), nil
 }

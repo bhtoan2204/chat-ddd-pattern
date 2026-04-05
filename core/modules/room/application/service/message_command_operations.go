@@ -9,7 +9,7 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 func (s *MessageCommandService) CreateMessage(ctx context.Context, accountID string, command apptypes.SendMessageCommand) (*apptypes.MessageResult, error) {
@@ -23,7 +23,7 @@ func (s *MessageCommandService) SendMessage(ctx context.Context, accountID strin
 	}
 
 	if _, room, err := requireRoomRole(ctx, s.repos.RoomRepository(), s.repos.RoomMemberRepository(), roomID, accountID); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	} else {
 		now := time.Now().UTC()
 		message, err := entity.NewMessage(newUUID(), roomID, accountID, entity.MessageParams{
@@ -37,36 +37,36 @@ func (s *MessageCommandService) SendMessage(ctx context.Context, accountID strin
 			ObjectKey:              command.ObjectKey,
 		}, now)
 		if err != nil {
-			return nil, err
+			return nil, stackErr.Error(err)
 		}
 
 		if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 			if err := txRepos.MessageRepository().CreateMessage(ctx, message); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			if err := txRepos.MessageReadRepository().UpsertMessage(ctx, message); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 
 			members, err := txRepos.RoomMemberReadRepository().ListRoomMembers(ctx, roomID)
 			if err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			for _, member := range members {
 				if member.AccountID == accountID {
 					continue
 				}
 				if err := txRepos.MessageReadRepository().UpsertMessageReceipt(ctx, message.ID, member.AccountID, "sent", nil, nil, now, now); err != nil {
-					return stackerr.Error(err)
+					return stackErr.Error(err)
 				}
 			}
 
 			room.Touch(now)
 			if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			if err := txRepos.RoomReadRepository().UpdateRoomStats(ctx, roomID, len(members), message, now); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 
 			payload, _ := currentAccountPayload(ctx)
@@ -78,7 +78,7 @@ func (s *MessageCommandService) SendMessage(ctx context.Context, accountID strin
 			}
 			return s.aggregateService.PublishMessageCreated(ctx, txRepos.RoomOutboxEventsRepository(), roomID, message.ID, accountID, senderName, senderEmail, message.Message, message.CreatedAt)
 		}); err != nil {
-			return nil, err
+			return nil, stackErr.Error(err)
 		}
 
 		return buildMessageResult(ctx, s.repos, accountID, message)
@@ -88,10 +88,10 @@ func (s *MessageCommandService) SendMessage(ctx context.Context, accountID strin
 func (s *MessageCommandService) EditMessage(ctx context.Context, accountID, messageID string, command apptypes.EditMessageCommand) (*apptypes.MessageResult, error) {
 	message, err := s.repos.MessageRepository().GetMessageByID(ctx, messageID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if err := message.Edit(accountID, command.Message, time.Now().UTC()); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.MessageRepository().UpdateMessage(ctx, message); err != nil {
@@ -99,7 +99,7 @@ func (s *MessageCommandService) EditMessage(ctx context.Context, accountID, mess
 		}
 		return txRepos.MessageReadRepository().UpsertMessage(ctx, message)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildMessageResult(ctx, s.repos, accountID, message)
@@ -108,7 +108,7 @@ func (s *MessageCommandService) EditMessage(ctx context.Context, accountID, mess
 func (s *MessageCommandService) DeleteMessage(ctx context.Context, accountID, messageID string, command apptypes.DeleteMessageCommand) error {
 	message, err := s.repos.MessageRepository().GetMessageByID(ctx, messageID)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	scope := strings.ToLower(strings.TrimSpace(command.Scope))
@@ -124,7 +124,7 @@ func (s *MessageCommandService) DeleteMessage(ctx context.Context, accountID, me
 		}
 		return s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 			if err := txRepos.MessageRepository().UpdateMessage(ctx, message); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			return txRepos.MessageReadRepository().UpsertMessage(ctx, message)
 		})
@@ -138,7 +138,7 @@ func (s *MessageCommandService) DeleteMessage(ctx context.Context, accountID, me
 func (s *MessageCommandService) ForwardMessage(ctx context.Context, accountID, messageID string, command apptypes.ForwardMessageCommand) (*apptypes.MessageResult, error) {
 	message, err := s.repos.MessageRepository().GetMessageByID(ctx, messageID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return s.SendMessage(ctx, accountID, apptypes.SendMessageCommand{
@@ -156,7 +156,7 @@ func (s *MessageCommandService) ForwardMessage(ctx context.Context, accountID, m
 func (s *MessageCommandService) MarkMessageStatus(ctx context.Context, accountID, messageID string, command apptypes.MarkMessageStatusCommand) error {
 	message, err := s.repos.MessageRepository().GetMessageByID(ctx, messageID)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	if !message.CanBeMarkedBy(accountID) {
 		return nil
@@ -164,7 +164,7 @@ func (s *MessageCommandService) MarkMessageStatus(ctx context.Context, accountID
 
 	status, err := entity.NormalizeReceiptStatus(command.Status)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	now := time.Now().UTC()

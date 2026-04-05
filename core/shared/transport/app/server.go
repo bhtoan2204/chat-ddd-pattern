@@ -9,6 +9,7 @@ import (
 	paymentassembly "go-socket/core/modules/payment/assembly"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/logging"
+	"go-socket/core/shared/pkg/stackErr"
 	httptransport "go-socket/core/shared/transport/http"
 )
 
@@ -57,11 +58,11 @@ func NewServer(cfg *config.Config, opts ...Option) Server {
 
 func (s *appServer) Start(ctx context.Context, appContext *appCtx.AppContext) error {
 	if err := s.buildModuleServers(appContext); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	if err := s.startModuleServers(ctx); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	defer s.stopModuleServers(ctx)
 

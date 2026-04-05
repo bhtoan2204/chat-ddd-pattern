@@ -5,6 +5,7 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/modules/room/infra/persistent/models"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )
@@ -20,7 +21,7 @@ func NewRoomMemberImpl(db *gorm.DB) repos.RoomMemberRepository {
 func (r *roomMemberImpl) CreateRoomMember(ctx context.Context, roomMember *entity.RoomMemberEntity) error {
 	m := r.toModel(roomMember)
 	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	return nil
 }
@@ -32,7 +33,7 @@ func (r *roomMemberImpl) DeleteRoomMember(ctx context.Context, roomID, accountID
 func (r *roomMemberImpl) GetRoomMemberByAccount(ctx context.Context, roomID, accountID string) (*entity.RoomMemberEntity, error) {
 	var m models.RoomMemberModel
 	if err := r.db.WithContext(ctx).Where("room_id = ? AND account_id = ?", roomID, accountID).First(&m).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return r.toEntity(&m), nil
 }

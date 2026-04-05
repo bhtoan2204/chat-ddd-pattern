@@ -6,7 +6,7 @@ import (
 	"go-socket/core/modules/payment/domain/entity"
 	paymentrepos "go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/modules/payment/infra/persistent/model"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -23,7 +23,7 @@ func NewPaymentAccountProjectionRepoImpl(db *gorm.DB) paymentrepos.PaymentAccoun
 func (p *paymentAccountProjectionRepoImpl) GetAccountProjectionByAccountID(ctx context.Context, accountID string) (*entity.PaymentAccount, error) {
 	var accountProjection model.PaymentAccountProjectionModel
 	if err := p.db.WithContext(ctx).Where("account_id = ?", accountID).First(&accountProjection).Error; err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	return &entity.PaymentAccount{
 		ID:        accountProjection.ID,
@@ -39,7 +39,7 @@ func (p *paymentAccountProjectionRepoImpl) CreateAccountProjection(ctx context.C
 	}
 	modelProjection, err := toProjectionModel(accountProjection)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	return p.db.WithContext(ctx).Create(&modelProjection).Error
 }
@@ -95,7 +95,7 @@ func (p *paymentAccountProjectionRepoImpl) UpsertAccountProjection(ctx context.C
 
 	modelProjection, err := toProjectionModel(accountProjection)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	return p.db.WithContext(ctx).Clauses(clause.OnConflict{

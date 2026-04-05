@@ -12,7 +12,7 @@ import (
 	"{{.ResponseDtoImport}}"
 	"{{.DispatcherImport}}"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -59,7 +59,7 @@ func (h *{{.StructName}}) Handle(c *gin.Context) (interface{}, error) {
 	result, err := h.{{.DispatcherField}}.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("{{.ActionName}} failed", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 {{- if gt .SuccessStatus 0}}

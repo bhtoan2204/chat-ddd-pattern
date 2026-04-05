@@ -1,4 +1,6 @@
 run:
+	@echo "Formatting code..."
+	@goimports -w .
 	@script/bin.sh run
 .PHONY: run
 

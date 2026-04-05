@@ -7,7 +7,7 @@ import (
 	"go-socket/core/modules/notification/domain/entity"
 	notificationrepos "go-socket/core/modules/notification/domain/repos"
 	"go-socket/core/modules/notification/infra/persistent/models"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )
@@ -30,17 +30,17 @@ func (r *pushSubscriptionRepoImpl) UpsertPushSubscription(ctx context.Context, s
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			if createErr := r.db.WithContext(ctx).Create(m).Error; createErr != nil {
-				return stackerr.Error(createErr)
+				return stackErr.Error(createErr)
 			}
 			return nil
 		}
-		return stackerr.Error(err)
+		return stackErr.Error(err)
 	}
 
 	if updateErr := r.db.WithContext(ctx).
 		Model(&existing).
 		Updates(map[string]interface{}{"keys": subscription.Keys}).Error; updateErr != nil {
-		return stackerr.Error(updateErr)
+		return stackErr.Error(updateErr)
 	}
 
 	return nil
@@ -52,7 +52,7 @@ func (r *pushSubscriptionRepoImpl) ListPushSubscriptionsByAccountID(ctx context.
 		Where("account_id = ?", accountID).
 		Order("created_at DESC").
 		Find(&subscriptions).Error; err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	result := make([]*entity.PushSubscription, 0, len(subscriptions))

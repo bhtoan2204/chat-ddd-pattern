@@ -9,6 +9,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type forwardChatMessageHandler struct {
@@ -22,14 +23,14 @@ func NewForwardChatMessageHandler(messageService *roomservice.MessageCommandServ
 func (h *forwardChatMessageHandler) Handle(ctx context.Context, req *in.ForwardChatMessageRequest) (*out.ChatMessageResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	res, err := h.messageService.ForwardMessage(ctx, accountID, req.MessageID, apptypes.ForwardMessageCommand{
 		TargetRoomID: req.TargetRoomID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return roomsupport.ToMessageResponse(res), nil

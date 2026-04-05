@@ -11,7 +11,7 @@ import (
 	paymentrepos "go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -55,7 +55,7 @@ func (h *depositHandler) Handle(c *gin.Context) (interface{}, error) {
 			c.AbortWithStatusJSON(http.StatusConflict, gin.H{"error": err.Error()})
 			return nil, nil
 		default:
-			return nil, stackerr.Error(err)
+			return nil, stackErr.Error(err)
 		}
 	}
 

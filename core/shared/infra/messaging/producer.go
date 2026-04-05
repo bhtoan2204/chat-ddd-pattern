@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"sync"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
@@ -27,7 +27,7 @@ func NewProducer(cfg *Config) (Producer, error) {
 		"bootstrap.servers": cfg.Servers,
 	})
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	producer := &producer{
@@ -43,7 +43,7 @@ func NewProducer(cfg *Config) (Producer, error) {
 func (p *producer) Produce(ctx context.Context, topic string, key string, v interface{}) error {
 	data, err := json.Marshal(v)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	return p.instance.Produce(&kafka.Message{

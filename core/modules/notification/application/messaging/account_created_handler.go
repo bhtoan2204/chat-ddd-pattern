@@ -8,7 +8,7 @@ import (
 	"go-socket/core/modules/notification/domain/entity"
 	"go-socket/core/modules/notification/types"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -18,12 +18,12 @@ func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json
 	log := logging.FromContext(ctx).Named("handleAccountCreatedEvent")
 	payloadAny, err := decodeEventPayload(ctx, "EventAccountCreated", raw)
 	if err != nil {
-		return stackerr.Error(fmt.Errorf("decode event payload failed: %w", err))
+		return stackErr.Error(fmt.Errorf("decode event payload failed: %w", err))
 	}
 
 	payload, ok := payloadAny.(*aggregate.EventAccountCreated)
 	if !ok {
-		return stackerr.Error(fmt.Errorf("invalid payload type for event %s", "EventAccountCreated"))
+		return stackErr.Error(fmt.Errorf("invalid payload type for event %s", "EventAccountCreated"))
 	}
 
 	subject := "Welcome to Go Socket"
@@ -39,7 +39,7 @@ func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json
 	}
 	if err := h.notificationRepo.CreateNotification(ctx, notification); err != nil {
 		log.Errorw("create notification failed", zap.Error(err))
-		return stackerr.Error(fmt.Errorf("create notification failed: %w", err))
+		return stackErr.Error(fmt.Errorf("create notification failed: %w", err))
 	}
 
 	return h.emailSender.Send(ctx, payload.Email, subject, body)

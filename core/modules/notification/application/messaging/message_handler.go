@@ -11,7 +11,7 @@ import (
 	"go-socket/core/shared/config"
 	infraMessaging "go-socket/core/shared/infra/messaging"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 
 	"go.uber.org/zap"
@@ -42,7 +42,7 @@ type accountOutboxMessage struct {
 func (m *accountOutboxMessage) UnmarshalJSON(data []byte) error {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	normalized := make(map[string]json.RawMessage, len(raw))
@@ -67,10 +67,10 @@ func (m *accountOutboxMessage) UnmarshalJSON(data []byte) error {
 	var aux alias
 	normalizedData, err := json.Marshal(normalized)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	if err := json.Unmarshal(normalizedData, &aux); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	*m = accountOutboxMessage(aux)
@@ -103,7 +103,7 @@ func NewMessageHandler(cfg *config.Config, appCtx *appCtx.AppContext) (MessageHa
 			DLQ:          true,
 		})
 		if err != nil {
-			return nil, stackerr.Error(err)
+			return nil, stackErr.Error(err)
 		}
 		consumer.SetHandler(mapHandler[fmt.Sprintf("notification-%s-handler", strings.ToLower(topic))])
 		instance.consumer = append(instance.consumer, consumer)
@@ -130,7 +130,7 @@ func (h *messageHandler) handleAccountEvent(ctx context.Context, value []byte) e
 	log := logging.FromContext(ctx).Named("handleAccountEvent")
 	var event accountOutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackerr.Error(fmt.Errorf("unmarshal account outbox event failed: %w", err))
+		return stackErr.Error(fmt.Errorf("unmarshal account outbox event failed: %w", err))
 	}
 	log.Infow("handle account event", zap.String("event_name", event.EventName))
 	switch event.EventName {

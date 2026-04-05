@@ -12,7 +12,7 @@ import (
 	stripeprovider "go-socket/core/modules/payment/providers/stripe"
 	paymentserver "go-socket/core/modules/payment/transport/server"
 	"go-socket/core/shared/pkg/cqrs"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/transport/http"
 )
 
@@ -44,7 +44,7 @@ func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 		listTransaction,
 	)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return server, nil

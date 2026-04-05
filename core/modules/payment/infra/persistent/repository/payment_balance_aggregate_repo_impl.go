@@ -11,7 +11,7 @@ import (
 	"go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/modules/payment/infra/persistent/model"
 	eventpkg "go-socket/core/shared/pkg/event"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -38,7 +38,7 @@ func (p *paymentBalanceAggregateRepoImpl) Load(ctx context.Context, accountID st
 
 	agg, err := aggregate.NewPaymentBalanceAggregate(accountID)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	var aggregateModel model.PaymentAggregateModel
@@ -49,12 +49,12 @@ func (p *paymentBalanceAggregateRepoImpl) Load(ctx context.Context, accountID st
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return agg, nil
 		}
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	snapshotVersion, err := p.loadSnapshot(ctx, agg)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	var eventModels []model.PaymentEventModel
@@ -66,7 +66,7 @@ func (p *paymentBalanceAggregateRepoImpl) Load(ctx context.Context, accountID st
 	if err := query.
 		Order("version ASC").
 		Find(&eventModels).Error; err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	if len(eventModels) == 0 {
@@ -83,13 +83,13 @@ func (p *paymentBalanceAggregateRepoImpl) Load(ctx context.Context, accountID st
 	for _, eventModel := range eventModels {
 		domainEvent, err := p.toDomainEvent(eventModel)
 		if err != nil {
-			return nil, stackerr.Error(err)
+			return nil, stackErr.Error(err)
 		}
 		events = append(events, domainEvent)
 	}
 
 	if err := agg.LoadFromHistory(agg, events); err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	if agg.Root().Version() != aggregateModel.Version {
 		return nil, fmt.Errorf("payment aggregate version mismatch: aggregate=%d events=%d", aggregateModel.Version, agg.Root().Version())
@@ -109,23 +109,23 @@ func (p *paymentBalanceAggregateRepoImpl) Save(ctx context.Context, agg *aggrega
 	}
 
 	if err := p.persistAggregateVersion(ctx, agg); err != nil {
-		return stackerr.Error(err)
+		return stackErr.Error(err)
 	}
 
 	for _, evt := range events {
 		eventModel, err := p.buildEventModel(evt)
 		if err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		if err := p.db.WithContext(ctx).Create(&eventModel).Error; err != nil {
-			return stackerr.Error(fmt.Errorf("create payment event failed: %w", err))
+			return stackErr.Error(fmt.Errorf("create payment event failed: %w", err))
 		}
 	}
 
 	if shouldCreatePaymentSnapshot(agg.Root().BaseVersion(), agg.Root().Version()) {
 		if err := p.createSnapshot(ctx, agg); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 	}
 
@@ -146,7 +146,7 @@ func (p *paymentBalanceAggregateRepoImpl) persistAggregateVersion(ctx context.Co
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}).Error; err != nil {
-			return stackerr.Error(fmt.Errorf("create payment aggregate failed: %w", err))
+			return stackErr.Error(fmt.Errorf("create payment aggregate failed: %w", err))
 		}
 		return nil
 	}
@@ -159,10 +159,10 @@ func (p *paymentBalanceAggregateRepoImpl) persistAggregateVersion(ctx context.Co
 			"updated_at": now,
 		})
 	if result.Error != nil {
-		return stackerr.Error(fmt.Errorf("update payment aggregate version failed: %w", result.Error))
+		return stackErr.Error(fmt.Errorf("update payment aggregate version failed: %w", result.Error))
 	}
 	if result.RowsAffected == 0 {
-		return stackerr.Error(repos.ErrPaymentVersionConflict)
+		return stackErr.Error(repos.ErrPaymentVersionConflict)
 	}
 
 	return nil

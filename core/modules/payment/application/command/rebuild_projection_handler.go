@@ -8,7 +8,7 @@ import (
 	paymentrepos "go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )
@@ -37,7 +37,7 @@ func (h *rebuildProjectionHandler) Handle(ctx context.Context, req *in.RebuildPr
 		return nil
 	}); err != nil {
 		log.Errorw("failed to rebuild payment projection", zap.Error(err), zap.String("mode", req.Mode), zap.String("account_id", req.AccountID))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	response := &out.RebuildProjectionResponse{

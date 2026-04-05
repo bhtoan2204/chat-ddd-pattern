@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/scaffold/models"
 )
 
@@ -45,7 +46,7 @@ func groupEndpointsByModule(endpoints []models.Endpoint) ([]moduleEndpoints, err
 	for _, ep := range endpoints {
 		module, err := moduleForUsecase(ep.Usecase.Name)
 		if err != nil {
-			return nil, err
+			return nil, stackErr.Error(err)
 		}
 
 		idx, ok := indexByRoot[module.FsRoot]

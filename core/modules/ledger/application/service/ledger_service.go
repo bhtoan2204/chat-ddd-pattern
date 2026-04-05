@@ -14,7 +14,7 @@ import (
 	ledgerrepo "go-socket/core/modules/ledger/infra/persistent/repository"
 	sharedevents "go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )
@@ -29,16 +29,16 @@ func NewLedgerService(baseRepo ledgerrepos.Repos) *LedgerService {
 
 func (s *LedgerService) CreateTransaction(ctx context.Context, req *ledgerin.CreateTransactionRequest) (*ledgerout.TransactionResponse, error) {
 	if err := wrapValidation(req.Validate()); err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	var transaction *entity.LedgerTransaction
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
 		var err error
 		transaction, err = s.createTransaction(ctx, txRepos.LedgerRepository(), req.TransactionID, toLedgerEntryInputs(req.Entries))
-		return err
+		return stackErr.Error(err)
 	}); err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return toTransactionResponse(transaction), nil
@@ -52,7 +52,7 @@ func (s *LedgerService) GetAccountBalance(ctx context.Context, accountID string)
 
 	balance, err := s.baseRepo.LedgerRepository().GetBalance(ctx, accountID)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &ledgerout.AccountBalanceResponse{
@@ -72,7 +72,7 @@ func (s *LedgerService) GetTransaction(ctx context.Context, transactionID string
 		return nil, fmt.Errorf("%v: %s", ErrTransactionNotFound, transactionID)
 	}
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return toTransactionResponse(transaction), nil
@@ -82,13 +82,13 @@ func (s *LedgerService) RecordPaymentSucceeded(ctx context.Context, evt *sharede
 	log := logging.FromContext(ctx).Named("RecordPaymentSucceeded")
 	booking, err := entity.NewPaymentSucceededBooking(evt)
 	if err != nil {
-		return stackerr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
+		return stackErr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 	}
 
 	return s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
 		processed, err := txRepos.PaymentRepository().IsProcessed(ctx, "payment-service", booking.IdempotencyKey)
 		if err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 		if processed {
 			return nil
@@ -99,19 +99,19 @@ func (s *LedgerService) RecordPaymentSucceeded(ctx context.Context, evt *sharede
 			if errors.Is(err, ErrDuplicateTransaction) {
 				alreadyBooked = true
 			} else {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 		}
 
 		processedEvent, err := booking.ProcessedEvent("payment-service", time.Now().UTC())
 		if err != nil {
-			return stackerr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
+			return stackErr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 		}
 		if err := txRepos.PaymentRepository().MarkProcessed(ctx, processedEvent); err != nil {
 			if errors.Is(err, ledgerrepo.ErrDuplicate) {
 				return nil
 			}
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 		log.Infow("payment booked into ledger",
 			zap.String("payment_id", booking.PaymentID),
@@ -127,18 +127,18 @@ func (s *LedgerService) createTransaction(ctx context.Context, repo ledgerrepos.
 	log := logging.FromContext(ctx).Named("createTransaction")
 	transaction, err := entity.NewLedgerTransaction(transactionID, entries, time.Now().UTC())
 	if err != nil {
-		return nil, stackerr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
+		return nil, stackErr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 	}
 
 	if err := repo.CreateTransaction(ctx, transaction); err != nil {
 		if errors.Is(err, ledgerrepo.ErrDuplicate) {
 			return nil, fmt.Errorf("%v: %s", ErrDuplicateTransaction, transaction.TransactionID)
 		}
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	if err := repo.InsertEntries(ctx, transaction.Entries); err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	transaction, err = repo.GetTransaction(ctx, transaction.TransactionID)
@@ -146,7 +146,7 @@ func (s *LedgerService) createTransaction(ctx context.Context, repo ledgerrepos.
 		return nil, fmt.Errorf("%v: %s", ErrTransactionNotFound, transactionID)
 	}
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	log.Infow("ledger transaction created",

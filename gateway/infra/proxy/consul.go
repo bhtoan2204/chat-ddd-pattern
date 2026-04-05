@@ -5,7 +5,7 @@ import (
 	"crypto/tls"
 	"gateway/config"
 	"gateway/pkg/logging"
-	stackerr "gateway/pkg/stackErr"
+	stackErr "gateway/pkg/stackErr"
 	"net/http"
 	"os"
 
@@ -31,7 +31,7 @@ func NewConsulClient(ctx context.Context, cfg *config.Config) (*api.Client, erro
 	consulClient, err := api.NewClient(consulConfig)
 	if err != nil {
 		logging.FromContext(ctx).Error("Failed to connect to Consul:", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	return consulClient, nil
 }

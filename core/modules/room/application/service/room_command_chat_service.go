@@ -11,7 +11,7 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	roomtypes "go-socket/core/modules/room/types"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 func (s *RoomCommandService) CreateDirectConversation(ctx context.Context, accountID string, command apptypes.CreateDirectConversationCommand) (*apptypes.ConversationResult, error) {
@@ -19,18 +19,18 @@ func (s *RoomCommandService) CreateDirectConversation(ctx context.Context, accou
 	now := time.Now().UTC()
 	room, err := entity.NewDirectConversationRoom(newUUID(), accountID, peerID, now)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if existing, err := s.repos.RoomRepository().GetRoomByDirectKey(ctx, room.DirectKey); err == nil && existing != nil {
 		return buildConversationResult(ctx, s.repos, accountID, existing, true)
 	}
 	ownerMember, err := entity.NewRoomMember(newUUID(), room.ID, accountID, roomtypes.RoomRoleOwner, now)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	peerMember, err := entity.NewRoomMember(newUUID(), room.ID, peerID, roomtypes.RoomRoleMember, now)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	members := []*entity.RoomMemberEntity{ownerMember, peerMember}
 
@@ -43,13 +43,13 @@ func (s *RoomCommandService) CreateDirectConversation(ctx context.Context, accou
 		}
 		for _, member := range members {
 			if err := txRepos.RoomMemberRepository().CreateRoomMember(ctx, member); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			if err := txRepos.RoomMemberReadRepository().UpsertRoomMember(ctx, member); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			if err := s.aggregateService.PublishMemberAdded(ctx, txRepos.RoomOutboxEventsRepository(), room.ID, member.AccountID, member.Role, member.CreatedAt); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 		}
 		if err := s.aggregateService.PublishRoomCreated(ctx, txRepos.RoomOutboxEventsRepository(), room.ID, room.RoomType, len(members)); err != nil {
@@ -61,7 +61,7 @@ func (s *RoomCommandService) CreateDirectConversation(ctx context.Context, accou
 		}
 		return txRepos.RoomReadRepository().UpdateRoomStats(ctx, room.ID, len(members), message, now)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildConversationResult(ctx, s.repos, accountID, room, true)
@@ -71,11 +71,11 @@ func (s *RoomCommandService) CreateGroup(ctx context.Context, accountID string, 
 	now := time.Now().UTC()
 	room, err := entity.NewRoom(newUUID(), command.Name, command.Description, accountID, roomtypes.RoomTypeGroup, "", now)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	memberSet, err := entity.BuildGroupMemberRoles(accountID, command.MemberIDs)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
@@ -90,16 +90,16 @@ func (s *RoomCommandService) CreateGroup(ctx context.Context, accountID string, 
 		for memberID, role := range memberSet {
 			member, err := entity.NewRoomMember(newUUID(), room.ID, memberID, role, now)
 			if err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			if err := txRepos.RoomMemberRepository().CreateRoomMember(ctx, member); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			if err := txRepos.RoomMemberReadRepository().UpsertRoomMember(ctx, member); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			if err := s.aggregateService.PublishMemberAdded(ctx, txRepos.RoomOutboxEventsRepository(), room.ID, member.AccountID, member.Role, member.CreatedAt); err != nil {
-				return stackerr.Error(err)
+				return stackErr.Error(err)
 			}
 			memberCount++
 		}
@@ -113,7 +113,7 @@ func (s *RoomCommandService) CreateGroup(ctx context.Context, accountID string, 
 		}
 		return txRepos.RoomReadRepository().UpdateRoomStats(ctx, room.ID, memberCount, message, now)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildConversationResult(ctx, s.repos, accountID, room, true)
@@ -122,15 +122,15 @@ func (s *RoomCommandService) CreateGroup(ctx context.Context, accountID string, 
 func (s *RoomCommandService) UpdateGroup(ctx context.Context, accountID, roomID string, command apptypes.UpdateGroupCommand) (*apptypes.ConversationResult, error) {
 	member, room, err := requireRoomRole(ctx, s.repos.RoomRepository(), s.repos.RoomMemberRepository(), roomID, accountID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if err := member.CanManageGroup(room); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	updated, err := room.UpdateDetails(command.Name, command.Description, "", time.Now().UTC())
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if !updated {
 		return buildConversationResult(ctx, s.repos, accountID, room, true)
@@ -156,7 +156,7 @@ func (s *RoomCommandService) UpdateGroup(ctx context.Context, accountID, roomID 
 		}
 		return txRepos.RoomReadRepository().UpdateRoomStats(ctx, room.ID, len(members), message, now)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildConversationResult(ctx, s.repos, accountID, room, true)
@@ -165,10 +165,10 @@ func (s *RoomCommandService) UpdateGroup(ctx context.Context, accountID, roomID 
 func (s *RoomCommandService) AddMember(ctx context.Context, actorID, roomID string, command apptypes.AddMemberCommand) (*apptypes.ConversationResult, error) {
 	member, room, err := requireRoomRole(ctx, s.repos.RoomRepository(), s.repos.RoomMemberRepository(), roomID, actorID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if err := member.CanManageGroup(room); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	accountID := strings.TrimSpace(command.AccountID)
@@ -183,7 +183,7 @@ func (s *RoomCommandService) AddMember(ctx context.Context, actorID, roomID stri
 	now := time.Now().UTC()
 	newMember, err := entity.NewRoomMember(newUUID(), roomID, accountID, command.Role, now)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.RoomMemberRepository().CreateRoomMember(ctx, newMember); err != nil {
@@ -214,7 +214,7 @@ func (s *RoomCommandService) AddMember(ctx context.Context, actorID, roomID stri
 		}
 		return txRepos.RoomReadRepository().UpdateRoomStats(ctx, roomID, len(members), message, now)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildConversationResult(ctx, s.repos, actorID, room, true)
@@ -223,17 +223,17 @@ func (s *RoomCommandService) AddMember(ctx context.Context, actorID, roomID stri
 func (s *RoomCommandService) RemoveMember(ctx context.Context, actorID, roomID string, command apptypes.RemoveMemberCommand) (*apptypes.ConversationResult, error) {
 	member, room, err := requireRoomRole(ctx, s.repos.RoomRepository(), s.repos.RoomMemberRepository(), roomID, actorID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	accountID := strings.TrimSpace(command.AccountID)
 	if err := member.CanRemoveFrom(room, accountID); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	removedMember, err := s.repos.RoomMemberRepository().GetRoomMemberByAccount(ctx, roomID, accountID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	now := time.Now().UTC()
@@ -266,7 +266,7 @@ func (s *RoomCommandService) RemoveMember(ctx context.Context, actorID, roomID s
 		}
 		return txRepos.RoomReadRepository().UpdateRoomStats(ctx, roomID, len(members), message, now)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildConversationResult(ctx, s.repos, actorID, room, true)
@@ -275,15 +275,15 @@ func (s *RoomCommandService) RemoveMember(ctx context.Context, actorID, roomID s
 func (s *RoomCommandService) PinMessage(ctx context.Context, actorID, roomID string, command apptypes.PinMessageCommand) (*apptypes.ConversationResult, error) {
 	member, room, err := requireRoomRole(ctx, s.repos.RoomRepository(), s.repos.RoomMemberRepository(), roomID, actorID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if err := member.CanManageGroup(room); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	now := time.Now().UTC()
 	if err := room.PinMessage(command.MessageID, now); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
@@ -303,7 +303,7 @@ func (s *RoomCommandService) PinMessage(ctx context.Context, actorID, roomID str
 		}
 		return txRepos.RoomReadRepository().UpdateRoomStats(ctx, roomID, len(members), message, now)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildConversationResult(ctx, s.repos, actorID, room, true)

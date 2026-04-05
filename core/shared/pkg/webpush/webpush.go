@@ -3,6 +3,7 @@ package webpush
 import (
 	"context"
 	"go-socket/core/shared/config"
+	"go-socket/core/shared/pkg/stackErr"
 	"net/http"
 
 	lib "github.com/SherClockHolmes/webpush-go"
@@ -46,7 +47,7 @@ func (s *webPushService) Send(
 		TTL:             s.ttl,
 	})
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	if resp != nil && resp.Body != nil {

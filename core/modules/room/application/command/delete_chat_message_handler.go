@@ -9,6 +9,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type deleteChatMessageHandler struct {
@@ -22,13 +23,13 @@ func NewDeleteChatMessageHandler(messageService *roomservice.MessageCommandServi
 func (h *deleteChatMessageHandler) Handle(ctx context.Context, req *in.DeleteChatMessageRequest) (*out.DeleteChatMessageResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	if err := h.messageService.DeleteMessage(ctx, accountID, req.MessageID, apptypes.DeleteMessageCommand{
 		Scope: req.Scope,
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return &out.DeleteChatMessageResponse{OK: true}, nil

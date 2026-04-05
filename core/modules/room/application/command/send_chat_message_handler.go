@@ -9,6 +9,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type sendChatMessageHandler struct {
@@ -22,7 +23,7 @@ func NewSendChatMessageHandler(messageService *roomservice.MessageCommandService
 func (h *sendChatMessageHandler) Handle(ctx context.Context, req *in.SendChatMessageRequest) (*out.ChatMessageResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	res, err := h.messageService.SendMessage(ctx, accountID, apptypes.SendMessageCommand{
@@ -37,7 +38,7 @@ func (h *sendChatMessageHandler) Handle(ctx context.Context, req *in.SendChatMes
 		ObjectKey:              req.ObjectKey,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return roomsupport.ToMessageResponse(res), nil

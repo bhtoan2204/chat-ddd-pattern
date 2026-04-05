@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"os"
 	"path/filepath"
 	"sort"
@@ -40,7 +40,7 @@ func (mgt *migrateTool) Migrate(source, connStr string) error {
 
 	path, err := normalizeFileSource(source)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	db, err := sql.Open("oracle", connStr)
@@ -50,17 +50,17 @@ func (mgt *migrateTool) Migrate(source, connStr string) error {
 	defer db.Close()
 
 	if err := ensureSchemaMigrations(db); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	applied, err := getAppliedVersions(db)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	files, err := listMigrationFiles(path)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	for _, file := range files {
@@ -98,7 +98,7 @@ func normalizeFileSource(source string) (string, error) {
 func listMigrationFiles(dir string) ([]migrationFile, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, stackerr.Error(fmt.Errorf("read migration dir failed: %w", err))
+		return nil, stackErr.Error(fmt.Errorf("read migration dir failed: %w", err))
 	}
 	var files []migrationFile
 	for _, entry := range entries {
@@ -111,7 +111,7 @@ func listMigrationFiles(dir string) ([]migrationFile, error) {
 		}
 		version, err := parseVersion(name)
 		if err != nil {
-			return nil, stackerr.Error(fmt.Errorf("parse version failed: %w", err))
+			return nil, stackErr.Error(fmt.Errorf("parse version failed: %w", err))
 		}
 		files = append(files, migrationFile{
 			Path:    filepath.Join(dir, name),
@@ -151,14 +151,14 @@ CREATE TABLE schema_migrations (
 func getAppliedVersions(db *sql.DB) (map[int]bool, error) {
 	rows, err := db.Query("SELECT version FROM schema_migrations")
 	if err != nil {
-		return nil, stackerr.Error(fmt.Errorf("read schema_migrations failed: %w", err))
+		return nil, stackErr.Error(fmt.Errorf("read schema_migrations failed: %w", err))
 	}
 	defer rows.Close()
 	applied := make(map[int]bool)
 	for rows.Next() {
 		var version int
 		if err := rows.Scan(&version); err != nil {
-			return nil, stackerr.Error(fmt.Errorf("scan schema_migrations failed: %w", err))
+			return nil, stackErr.Error(fmt.Errorf("scan schema_migrations failed: %w", err))
 		}
 		applied[version] = true
 	}
@@ -168,11 +168,11 @@ func getAppliedVersions(db *sql.DB) (map[int]bool, error) {
 func applyMigrationFile(db *sql.DB, path string, version int) error {
 	content, err := os.ReadFile(path)
 	if err != nil {
-		return stackerr.Error(fmt.Errorf("read migration file failed: %w", err))
+		return stackErr.Error(fmt.Errorf("read migration file failed: %w", err))
 	}
 	statements := splitSQLStatements(string(content))
 	if len(statements) == 0 {
-		return stackerr.Error(fmt.Errorf("migration file has no statements: %s", path))
+		return stackErr.Error(fmt.Errorf("migration file has no statements: %s", path))
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -180,7 +180,7 @@ func applyMigrationFile(db *sql.DB, path string, version int) error {
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return stackerr.Error(fmt.Errorf("begin tx failed: %w", err))
+		return stackErr.Error(fmt.Errorf("begin tx failed: %w", err))
 	}
 	for _, stmt := range statements {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
@@ -188,15 +188,15 @@ func applyMigrationFile(db *sql.DB, path string, version int) error {
 				continue
 			}
 			_ = tx.Rollback()
-			return stackerr.Error(fmt.Errorf("exec migration failed: %w", err))
+			return stackErr.Error(fmt.Errorf("exec migration failed: %w", err))
 		}
 	}
 	if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migrations(version) VALUES (:1)", version); err != nil {
 		_ = tx.Rollback()
-		return stackerr.Error(fmt.Errorf("update schema_migrations failed: %w", err))
+		return stackErr.Error(fmt.Errorf("update schema_migrations failed: %w", err))
 	}
 	if err := tx.Commit(); err != nil {
-		return stackerr.Error(fmt.Errorf("commit migration failed: %w", err))
+		return stackErr.Error(fmt.Errorf("commit migration failed: %w", err))
 	}
 	return nil
 }

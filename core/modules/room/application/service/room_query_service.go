@@ -5,6 +5,7 @@ import (
 
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/domain/repos"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
 )
 
@@ -19,7 +20,7 @@ func NewRoomQueryService(repos repos.QueryRepos) *RoomQueryService {
 func (s *RoomQueryService) GetRoom(ctx context.Context, query apptypes.GetRoomQuery) (*apptypes.RoomResult, error) {
 	room, err := s.repos.RoomReadRepository().GetRoomByID(ctx, query.ID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return buildRoomResult(room), nil
 }
@@ -41,7 +42,7 @@ func (s *RoomQueryService) ListRooms(ctx context.Context, query apptypes.ListRoo
 		OrderDirection: "DESC",
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	result := &apptypes.ListRoomsResult{

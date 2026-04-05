@@ -13,7 +13,7 @@ import (
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/hasher"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -38,39 +38,39 @@ func (u *loginHandler) Handle(ctx context.Context, req *in.LoginRequest) (*out.L
 	email, err := valueobject.NewEmail(req.Email)
 	if err != nil {
 		log.Errorw("Invalid email", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	password, err := valueobject.NewPassword(req.Password)
 	if err != nil {
 		log.Errorw("Invalid password", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	account, err := u.accountRepo.GetAccountByEmail(ctx, email.Value())
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Errorw("Account not found", zap.String("email", email.Value()))
-			return nil, stackerr.Error(ErrAccountNotFound)
+			return nil, stackErr.Error(ErrAccountNotFound)
 		}
 		log.Errorw("Failed to get account", zap.Error(err))
-		return nil, stackerr.Error(fmt.Errorf("get account failed: %w", err))
+		return nil, stackErr.Error(fmt.Errorf("get account failed: %w", err))
 	}
 
 	valid, err := u.hasher.Verify(ctx, password.Value(), account.Password.Value())
 	if err != nil {
 		log.Errorw("Failed to verify password", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	if !valid {
 		log.Errorw("Invalid credentials", zap.String("email", email.Value()))
-		return nil, stackerr.Error(ErrInvalidCredentials)
+		return nil, stackErr.Error(ErrInvalidCredentials)
 	}
 
 	token, expiresAt, err := u.paseto.GenerateToken(ctx, account)
 	if err != nil {
 		log.Errorw("Failed to generate token", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &out.LoginResponse{

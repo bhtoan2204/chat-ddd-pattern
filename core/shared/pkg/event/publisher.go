@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go-socket/core/shared/pkg/stackErr"
 	"time"
 )
 
@@ -65,7 +66,7 @@ func (p *publisher) PublishAggregate(ctx context.Context, agg Aggregate) error {
 		return nil
 	}
 	if err := p.Publish(ctx, events...); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	root.Update()
 	return nil

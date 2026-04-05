@@ -9,7 +9,7 @@ import (
 
 	"go-socket/core/modules/account/domain/entity"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/o1egl/paseto"
 	"go.uber.org/zap"
@@ -36,13 +36,13 @@ type pasetoService struct {
 func NewPaseto(symmetricKey string, issuer string, ttl time.Duration) (PasetoService, error) {
 	keyBytes, err := base64.StdEncoding.DecodeString(symmetricKey)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	if len(keyBytes) != 32 {
-		return nil, stackerr.Error(fmt.Errorf("paseto key must be 32 bytes"))
+		return nil, stackErr.Error(fmt.Errorf("paseto key must be 32 bytes"))
 	}
 	if ttl <= 0 {
-		return nil, stackerr.Error(fmt.Errorf("token ttl must be positive"))
+		return nil, stackErr.Error(fmt.Errorf("token ttl must be positive"))
 	}
 	return &pasetoService{
 		paseto:       paseto.NewV2(),
@@ -79,10 +79,10 @@ func (p *pasetoService) ParseToken(ctx context.Context, token string) (*PasetoPa
 	var custom map[string]interface{}
 	if err := p.paseto.Decrypt(token, p.symmetricKey, &jsonToken, &custom); err != nil {
 		logger.Errorw("Parse token failed", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	if !jsonToken.Expiration.IsZero() && time.Now().UTC().After(jsonToken.Expiration.UTC()) {
-		return nil, stackerr.Error(errors.New("token expired"))
+		return nil, stackErr.Error(errors.New("token expired"))
 	}
 	email, _ := custom["email"].(string)
 	return &PasetoPayload{

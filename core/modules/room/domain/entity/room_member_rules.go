@@ -6,6 +6,7 @@ import (
 	"time"
 
 	roomtypes "go-socket/core/modules/room/types"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 var (
@@ -76,7 +77,7 @@ func (m *RoomMemberEntity) CanManageGroup(room *Room) error {
 		return ErrRoomMemberRequired
 	}
 	if err := room.RequireGroup(); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	if !m.IsManager() {
 		return ErrRoomInsufficientPermission
@@ -89,7 +90,7 @@ func (m *RoomMemberEntity) CanRemoveFrom(room *Room, targetAccountID string) err
 		return ErrRoomMemberRequired
 	}
 	if err := room.RequireGroup(); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	targetAccountID = strings.TrimSpace(targetAccountID)

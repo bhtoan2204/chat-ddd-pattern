@@ -9,7 +9,7 @@ import (
 	"go-socket/core/modules/room/infra/persistent/models"
 	sharedcache "go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
 
 	"github.com/samber/lo"
@@ -32,7 +32,7 @@ func NewRoomRepoImpl(db *gorm.DB, sharedCache sharedcache.Cache) repos.RoomRepos
 func (r *roomRepoImpl) CreateRoom(ctx context.Context, room *entity.Room) error {
 	m := r.toModel(room)
 	if err := r.db.WithContext(ctx).Create(m).Error; err != nil {
-		return stackerr.Error(err)
+		return stackErr.Error(err)
 	}
 	_ = r.roomCache.Set(ctx, r.toEntity(m))
 	return nil
@@ -58,7 +58,7 @@ func (r *roomRepoImpl) ListRooms(ctx context.Context, options utils.QueryOptions
 
 	if err := tx.Find(&rooms).Error; err != nil {
 		logger.Errorw("list rooms failed", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	return lo.Map(rooms, func(room *models.RoomModel, _ int) *entity.Room {
 		return r.toEntity(room)
@@ -74,7 +74,7 @@ func (r *roomRepoImpl) GetRoomByID(ctx context.Context, id string) (*entity.Room
 		Where("id = ?", id).
 		First(&m).Error
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	_ = r.roomCache.Set(ctx, r.toEntity(&m))
 	return r.toEntity(&m), nil
@@ -86,7 +86,7 @@ func (r *roomRepoImpl) GetRoomByDirectKey(ctx context.Context, directKey string)
 		Where("direct_key = ?", directKey).
 		First(&m).Error
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	_ = r.roomCache.Set(ctx, r.toEntity(&m))
 	return r.toEntity(&m), nil
@@ -95,7 +95,7 @@ func (r *roomRepoImpl) GetRoomByDirectKey(ctx context.Context, directKey string)
 func (r *roomRepoImpl) UpdateRoom(ctx context.Context, room *entity.Room) error {
 	m := r.toModel(room)
 	if err := r.db.WithContext(ctx).Save(m).Error; err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	_ = r.roomCache.Set(ctx, r.toEntity(m))
 	return nil
@@ -103,7 +103,7 @@ func (r *roomRepoImpl) UpdateRoom(ctx context.Context, room *entity.Room) error 
 
 func (r *roomRepoImpl) DeleteRoom(ctx context.Context, id string) error {
 	if err := r.db.WithContext(ctx).Delete(&models.RoomModel{}, "id = ?", id).Error; err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	return r.roomCache.Delete(ctx, id)
 }

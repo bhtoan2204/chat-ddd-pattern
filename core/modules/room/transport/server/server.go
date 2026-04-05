@@ -8,7 +8,7 @@ import (
 	roomhttp "go-socket/core/modules/room/transport/http"
 	roomsocket "go-socket/core/modules/room/transport/websocket"
 	"go-socket/core/shared/pkg/cqrs"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	infrahttp "go-socket/core/shared/transport/http"
 
 	"github.com/gin-gonic/gin"
@@ -62,7 +62,7 @@ func NewHTTPServer(
 	roomHub roomsocket.IHub,
 ) (infrahttp.HTTPServer, error) {
 	if roomHub == nil {
-		return nil, stackerr.Error(fmt.Errorf("room hub can not be nil"))
+		return nil, stackErr.Error(fmt.Errorf("room hub can not be nil"))
 	}
 
 	return &roomServer{

@@ -4,7 +4,7 @@ import (
 	"context"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/hashicorp/consul/api"
 )
@@ -33,7 +33,7 @@ func NewConsulClient(ctx context.Context, cfg *config.Config) (ConsulClient, err
 	consulAPIClient, err := api.NewClient(consulConfig)
 	if err != nil {
 		log.Errorw("Failed to connect to Consul", "error", err)
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &consulClientImpl{

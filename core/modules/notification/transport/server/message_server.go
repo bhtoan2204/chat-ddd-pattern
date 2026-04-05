@@ -3,7 +3,7 @@ package server
 import (
 	"fmt"
 	notificationmessaging "go-socket/core/modules/notification/application/messaging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type Server interface {
@@ -17,7 +17,7 @@ type notificationServer struct {
 
 func NewServer(messageHandler notificationmessaging.MessageHandler) (Server, error) {
 	if messageHandler == nil {
-		return nil, stackerr.Error(fmt.Errorf("message handler can not be nil"))
+		return nil, stackErr.Error(fmt.Errorf("message handler can not be nil"))
 	}
 	return &notificationServer{messageHandler: messageHandler}, nil
 }

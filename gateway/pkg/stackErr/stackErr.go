@@ -1,6 +1,7 @@
-package stackerr
+package stackErr
 
 import (
+	stackErr "gateway/pkg/stackErr"
 	"reflect"
 
 	pkgErr "github.com/pkg/errors"
@@ -13,7 +14,7 @@ func errorWithStack(err error) error {
 
 	stackTrace := reflect.ValueOf(err).MethodByName("StackTrace")
 	if stackTrace.IsValid() {
-		return err
+		return stackErr.Error(err)
 	}
 
 	return pkgErr.WithStack(err)

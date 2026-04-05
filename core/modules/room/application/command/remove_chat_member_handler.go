@@ -8,6 +8,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type removeChatMemberHandler struct {
@@ -20,13 +21,13 @@ func NewRemoveChatMemberHandler(roomService *roomservice.RoomCommandService) cqr
 func (h *removeChatMemberHandler) Handle(ctx context.Context, req *in.RemoveChatMemberRequest) (*out.ChatConversationResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	res, err := h.roomService.RemoveMember(ctx, accountID, req.RoomID, apptypes.RemoveMemberCommand{
 		AccountID: req.AccountID,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return roomsupport.ToConversationResponse(res), nil
 }

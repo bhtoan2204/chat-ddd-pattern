@@ -8,6 +8,7 @@ import (
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type updateGroupChatHandler struct {
@@ -20,14 +21,14 @@ func NewUpdateGroupChatHandler(roomService *roomservice.RoomCommandService) cqrs
 func (h *updateGroupChatHandler) Handle(ctx context.Context, req *in.UpdateGroupChatRequest) (*out.ChatConversationResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	res, err := h.roomService.UpdateGroup(ctx, accountID, req.RoomID, apptypes.UpdateGroupCommand{
 		Name:        req.Name,
 		Description: req.Description,
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return roomsupport.ToConversationResponse(res), nil
 }

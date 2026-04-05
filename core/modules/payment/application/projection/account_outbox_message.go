@@ -2,6 +2,7 @@ package projection
 
 import (
 	"encoding/json"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ type accountOutboxMessage struct {
 func (m *accountOutboxMessage) UnmarshalJSON(data []byte) error {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	normalized := make(map[string]json.RawMessage, len(raw))
@@ -41,10 +42,10 @@ func (m *accountOutboxMessage) UnmarshalJSON(data []byte) error {
 	var aux alias
 	normalizedData, err := json.Marshal(normalized)
 	if err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 	if err := json.Unmarshal(normalizedData, &aux); err != nil {
-		return err
+		return stackErr.Error(err)
 	}
 
 	*m = accountOutboxMessage(aux)

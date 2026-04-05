@@ -8,7 +8,7 @@ import (
 	"go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/cqrs"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
 )
 
@@ -27,11 +27,11 @@ func NewListTransactionHandler(repos repos.Repos) cqrs.Handler[*in.ListTransacti
 func (l *listTransactionHandler) Handle(ctx context.Context, req *in.ListTransactionRequest) (*out.ListTransactionResponse, error) {
 	account := ctx.Value("account")
 	if account == nil {
-		return nil, stackerr.Error(errors.New("account not found"))
+		return nil, stackErr.Error(errors.New("account not found"))
 	}
 	payload, ok := account.(*xpaseto.PasetoPayload)
 	if !ok {
-		return nil, stackerr.Error(errors.New("invalid account payload"))
+		return nil, stackErr.Error(errors.New("invalid account payload"))
 	}
 	options := utils.QueryOptions{
 		Conditions: []utils.Condition{
@@ -46,7 +46,7 @@ func (l *listTransactionHandler) Handle(ctx context.Context, req *in.ListTransac
 	}
 	histories, err := l.paymentHistoryRepository.ListPaymentHistory(ctx, options)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	records := make([]out.TransactionRecord, 0, len(histories))

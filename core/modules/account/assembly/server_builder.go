@@ -8,7 +8,7 @@ import (
 	accountrepo "go-socket/core/modules/account/infra/persistent/repository"
 	accountserver "go-socket/core/modules/account/transport/server"
 	"go-socket/core/shared/pkg/cqrs"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/transport/http"
 )
 
@@ -22,7 +22,7 @@ func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 
 	server, err := accountserver.NewServer(login, register, logout, getProfile)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return server, nil

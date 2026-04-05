@@ -12,7 +12,7 @@ import (
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -32,19 +32,19 @@ func (h *savePushSubscriptionHandler) Handle(ctx context.Context, req *in.SavePu
 	account := ctx.Value("account")
 	if account == nil {
 		log.Errorw("account not found in context")
-		return nil, stackerr.Error(ErrAccountNotFound)
+		return nil, stackErr.Error(ErrAccountNotFound)
 	}
 
 	payload, ok := account.(*xpaseto.PasetoPayload)
 	if !ok {
 		log.Errorw("invalid account payload")
-		return nil, stackerr.Error(errors.New("invalid account payload"))
+		return nil, stackErr.Error(errors.New("invalid account payload"))
 	}
 
 	keysBytes, err := json.Marshal(req.Keys)
 	if err != nil {
 		log.Errorw("marshal keys failed", zap.Error(err))
-		return nil, stackerr.Error(fmt.Errorf("marshal subscription keys failed: %w", err))
+		return nil, stackErr.Error(fmt.Errorf("marshal subscription keys failed: %w", err))
 	}
 
 	subscription := &entity.PushSubscription{
@@ -56,7 +56,7 @@ func (h *savePushSubscriptionHandler) Handle(ctx context.Context, req *in.SavePu
 
 	if err := h.pushSubscriptionRepo.UpsertPushSubscription(ctx, subscription); err != nil {
 		log.Errorw("save push subscription failed", zap.Error(err))
-		return nil, stackerr.Error(ErrSavePushSubscriptionFailed)
+		return nil, stackErr.Error(ErrSavePushSubscriptionFailed)
 	}
 
 	return &out.SavePushSubscriptionResponse{Message: "Push subscription saved"}, nil

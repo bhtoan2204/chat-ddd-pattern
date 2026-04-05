@@ -2,7 +2,7 @@ package models
 
 import (
 	"fmt"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"os"
 	"path/filepath"
 	"sort"
@@ -51,12 +51,12 @@ type FieldSpec struct {
 func LoadAPISpec(path string) (*APISpec, error) {
 	yamlFile, err := os.ReadFile(path)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	var apiSpec APISpec
 	err = yaml.Unmarshal(yamlFile, &apiSpec)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	return &apiSpec, nil
 }
@@ -65,17 +65,17 @@ func LoadAPISpecDir(dir string) (*APISpec, error) {
 	pattern := filepath.Join(dir, "*.yaml")
 	files, err := filepath.Glob(pattern)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	if len(files) == 0 {
-		return nil, stackerr.Error(fmt.Errorf("no api spec files found in %s", dir))
+		return nil, stackErr.Error(fmt.Errorf("no api spec files found in %s", dir))
 	}
 	sort.Strings(files)
 	merged := &APISpec{}
 	for _, file := range files {
 		spec, err := LoadAPISpec(file)
 		if err != nil {
-			return nil, stackerr.Error(err)
+			return nil, stackErr.Error(err)
 		}
 		if merged.Version == 0 {
 			merged.Version = spec.Version
@@ -84,7 +84,7 @@ func LoadAPISpecDir(dir string) (*APISpec, error) {
 			merged.BasePath = spec.BasePath
 		}
 		if spec.BasePath != "" && merged.BasePath != spec.BasePath {
-			return nil, stackerr.Error(fmt.Errorf("basePath mismatch in %s", file))
+			return nil, stackErr.Error(fmt.Errorf("basePath mismatch in %s", file))
 		}
 		merged.Endpoints = append(merged.Endpoints, spec.Endpoints...)
 	}

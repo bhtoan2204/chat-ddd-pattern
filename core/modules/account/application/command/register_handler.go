@@ -15,7 +15,7 @@ import (
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/hasher"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"reflect"
 	"time"
 
@@ -43,35 +43,35 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 	exists, err := accountRepo.IsEmailExists(ctx, req.Email)
 	if err != nil {
 		log.Errorw("Failed to check existing account", zap.Error(err))
-		return nil, stackerr.Error(ErrCheckAccountFailed)
+		return nil, stackErr.Error(ErrCheckAccountFailed)
 	}
 	if exists {
 		log.Errorw("Account already exists", zap.String("email", req.Email))
-		return nil, stackerr.Error(ErrAccountExists)
+		return nil, stackErr.Error(ErrAccountExists)
 	}
 
 	password, err := valueobject.NewPassword(req.Password)
 	if err != nil {
 		log.Errorw("Failed to create password", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	hashedPassword, err := u.hasher.Hash(ctx, password.Value())
 	if err != nil {
 		log.Errorw("Failed to hash password", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	email, err := valueobject.NewEmail(req.Email)
 	if err != nil {
 		log.Errorw("Failed to create email", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	hashedPasswordVO, err := valueobject.NewPassword(hashedPassword)
 	if err != nil {
 		log.Errorw("Failed to create hashed password value object", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	newAccountEntity := &entity.Account{
@@ -83,7 +83,7 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 	if txErr := u.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.AccountRepository().CreateAccount(ctx, newAccountEntity); err != nil {
 			log.Errorw("Failed to create account", zap.Error(err))
-			return stackerr.Error(fmt.Errorf("create account failed: %w", err))
+			return stackErr.Error(fmt.Errorf("create account failed: %w", err))
 		}
 
 		accountAggregate := &aggregate.AccountAggregate{}
@@ -108,13 +108,13 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 		return nil
 	}); txErr != nil {
 		log.Errorw("Failed to register account", zap.Error(txErr))
-		return nil, stackerr.Error(txErr)
+		return nil, stackErr.Error(txErr)
 	}
 
 	token, expiresAt, err := u.paseto.GenerateToken(ctx, newAccountEntity)
 	if err != nil {
 		log.Errorw("Failed to generate token", zap.Error(err))
-		return nil, stackerr.Error(fmt.Errorf("generate token failed: %w", err))
+		return nil, stackErr.Error(fmt.Errorf("generate token failed: %w", err))
 	}
 
 	return &out.RegisterResponse{

@@ -1,4 +1,4 @@
-package stackerr
+package stackErr
 
 import (
 	"reflect"

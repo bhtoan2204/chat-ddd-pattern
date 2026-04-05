@@ -9,13 +9,14 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 func (s *RoomCommandService) CreateRoom(ctx context.Context, accountID string, command apptypes.CreateRoomCommand) (*apptypes.RoomResult, error) {
 	now := time.Now().UTC()
 	room, err := entity.NewRoom(newUUID(), command.Name, command.Description, accountID, command.RoomType, "", now)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
@@ -27,7 +28,7 @@ func (s *RoomCommandService) CreateRoom(ctx context.Context, accountID string, c
 		}
 		return s.aggregateService.PublishRoomCreated(ctx, txRepos.RoomOutboxEventsRepository(), room.ID, room.RoomType, 1)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildRoomResult(room), nil
@@ -36,7 +37,7 @@ func (s *RoomCommandService) CreateRoom(ctx context.Context, accountID string, c
 func (s *RoomCommandService) UpdateRoom(ctx context.Context, accountID, roomID string, command apptypes.UpdateRoomCommand) (*apptypes.RoomResult, error) {
 	room, err := s.repos.RoomRepository().GetRoomByID(ctx, roomID)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	if accountID = strings.TrimSpace(accountID); accountID != "" {
@@ -44,7 +45,7 @@ func (s *RoomCommandService) UpdateRoom(ctx context.Context, accountID, roomID s
 	}
 
 	if _, err := room.UpdateDetails(command.Name, command.Description, command.RoomType, time.Now().UTC()); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
@@ -52,7 +53,7 @@ func (s *RoomCommandService) UpdateRoom(ctx context.Context, accountID, roomID s
 		}
 		return txRepos.RoomReadRepository().UpdateRoom(ctx, room)
 	}); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 
 	return buildRoomResult(room), nil

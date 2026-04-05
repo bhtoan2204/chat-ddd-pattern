@@ -9,6 +9,7 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type addChatMemberHandler struct {
@@ -21,14 +22,14 @@ func NewAddChatMemberHandler(roomService *roomservice.RoomCommandService) cqrs.H
 func (h *addChatMemberHandler) Handle(ctx context.Context, req *in.AddChatMemberRequest) (*out.ChatConversationResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	res, err := h.roomService.AddMember(ctx, accountID, req.RoomID, apptypes.AddMemberCommand{
 		AccountID: req.AccountID,
 		Role:      types.RoomRole(req.Role),
 	})
 	if err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return roomsupport.ToConversationResponse(res), nil
 }

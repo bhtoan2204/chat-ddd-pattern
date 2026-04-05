@@ -2,6 +2,7 @@ package aggregate
 
 import (
 	roomtypes "go-socket/core/modules/room/types"
+	"go-socket/core/shared/pkg/stackErr"
 	"time"
 )
 
@@ -9,7 +10,7 @@ func NewRoomAggregate(roomID string) (*RoomAggregate, error) {
 	agg := &RoomAggregate{}
 	agg.SetAggregateType("RoomAggregate")
 	if err := agg.SetID(roomID); err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return agg, nil
 }

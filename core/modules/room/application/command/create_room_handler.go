@@ -10,7 +10,8 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
+
 	"go.uber.org/zap"
 )
 
@@ -29,7 +30,7 @@ func (h *createRoomHandler) Handle(ctx context.Context, req *in.CreateRoomReques
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
 		log.Errorw("Account not found", zap.Error(err))
-		return nil, stackerr.Error(errors.New("account not found"))
+		return nil, stackErr.Error(errors.New("account not found"))
 	}
 	room, err := h.roomService.CreateRoom(ctx, accountID, apptypes.CreateRoomCommand{
 		Name:        req.Name,
@@ -38,7 +39,7 @@ func (h *createRoomHandler) Handle(ctx context.Context, req *in.CreateRoomReques
 	})
 	if err != nil {
 		log.Errorw("Failed to create room", zap.Error(err), zap.Any("room", room))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &out.CreateRoomResponse{

@@ -8,7 +8,7 @@ import (
 	"go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,17 +34,17 @@ func (h *transferHandler) Handle(ctx context.Context, req *in.TransferRequest) (
 	accountID, err := accountIDFromContext(ctx)
 	if err != nil {
 		log.Errorw("Account not found")
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	receiverID := req.ReceiverID
 	receiver, err := h.paymentAccountProjectionRepo.GetAccountProjectionByAccountID(ctx, receiverID)
 	if err != nil {
 		log.Errorw("Failed to get receiver account projection", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	if receiver == nil {
 		log.Errorw("Receiver account projection not found")
-		return nil, stackerr.Error(errors.New("receiver account projection not found"))
+		return nil, stackErr.Error(errors.New("receiver account projection not found"))
 	}
 
 	transactionID := uuid.NewString()
@@ -57,24 +57,24 @@ func (h *transferHandler) Handle(ctx context.Context, req *in.TransferRequest) (
 	if err := h.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		senderAgg, err := txRepos.PaymentBalanceAggregateRepository().Load(ctx, accountID)
 		if err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 		if err := senderAgg.Transfer(transactionID, req.Amount, receiverID, now); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 		if err := txRepos.PaymentBalanceAggregateRepository().Save(ctx, senderAgg); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		receiverAgg, err := txRepos.PaymentBalanceAggregateRepository().Load(ctx, receiverID)
 		if err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 		if err := receiverAgg.Receive(transactionID, req.Amount, accountID, now); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 		if err := txRepos.PaymentBalanceAggregateRepository().Save(ctx, receiverAgg); err != nil {
-			return stackerr.Error(err)
+			return stackErr.Error(err)
 		}
 
 		balance = senderAgg.Balance
@@ -83,7 +83,7 @@ func (h *transferHandler) Handle(ctx context.Context, req *in.TransferRequest) (
 		return nil
 	}); err != nil {
 		log.Errorw("Handler transfer failed", zap.Error(err))
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &out.TransferResponse{

@@ -5,7 +5,7 @@ import (
 	"go-socket/core/modules/payment/domain/entity"
 	"go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/modules/payment/infra/persistent/model"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
 
 	"gorm.io/gorm"
@@ -58,7 +58,7 @@ func (r *paymentHistoryRepoImpl) ListPaymentHistory(ctx context.Context, options
 	}
 
 	if err := tx.Find(&rows).Error; err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	result := make([]*entity.PaymentHistory, 0, len(rows))

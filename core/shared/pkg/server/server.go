@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"net"
 	"net/http"
 	"strconv"
@@ -26,7 +26,7 @@ func New(port int) (*Server, error) {
 	addr := fmt.Sprintf(":%d", port)
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	return &Server{

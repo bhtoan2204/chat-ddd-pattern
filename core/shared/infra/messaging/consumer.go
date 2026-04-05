@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 	"sync"
 	"time"
@@ -41,7 +41,7 @@ type consumer struct {
 
 func NewConsumer(cfg *Config) (Consumer, error) {
 	if err := cfg.Validate(); err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	cfgMap := &kafka.ConfigMap{
 		"bootstrap.servers":        cfg.Servers,
@@ -54,11 +54,11 @@ func NewConsumer(cfg *Config) (Consumer, error) {
 	}
 	c, err := kafka.NewConsumer(cfgMap)
 	if err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 
 	if err := c.SubscribeTopics(cfg.ConsumeTopic, nil); err != nil {
-		return nil, stackerr.Error(err)
+		return nil, stackErr.Error(err)
 	}
 	return &consumer{
 		instance:    c,

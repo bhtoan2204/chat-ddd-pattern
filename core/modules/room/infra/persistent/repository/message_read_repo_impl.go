@@ -9,6 +9,7 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/modules/room/infra/persistent/models"
+	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/samber/lo"
 	"gorm.io/gorm"
@@ -34,7 +35,7 @@ func (r *messageReadRepoImpl) UpsertMessage(ctx context.Context, message *entity
 func (r *messageReadRepoImpl) GetMessageByID(ctx context.Context, id string) (*entity.MessageEntity, error) {
 	var message models.MessageReadModel
 	if err := r.db.WithContext(ctx).Where("id = ?", id).First(&message).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return r.toEntity(&message), nil
 }
@@ -45,7 +46,7 @@ func (r *messageReadRepoImpl) GetLastMessage(ctx context.Context, roomID string)
 		Where("room_id = ?", roomID).
 		Order("created_at DESC").
 		First(&message).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	return r.toEntity(&message), nil
 }
@@ -72,7 +73,7 @@ func (r *messageReadRepoImpl) ListMessages(ctx context.Context, accountID, roomI
 
 	var messages []*models.MessageReadModel
 	if err := tx.Order(order).Limit(limitOrDefault(options.Limit, 50, 200)).Find(&messages).Error; err != nil {
-		return nil, err
+		return nil, stackErr.Error(err)
 	}
 	if !options.Ascending {
 		sort.Slice(messages, func(i, j int) bool {
