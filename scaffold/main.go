@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go-socket/scaffold/generator"
 	"go-socket/scaffold/models"
+	scaffoldswagger "go-socket/scaffold/swagger"
 	"log"
 )
 
@@ -39,4 +40,10 @@ func main() {
 		log.Fatalf("Failed to generate registry: %v", err)
 	}
 	fmt.Println(msg)
+
+	swaggerSpec, err := scaffoldswagger.GenerateDefault()
+	if err != nil {
+		log.Fatalf("Failed to generate swagger json: %v", err)
+	}
+	fmt.Printf("generated swagger json at %s\n", swaggerSpec.OutputPath)
 }

@@ -1,10 +1,12 @@
 package aggregate
 
 import (
-	"errors"
 	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/event"
 	"time"
+
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type RoomAggregate struct {
@@ -39,10 +41,10 @@ func (r *RoomAggregate) Transition(e event.Event) error {
 	case *EventRoomMessageCreated:
 		return r.onRoomMessageCreated(data)
 	default:
-		return errors.New("unsupported event type")
+		return status.Error(codes.InvalidArgument, "unsupported event type")
 	}
-
 }
+
 func (r *RoomAggregate) onRoomCreated(
 	aggregateID string,
 	data *EventRoomCreated,
@@ -60,34 +62,32 @@ func (r *RoomAggregate) onRoomCreated(
 func (r *RoomAggregate) onRoomMemberAdded(
 	data *EventRoomMemberAdded,
 ) error {
-	if data.RoomID != r.RoomID {
-		return errors.New("room id mismatch")
+	if err := r.ensureRoomID(data.RoomID); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	r.MemberCount++
 	return nil
-
 }
 
 func (r *RoomAggregate) onRoomMemberRemoved(
 	data *EventRoomMemberRemoved,
 ) error {
-	if data.RoomID != r.RoomID {
-		return errors.New("room id mismatch")
+	if err := r.ensureRoomID(data.RoomID); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if r.MemberCount > 0 {
 		r.MemberCount--
 	}
 	return nil
-
 }
 
 func (r *RoomAggregate) onRoomMessageCreated(
 	data *EventRoomMessageCreated,
 ) error {
-	if data.RoomID != r.RoomID {
-		return errors.New("room id mismatch")
+	if err := r.ensureRoomID(data.RoomID); err != nil {
+		return status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	r.LastMessageID = data.MessageID
@@ -96,5 +96,18 @@ func (r *RoomAggregate) onRoomMessageCreated(
 	r.LastMessageSenderID = data.MessageSenderID
 
 	return nil
+}
 
+func (r *RoomAggregate) ensureRoomID(roomID string) error {
+	if roomID == "" {
+		return status.Error(codes.InvalidArgument, "room id is required")
+	}
+	if r.RoomID == "" {
+		r.RoomID = roomID
+		return nil
+	}
+	if r.RoomID != roomID {
+		return status.Error(codes.InvalidArgument, "room id mismatch")
+	}
+	return nil
 }

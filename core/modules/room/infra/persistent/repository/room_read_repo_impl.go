@@ -119,7 +119,6 @@ func (r *roomReadRepoImpl) GetRoomByID(ctx context.Context, id string) (*entity.
 func (r *roomReadRepoImpl) UpdateRoomStats(ctx context.Context, roomID string, memberCount int, lastMessage *entity.MessageEntity, updatedAt time.Time) error {
 	updates := map[string]interface{}{
 		"member_count": memberCount,
-		"updated_at":   updatedAt,
 	}
 	if lastMessage != nil {
 		updates["last_message_id"] = lastMessage.ID

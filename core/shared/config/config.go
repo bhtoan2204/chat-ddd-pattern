@@ -10,6 +10,7 @@ type Config struct {
 	WebPushConfig  WebPushConfig
 	ConsulConfig   ConsulConfig
 	LedgerConfig   LedgerConfig
+	StorageConfig  StorageConfig
 }
 
 type ServerConfig struct {
@@ -97,4 +98,12 @@ type LedgerStripeConfig struct {
 	WebhookSecret string `env:"LEDGER_STRIPE_WEBHOOK_SECRET"`
 	SuccessURL    string `env:"LEDGER_STRIPE_SUCCESS_URL"`
 	CancelURL     string `env:"LEDGER_STRIPE_CANCEL_URL"`
+}
+
+type StorageConfig struct {
+	MinIOEndpoint  string `env:"MINIO_ENDPOINT"`
+	MinIOAccessKey string `env:"MINIO_ACCESS_KEY"`
+	MinIOSecretKey string `env:"MINIO_SECRET_KEY"`
+	MinIOBucket    string `env:"MINIO_BUCKET"`
+	MinIOUseSSL    bool   `env:"MINIO_USE_SSL"`
 }

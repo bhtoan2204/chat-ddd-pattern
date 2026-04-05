@@ -159,24 +159,38 @@ func (r *accountRepoImpl) toEntity(m *models.AccountModel) (*entity.Account, err
 		return nil, stackErr.Error(err)
 	}
 	return &entity.Account{
-		ID:           m.ID,
-		Email:        email,
-		Password:     password,
-		CreatedAt:    m.CreatedAt,
-		UpdatedAt:    m.UpdatedAt,
-		BannedReason: m.BannedReason,
-		BannedUntil:  m.BannedUntil,
+		ID:                m.ID,
+		Email:             email,
+		Password:          password,
+		DisplayName:       m.DisplayName,
+		Username:          m.Username,
+		AvatarObjectKey:   m.AvatarObjectKey,
+		Status:            m.Status,
+		EmailVerifiedAt:   m.EmailVerifiedAt,
+		LastLoginAt:       m.LastLoginAt,
+		PasswordChangedAt: m.PasswordChangedAt,
+		CreatedAt:         m.CreatedAt,
+		UpdatedAt:         m.UpdatedAt,
+		BannedReason:      m.BannedReason,
+		BannedUntil:       m.BannedUntil,
 	}, nil
 }
 
 func (r *accountRepoImpl) toModel(e *entity.Account) *models.AccountModel {
 	return &models.AccountModel{
-		ID:           e.ID,
-		Email:        e.Email.Value(),
-		Password:     e.Password.Value(),
-		CreatedAt:    e.CreatedAt,
-		UpdatedAt:    e.UpdatedAt,
-		BannedReason: e.BannedReason,
-		BannedUntil:  e.BannedUntil,
+		ID:                e.ID,
+		Email:             e.Email.Value(),
+		Password:          e.Password.Value(),
+		DisplayName:       e.DisplayName,
+		Username:          e.Username,
+		AvatarObjectKey:   e.AvatarObjectKey,
+		Status:            e.Status,
+		EmailVerifiedAt:   e.EmailVerifiedAt,
+		LastLoginAt:       e.LastLoginAt,
+		PasswordChangedAt: e.PasswordChangedAt,
+		CreatedAt:         e.CreatedAt,
+		UpdatedAt:         e.UpdatedAt,
+		BannedReason:      e.BannedReason,
+		BannedUntil:       e.BannedUntil,
 	}
 }

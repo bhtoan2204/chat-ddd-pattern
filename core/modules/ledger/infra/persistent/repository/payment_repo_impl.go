@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"go-socket/core/modules/ledger/domain/entity"
 	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
@@ -85,8 +84,7 @@ func (r *paymentRepoImpl) UpdateIntentStatus(ctx context.Context, transactionID,
 		Model(&model.PaymentIntentModel{}).
 		Where("transaction_id = ?", transactionID).
 		Updates(map[string]interface{}{
-			"status":     status,
-			"updated_at": time.Now().UTC(),
+			"status": status,
 		})
 	if result.Error != nil {
 		return mapError(result.Error)

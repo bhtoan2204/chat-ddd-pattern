@@ -36,6 +36,9 @@ endpoints:
     request:
       struct: RegisterRequest
       fields:
+        - name: display_name
+          type: string
+          required: true
         - name: email
           type: string
           required: true
@@ -47,6 +50,8 @@ endpoints:
       fields:
         - name: token
           type: string
+        - name: expires_at
+          type: int64
 
   - name: AuthLogout
     method: POST
@@ -81,9 +86,156 @@ endpoints:
     response:
       struct: GetProfileResponse
       fields:
+        - name: id
+          type: string
+        - name: display_name
+          type: string
         - name: email
+          type: string
+        - name: username
+          type: string
+        - name: avatar_object_key
+          type: string
+        - name: status
+          type: string
+        - name: email_verified
+          type: bool
+        - name: email_verified_at
+          type: string
+        - name: last_login_at
+          type: string
+        - name: password_changed_at
           type: string
         - name: created_at
           type: string
         - name: updated_at
+          type: string
+
+  - name: AuthUpdateProfile
+    method: PUT
+    path: /auth/profile
+    handler: UpdateProfileHandler
+    auth: true
+    usecase:
+      name: AuthUsecase
+      method: UpdateProfile
+    request:
+      struct: UpdateProfileRequest
+      fields:
+        - name: display_name
+          type: string
+          required: true
+        - name: username
+          type: string
+        - name: avatar_object_key
+          type: string
+    response:
+      struct: UpdateProfileResponse
+      fields:
+        - name: id
+          type: string
+        - name: display_name
+          type: string
+        - name: email
+          type: string
+        - name: username
+          type: string
+        - name: avatar_object_key
+          type: string
+        - name: status
+          type: string
+        - name: email_verified
+          type: bool
+        - name: email_verified_at
+          type: string
+        - name: last_login_at
+          type: string
+        - name: password_changed_at
+          type: string
+        - name: created_at
+          type: string
+        - name: updated_at
+          type: string
+
+  - name: AuthVerifyEmail
+    method: POST
+    path: /auth/verify-email
+    handler: VerifyEmailHandler
+    auth: true
+    usecase:
+      name: AuthUsecase
+      method: VerifyEmail
+    request:
+      struct: VerifyEmailRequest
+      fields: []
+    response:
+      struct: VerifyEmailResponse
+      fields:
+        - name: message
+          type: string
+
+  - name: AuthConfirmVerifyEmail
+    method: POST
+    path: /auth/verify-email/confirm
+    handler: ConfirmVerifyEmailHandler
+    usecase:
+      name: AuthUsecase
+      method: ConfirmVerifyEmail
+    request:
+      struct: ConfirmVerifyEmailRequest
+      fields:
+        - name: token
+          type: string
+          required: true
+    response:
+      struct: ConfirmVerifyEmailResponse
+      fields:
+        - name: message
+          type: string
+        - name: verified_at
+          type: string
+
+  - name: AuthChangePassword
+    method: PUT
+    path: /auth/change-password
+    handler: ChangePasswordHandler
+    auth: true
+    usecase:
+      name: AuthUsecase
+      method: ChangePassword
+    request:
+      struct: ChangePasswordRequest
+      fields:
+        - name: current_password
+          type: string
+          required: true
+        - name: new_password
+          type: string
+          required: true
+    response:
+      struct: ChangePasswordResponse
+      fields:
+        - name: message
+          type: string
+
+  - name: AuthGetAvatar
+    method: GET
+    path: /auth/avatar/:account_id
+    handler: GetAvatarHandler
+    auth: true
+    usecase:
+      name: AuthUsecase
+      method: GetAvatar
+    request:
+      struct: GetAvatarRequest
+      fields:
+        - name: account_id
+          type: string
+          required: true
+    response:
+      struct: GetAvatarResponse
+      fields:
+        - name: url
+          type: string
+        - name: expires_at
           type: string

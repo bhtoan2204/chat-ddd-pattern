@@ -32,6 +32,10 @@ func requireRoomRole(ctx context.Context, roomRepo repos.RoomRepository, memberR
 }
 
 func createSystemMessageTx(ctx context.Context, txRepos repos.Repos, roomID, actorID, body string, now time.Time) (*entity.MessageEntity, error) {
+	// actor, err := txRepos.RoomMemberReadRepository().GetRoomMemberByAccount(ctx, roomID, actorID)
+	// if err != nil {
+	// 	return nil, stackErr.Error(err)
+	// }
 	message, err := entity.NewSystemMessage(newUUID(), roomID, actorID, body, now)
 	if err != nil {
 		return nil, stackErr.Error(err)

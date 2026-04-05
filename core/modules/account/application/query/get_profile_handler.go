@@ -2,15 +2,13 @@ package query
 
 import (
 	"context"
-	"errors"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
+	"go-socket/core/modules/account/application/support"
 	repos "go-socket/core/modules/account/domain/repos"
-	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
-	"time"
 
 	"go.uber.org/zap"
 )
@@ -28,26 +26,17 @@ func NewGetProfileHandler(baseRepo repos.Repos) cqrs.Handler[*in.GetProfileReque
 func (u *getProfileHandler) Handle(ctx context.Context, req *in.GetProfileRequest) (*out.GetProfileResponse, error) {
 	_ = req
 	log := logging.FromContext(ctx).Named("GetProfile")
-	account := ctx.Value("account")
-	if account == nil {
-		log.Errorw("Account not found", zap.Error(errors.New("account not found")))
-		return nil, stackErr.Error(errors.New("account not found"))
+	accountID, err := support.AccountIDFromCtx(ctx)
+	if err != nil {
+		log.Errorw("Account not found in context", zap.Error(err))
+		return nil, stackErr.Error(err)
 	}
 
-	payload, ok := account.(*xpaseto.PasetoPayload)
-	if !ok {
-		return nil, stackErr.Error(errors.New("invalid account payload"))
-	}
-
-	accountEntity, err := u.accountRepo.GetAccountByID(ctx, payload.AccountID)
+	accountEntity, err := u.accountRepo.GetAccountByID(ctx, accountID)
 	if err != nil {
 		log.Errorw("Failed to get account by ID", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
 
-	return &out.GetProfileResponse{
-		Email:     accountEntity.Email.Value(),
-		CreatedAt: accountEntity.CreatedAt.Format(time.RFC3339),
-		UpdatedAt: accountEntity.UpdatedAt.Format(time.RFC3339),
-	}, nil
+	return support.ToGetProfileResponse(accountEntity), nil
 }

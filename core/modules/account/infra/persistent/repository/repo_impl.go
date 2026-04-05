@@ -66,7 +66,7 @@ func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) err
 			log.Errorw("Commit failed", zap.Error(commitErr))
 			err = commitErr
 		} else {
-			log.Info("Transaction committed")
+			log.Infow("Transaction committed")
 		}
 	}()
 

@@ -8,3 +8,7 @@ func FormatTime(t *time.Time) string {
 	}
 	return t.Format(time.RFC3339)
 }
+
+func NowUTC() time.Time {
+	return time.Now().UTC()
+}

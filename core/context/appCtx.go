@@ -6,6 +6,7 @@ import (
 	"go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/infra/discovery"
 	"go-socket/core/shared/infra/smtp"
+	"go-socket/core/shared/infra/storage"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/hasher"
 
@@ -23,6 +24,7 @@ type AppContext struct {
 	hasher       hasher.Hasher
 	paseto       xpaseto.PasetoService
 	smtp         smtp.SMTP
+	storage      storage.Storage
 	consulClient discovery.ConsulClient
 	services     map[string]interface{}
 }
@@ -77,6 +79,12 @@ func WithSMTP(smtp smtp.SMTP) Option {
 	}
 }
 
+func WithStorage(storage storage.Storage) Option {
+	return func(appCtx *AppContext) {
+		appCtx.storage = storage
+	}
+}
+
 func WithConsulClient(consulClient discovery.ConsulClient) Option {
 	return func(appCtx *AppContext) {
 		appCtx.consulClient = consulClient
@@ -109,6 +117,10 @@ func (appCtx *AppContext) GetPaseto() xpaseto.PasetoService {
 
 func (appCtx *AppContext) GetSMTP() smtp.SMTP {
 	return appCtx.smtp
+}
+
+func (appCtx *AppContext) GetStorage() storage.Storage {
+	return appCtx.storage
 }
 
 func (appCtx *AppContext) GetConsulClient() discovery.ConsulClient {

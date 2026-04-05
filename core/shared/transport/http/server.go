@@ -31,6 +31,9 @@ type Server struct {
 	moduleServers  []HTTPServer
 	moduleBuilders []ModuleBuilder
 	appCtx         *appCtx.AppContext
+	swaggerJSON    []byte
+	swaggerPath    string
+	swaggerErr     error
 }
 
 func NewServer(cfg *config.Config, opts ...Option) *Server {
@@ -111,6 +114,9 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 	})
 	s.router = r
 	s.appCtx = appCtx
+
+	s.prepareSwaggerDocs(ctx)
+	s.registerSwaggerRoutes()
 
 	// public api
 	s.registerPublicAPI()
