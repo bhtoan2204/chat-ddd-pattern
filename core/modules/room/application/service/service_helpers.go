@@ -31,13 +31,9 @@ func requireRoomRole(ctx context.Context, roomRepo repos.RoomRepository, memberR
 }
 
 func createSystemMessageTx(ctx context.Context, txRepos repos.Repos, roomID, actorID, body string, now time.Time) (*entity.MessageEntity, error) {
-	message := &entity.MessageEntity{
-		ID:          newUUID(),
-		RoomID:      roomID,
-		SenderID:    actorID,
-		Message:     body,
-		MessageType: "system",
-		CreatedAt:   now,
+	message, err := entity.NewSystemMessage(newUUID(), roomID, actorID, body, now)
+	if err != nil {
+		return nil, err
 	}
 	if err := txRepos.MessageRepository().CreateMessage(ctx, message); err != nil {
 		return nil, err
@@ -46,29 +42,6 @@ func createSystemMessageTx(ctx context.Context, txRepos repos.Repos, roomID, act
 		return nil, err
 	}
 	return message, nil
-}
-
-func canonicalDirectKey(a, b string) string {
-	ids := []string{strings.TrimSpace(a), strings.TrimSpace(b)}
-	if ids[0] > ids[1] {
-		ids[0], ids[1] = ids[1], ids[0]
-	}
-	return strings.Join(ids, ":")
-}
-
-func normalizeMessageType(value string) string {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "", "text":
-		return "text"
-	case "system":
-		return "system"
-	case "image":
-		return "image"
-	case "file":
-		return "file"
-	default:
-		return ""
-	}
 }
 
 func presenceKey(accountID string) string {

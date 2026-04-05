@@ -15,6 +15,9 @@ import (
 	sharedevents "go-socket/core/shared/contracts/events"
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
+	stackerr "go-socket/core/shared/pkg/stackErr"
+
+	"go.uber.org/zap"
 )
 
 const paymentAggregateType = "payment"
@@ -32,6 +35,7 @@ func NewPaymentService(intentStore PaymentIntentStore, providerRegistry *provide
 }
 
 func (s *PaymentService) CreatePayment(ctx context.Context, req *paymentin.CreatePaymentRequest) (*paymentout.CreatePaymentResponse, error) {
+	log := logging.FromContext(ctx).Named("CreatePayment")
 	req.Normalize()
 	if err := wrapValidation(req.Validate()); err != nil {
 		return nil, err
@@ -43,16 +47,17 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *paymentin.Creat
 	}
 
 	now := time.Now().UTC()
-	intent := &entity.PaymentIntent{
-		TransactionID:   req.TransactionID,
-		Provider:        req.Provider,
-		Amount:          req.Amount,
-		Currency:        req.Currency,
-		DebitAccountID:  req.DebitAccountID,
-		CreditAccountID: req.CreditAccountID,
-		Status:          entity.PaymentStatusCreating,
-		CreatedAt:       now,
-		UpdatedAt:       now,
+	intent, err := entity.NewPaymentIntent(
+		req.TransactionID,
+		req.Provider,
+		req.Amount,
+		req.Currency,
+		req.DebitAccountID,
+		req.CreditAccountID,
+		now,
+	)
+	if err != nil {
+		return nil, wrapValidation(err)
 	}
 
 	if err := s.intentStore.WithTransaction(ctx, func(store PaymentIntentStore) error {
@@ -81,14 +86,13 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *paymentin.Creat
 			"transaction_id", req.TransactionID,
 			"error", err,
 		)
-		_ = s.updateIntentStatus(ctx, req.TransactionID, entity.PaymentStatusFailed)
+		if stateErr := intent.SetProviderState("", entity.PaymentStatusFailed, time.Now().UTC()); stateErr == nil {
+			_ = s.updateIntentStatus(ctx, intent.TransactionID, intent.Status)
+		}
 		return nil, err
 	}
 
-	targetStatus := normalizePaymentStatus(response.Status)
-	if targetStatus == "" {
-		targetStatus = entity.PaymentStatusPending
-	}
+	targetStatus := entity.NormalizePaymentStatusOrPending(response.Status)
 
 	persistedIntent, err := s.intentStore.GetIntentByTransactionID(ctx, req.TransactionID)
 	if err != nil {
@@ -98,32 +102,35 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *paymentin.Creat
 		return nil, err
 	}
 	if err := s.intentStore.WithTransaction(ctx, func(store PaymentIntentStore) error {
-		if err := store.UpdateIntentProviderState(ctx, persistedIntent.TransactionID, response.ExternalRef, targetStatus); err != nil {
+		if err := persistedIntent.SetProviderState(response.ExternalRef, targetStatus, time.Now().UTC()); err != nil {
+			return err
+		}
+		if err := store.UpdateIntentProviderState(ctx, persistedIntent.TransactionID, persistedIntent.ExternalRef, persistedIntent.Status); err != nil {
 			return err
 		}
 
-		if response.CheckoutURL != "" || response.ExternalRef != "" {
-			if err := store.AppendOutboxEvent(ctx, newPaymentCheckoutSessionCreatedEvent(persistedIntent, response, targetStatus)); err != nil {
-				return err
+		if response.CheckoutURL != "" || persistedIntent.ExternalRef != "" {
+			if err := store.AppendOutboxEvent(ctx, newPaymentCheckoutSessionCreatedEvent(persistedIntent, response, persistedIntent.Status)); err != nil {
+				return stackerr.Error(err)
 			}
 		}
 
-		if targetStatus == entity.PaymentStatusSuccess {
+		if persistedIntent.Status == entity.PaymentStatusSuccess {
 			return s.finalizeSuccessfulPaymentTx(ctx, store, persistedIntent, &providers.PaymentResult{
 				TransactionID: response.TransactionID,
-				Status:        targetStatus,
+				Status:        persistedIntent.Status,
 				Amount:        persistedIntent.Amount,
 				Currency:      persistedIntent.Currency,
-				ExternalRef:   response.ExternalRef,
+				ExternalRef:   persistedIntent.ExternalRef,
 			})
 		}
-		if targetStatus == entity.PaymentStatusFailed {
+		if persistedIntent.Status == entity.PaymentStatusFailed {
 			return store.AppendOutboxEvent(ctx, newPaymentFailedEvent(persistedIntent, &providers.PaymentResult{
 				TransactionID: response.TransactionID,
-				Status:        targetStatus,
+				Status:        persistedIntent.Status,
 				Amount:        persistedIntent.Amount,
 				Currency:      persistedIntent.Currency,
-				ExternalRef:   response.ExternalRef,
+				ExternalRef:   persistedIntent.ExternalRef,
 			}))
 		}
 		return nil
@@ -131,11 +138,11 @@ func (s *PaymentService) CreatePayment(ctx context.Context, req *paymentin.Creat
 		return nil, err
 	}
 
-	logging.FromContext(ctx).Infow("payment created",
-		"provider", provider.Name(),
-		"transaction_id", response.TransactionID,
-		"status", targetStatus,
-		"external_ref", response.ExternalRef,
+	log.Infow("payment created",
+		zap.String("provider", provider.Name()),
+		zap.String("transaction_id", response.TransactionID),
+		zap.String("status", targetStatus),
+		zap.String("external_ref", response.ExternalRef),
 	)
 
 	return &paymentout.CreatePaymentResponse{
@@ -162,22 +169,25 @@ func (s *PaymentService) HandleWebhook(ctx context.Context, providerName string,
 	if err != nil {
 		return nil, err
 	}
-	result.Status = normalizePaymentStatus(result.Status)
+	result.Status = entity.NormalizePaymentStatusOrPending(result.Status)
 
 	intent, err := s.findIntent(ctx, strings.ToLower(provider.Name()), result)
 	if err != nil {
 		return nil, err
 	}
-	if err := validateResultAgainstIntent(intent, result); err != nil {
+	if err := wrapValidation(intent.ValidateProviderResult(result.Amount, result.Currency)); err != nil {
 		return nil, err
 	}
 
 	if result.Status != entity.PaymentStatusSuccess {
 		if err := s.intentStore.WithTransaction(ctx, func(store PaymentIntentStore) error {
-			if err := store.UpdateIntentProviderState(ctx, intent.TransactionID, result.ExternalRef, result.Status); err != nil {
-				return err
+			if err := intent.SetProviderState(result.ExternalRef, result.Status, time.Now().UTC()); err != nil {
+				return stackerr.Error(err)
 			}
-			if result.Status == entity.PaymentStatusFailed {
+			if err := store.UpdateIntentProviderState(ctx, intent.TransactionID, intent.ExternalRef, intent.Status); err != nil {
+				return stackerr.Error(err)
+			}
+			if intent.Status == entity.PaymentStatusFailed {
 				return store.AppendOutboxEvent(ctx, newPaymentFailedEvent(intent, result))
 			}
 			return nil
@@ -208,13 +218,16 @@ func (s *PaymentService) HandleWebhook(ctx context.Context, providerName string,
 }
 
 func (s *PaymentService) finalizeSuccessfulPayment(ctx context.Context, intent *entity.PaymentIntent, result *providers.PaymentResult) (bool, error) {
-	idempotencyKey := paymentIdempotencyKey(intent, result)
+	idempotencyKey := intent.PaymentIdempotencyKey(result.EventID, result.ExternalRef)
 	processed, err := s.intentStore.IsProcessed(ctx, intent.Provider, idempotencyKey)
 	if err != nil {
 		return false, err
 	}
 	if processed {
-		if err := s.intentStore.UpdateIntentProviderState(ctx, intent.TransactionID, result.ExternalRef, entity.PaymentStatusSuccess); err != nil {
+		if err := intent.SetProviderState(result.ExternalRef, entity.PaymentStatusSuccess, time.Now().UTC()); err != nil {
+			return false, err
+		}
+		if err := s.intentStore.UpdateIntentProviderState(ctx, intent.TransactionID, intent.ExternalRef, intent.Status); err != nil {
 			return false, err
 		}
 		return true, nil
@@ -233,21 +246,23 @@ func (s *PaymentService) finalizeSuccessfulPayment(ctx context.Context, intent *
 }
 
 func (s *PaymentService) finalizeSuccessfulPaymentTx(ctx context.Context, store PaymentIntentStore, intent *entity.PaymentIntent, result *providers.PaymentResult) error {
-	idempotencyKey := paymentIdempotencyKey(intent, result)
+	idempotencyKey := intent.PaymentIdempotencyKey(result.EventID, result.ExternalRef)
+	processedEvent, err := entity.NewProcessedPaymentEvent(intent.Provider, idempotencyKey, intent.TransactionID, time.Now().UTC())
+	if err != nil {
+		return err
+	}
 
-	if err := store.MarkProcessed(ctx, &entity.ProcessedPaymentEvent{
-		Provider:       intent.Provider,
-		IdempotencyKey: idempotencyKey,
-		TransactionID:  intent.TransactionID,
-		CreatedAt:      time.Now().UTC(),
-	}); err != nil {
+	if err := store.MarkProcessed(ctx, processedEvent); err != nil {
 		if errors.Is(err, paymentrepos.ErrProviderPaymentDuplicateProcessed) {
 			return err
 		}
 		return err
 	}
 
-	if err := store.UpdateIntentProviderState(ctx, intent.TransactionID, result.ExternalRef, entity.PaymentStatusSuccess); err != nil {
+	if err := intent.SetProviderState(result.ExternalRef, entity.PaymentStatusSuccess, time.Now().UTC()); err != nil {
+		return err
+	}
+	if err := store.UpdateIntentProviderState(ctx, intent.TransactionID, intent.ExternalRef, intent.Status); err != nil {
 		return err
 	}
 
@@ -280,44 +295,6 @@ func (s *PaymentService) findIntent(ctx context.Context, provider string, result
 
 func (s *PaymentService) updateIntentStatus(ctx context.Context, transactionID, status string) error {
 	return s.intentStore.UpdateIntentStatus(ctx, transactionID, status)
-}
-
-func validateResultAgainstIntent(intent *entity.PaymentIntent, result *providers.PaymentResult) error {
-	if result.Amount != 0 && result.Amount != intent.Amount {
-		return fmt.Errorf("%v: provider amount does not match reserved payment", ErrValidation)
-	}
-	if currency := strings.TrimSpace(result.Currency); currency != "" && !strings.EqualFold(currency, intent.Currency) {
-		return fmt.Errorf("%v: provider currency does not match reserved payment", ErrValidation)
-	}
-	return nil
-}
-
-func normalizePaymentStatus(status string) string {
-	switch strings.ToUpper(strings.TrimSpace(status)) {
-	case entity.PaymentStatusSuccess:
-		return entity.PaymentStatusSuccess
-	case entity.PaymentStatusFailed:
-		return entity.PaymentStatusFailed
-	case entity.PaymentStatusCreating:
-		return entity.PaymentStatusCreating
-	case entity.PaymentStatusPending:
-		return entity.PaymentStatusPending
-	default:
-		return entity.PaymentStatusPending
-	}
-}
-
-func paymentIdempotencyKey(intent *entity.PaymentIntent, result *providers.PaymentResult) string {
-	if strings.TrimSpace(result.EventID) != "" {
-		return result.EventID
-	}
-	if strings.TrimSpace(result.ExternalRef) != "" {
-		return result.ExternalRef
-	}
-	if strings.TrimSpace(intent.ExternalRef) != "" {
-		return intent.ExternalRef
-	}
-	return intent.TransactionID
 }
 
 func coalesce(values ...string) string {

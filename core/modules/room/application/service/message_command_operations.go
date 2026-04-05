@@ -9,6 +9,7 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 )
 
 func (s *MessageCommandService) CreateMessage(ctx context.Context, accountID string, command apptypes.SendMessageCommand) (*apptypes.MessageResult, error) {
@@ -24,62 +25,48 @@ func (s *MessageCommandService) SendMessage(ctx context.Context, accountID strin
 	if _, room, err := requireRoomRole(ctx, s.repos.RoomRepository(), s.repos.RoomMemberRepository(), roomID, accountID); err != nil {
 		return nil, err
 	} else {
-		messageType := normalizeMessageType(command.MessageType)
-		if messageType == "" {
-			messageType = "text"
-		}
-
-		content := strings.TrimSpace(command.Message)
-		if messageType == "text" && content == "" {
-			return nil, errors.New("message is required")
-		}
-		if (messageType == "image" || messageType == "file") && strings.TrimSpace(command.ObjectKey) == "" {
-			return nil, errors.New("object_key is required for media messages")
-		}
-
 		now := time.Now().UTC()
-		message := &entity.MessageEntity{
-			ID:                     newUUID(),
-			RoomID:                 roomID,
-			SenderID:               accountID,
-			Message:                content,
-			MessageType:            messageType,
-			ReplyToMessageID:       strings.TrimSpace(command.ReplyToMessageID),
-			ForwardedFromMessageID: strings.TrimSpace(command.ForwardedFromMessageID),
-			FileName:               strings.TrimSpace(command.FileName),
+		message, err := entity.NewMessage(newUUID(), roomID, accountID, entity.MessageParams{
+			Message:                command.Message,
+			MessageType:            command.MessageType,
+			ReplyToMessageID:       command.ReplyToMessageID,
+			ForwardedFromMessageID: command.ForwardedFromMessageID,
+			FileName:               command.FileName,
 			FileSize:               command.FileSize,
-			MimeType:               strings.TrimSpace(command.MimeType),
-			ObjectKey:              strings.TrimSpace(command.ObjectKey),
-			CreatedAt:              now,
+			MimeType:               command.MimeType,
+			ObjectKey:              command.ObjectKey,
+		}, now)
+		if err != nil {
+			return nil, err
 		}
 
 		if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 			if err := txRepos.MessageRepository().CreateMessage(ctx, message); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			if err := txRepos.MessageReadRepository().UpsertMessage(ctx, message); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 
 			members, err := txRepos.RoomMemberReadRepository().ListRoomMembers(ctx, roomID)
 			if err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			for _, member := range members {
 				if member.AccountID == accountID {
 					continue
 				}
 				if err := txRepos.MessageReadRepository().UpsertMessageReceipt(ctx, message.ID, member.AccountID, "sent", nil, nil, now, now); err != nil {
-					return err
+					return stackerr.Error(err)
 				}
 			}
 
-			room.UpdatedAt = now
+			room.Touch(now)
 			if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			if err := txRepos.RoomReadRepository().UpdateRoomStats(ctx, roomID, len(members), message, now); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 
 			payload, _ := currentAccountPayload(ctx)
@@ -103,21 +90,9 @@ func (s *MessageCommandService) EditMessage(ctx context.Context, accountID, mess
 	if err != nil {
 		return nil, err
 	}
-	if message.SenderID != accountID {
-		return nil, errors.New("cannot edit another user's message")
+	if err := message.Edit(accountID, command.Message, time.Now().UTC()); err != nil {
+		return nil, err
 	}
-	if message.MessageType == "system" {
-		return nil, errors.New("system messages cannot be edited")
-	}
-
-	content := strings.TrimSpace(command.Message)
-	if content == "" {
-		return nil, errors.New("message is required")
-	}
-
-	now := time.Now().UTC()
-	message.Message = content
-	message.EditedAt = &now
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.MessageRepository().UpdateMessage(ctx, message); err != nil {
 			return err
@@ -144,14 +119,12 @@ func (s *MessageCommandService) DeleteMessage(ctx context.Context, accountID, me
 
 	switch scope {
 	case "everyone":
-		if message.SenderID != accountID {
-			return errors.New("cannot delete everyone for another user's message")
+		if err := message.DeleteForEveryone(accountID, now); err != nil {
+			return err
 		}
-		message.Message = ""
-		message.DeletedForEveryoneAt = &now
 		return s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 			if err := txRepos.MessageRepository().UpdateMessage(ctx, message); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			return txRepos.MessageReadRepository().UpsertMessage(ctx, message)
 		})
@@ -181,40 +154,38 @@ func (s *MessageCommandService) ForwardMessage(ctx context.Context, accountID, m
 }
 
 func (s *MessageCommandService) MarkMessageStatus(ctx context.Context, accountID, messageID string, command apptypes.MarkMessageStatusCommand) error {
-	status := strings.ToLower(strings.TrimSpace(command.Status))
-	if status != "delivered" && status != "seen" {
-		return errors.New("status must be delivered or seen")
-	}
-
-	now := time.Now().UTC()
 	message, err := s.repos.MessageRepository().GetMessageByID(ctx, messageID)
 	if err != nil {
 		return err
 	}
-	if message.SenderID == accountID {
+	if !message.CanBeMarkedBy(accountID) {
 		return nil
 	}
 
+	status, err := entity.NormalizeReceiptStatus(command.Status)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now().UTC()
 	deliveredAt := &now
 	var seenAt *time.Time
-	if status == "seen" {
-		seenAt = &now
-	}
 	return s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
+		member, err := txRepos.RoomMemberReadRepository().GetRoomMemberByAccount(ctx, message.RoomID, accountID)
+		if err == nil && member != nil {
+			var applyErr error
+			status, deliveredAt, seenAt, applyErr = member.ApplyReceiptStatus(status, now)
+			if applyErr != nil {
+				return applyErr
+			}
+		}
+
 		if err := txRepos.MessageReadRepository().UpsertMessageReceipt(ctx, messageID, accountID, status, deliveredAt, seenAt, now, now); err != nil {
 			return err
 		}
-
-		member, err := txRepos.RoomMemberReadRepository().GetRoomMemberByAccount(ctx, message.RoomID, accountID)
 		if err == nil && member != nil {
-			member.LastDeliveredAt = &now
-			if status == "seen" {
-				member.LastReadAt = &now
-			}
-			member.UpdatedAt = now
 			return txRepos.RoomMemberReadRepository().UpsertRoomMember(ctx, member)
 		}
-
 		return nil
 	})
 }

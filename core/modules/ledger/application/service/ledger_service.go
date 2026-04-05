@@ -15,6 +15,8 @@ import (
 	sharedevents "go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/pkg/logging"
 	stackerr "go-socket/core/shared/pkg/stackErr"
+
+	"go.uber.org/zap"
 )
 
 type LedgerService struct {
@@ -77,31 +79,14 @@ func (s *LedgerService) GetTransaction(ctx context.Context, transactionID string
 }
 
 func (s *LedgerService) RecordPaymentSucceeded(ctx context.Context, evt *sharedevents.PaymentSucceededEvent) error {
-	if evt == nil {
-		return stackerr.Error(fmt.Errorf("%v: payment event is required", ErrValidation))
-	}
-
-	paymentID := strings.TrimSpace(evt.PaymentID)
-	if paymentID == "" {
-		paymentID = strings.TrimSpace(evt.TransactionID)
-	}
-	if paymentID == "" {
-		return stackerr.Error(fmt.Errorf("%v: payment_id is required", ErrValidation))
-	}
-	if strings.TrimSpace(evt.DebitAccountID) == "" || strings.TrimSpace(evt.CreditAccountID) == "" {
-		return stackerr.Error(fmt.Errorf("%v: debit_account_id and credit_account_id are required", ErrValidation))
-	}
-	if evt.Amount <= 0 {
-		return stackerr.Error(fmt.Errorf("%v: amount must be positive", ErrValidation))
-	}
-
-	idempotencyKey := strings.TrimSpace(evt.IdempotencyKey)
-	if idempotencyKey == "" {
-		idempotencyKey = fmt.Sprintf("payment.succeeded:%s", paymentID)
+	log := logging.FromContext(ctx).Named("RecordPaymentSucceeded")
+	booking, err := entity.NewPaymentSucceededBooking(evt)
+	if err != nil {
+		return stackerr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 	}
 
 	return s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
-		processed, err := txRepos.PaymentRepository().IsProcessed(ctx, "payment-service", idempotencyKey)
+		processed, err := txRepos.PaymentRepository().IsProcessed(ctx, "payment-service", booking.IdempotencyKey)
 		if err != nil {
 			return stackerr.Error(err)
 		}
@@ -110,49 +95,41 @@ func (s *LedgerService) RecordPaymentSucceeded(ctx context.Context, evt *sharede
 		}
 
 		alreadyBooked := false
-		if _, err := s.createTransaction(ctx, txRepos.LedgerRepository(), ledgerTransactionIDForPaymentSucceeded(paymentID), []entity.LedgerEntryInput{
-			{AccountID: strings.TrimSpace(evt.DebitAccountID), Amount: -evt.Amount},
-			{AccountID: strings.TrimSpace(evt.CreditAccountID), Amount: evt.Amount},
-		}); err != nil {
+		if _, err := s.createTransaction(ctx, txRepos.LedgerRepository(), booking.LedgerTransactionID(), booking.LedgerEntries()); err != nil {
 			if errors.Is(err, ErrDuplicateTransaction) {
 				alreadyBooked = true
 			} else {
-				return err
+				return stackerr.Error(err)
 			}
 		}
 
-		if err := txRepos.PaymentRepository().MarkProcessed(ctx, &entity.ProcessedPaymentEvent{
-			Provider:       "payment-service",
-			IdempotencyKey: idempotencyKey,
-			TransactionID:  paymentID,
-			CreatedAt:      time.Now().UTC(),
-		}); err != nil {
+		processedEvent, err := booking.ProcessedEvent("payment-service", time.Now().UTC())
+		if err != nil {
+			return stackerr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
+		}
+		if err := txRepos.PaymentRepository().MarkProcessed(ctx, processedEvent); err != nil {
 			if errors.Is(err, ledgerrepo.ErrDuplicate) {
 				return nil
 			}
 			return stackerr.Error(err)
 		}
-
-		logging.FromContext(ctx).Infow("payment booked into ledger",
-			"payment_id", paymentID,
-			"ledger_transaction_id", ledgerTransactionIDForPaymentSucceeded(paymentID),
-			"idempotency_key", idempotencyKey,
-			"already_booked", alreadyBooked,
+		log.Infow("payment booked into ledger",
+			zap.String("payment_id", booking.PaymentID),
+			zap.String("ledger_transaction_id", booking.LedgerTransactionID()),
+			zap.String("idempotency_key", booking.IdempotencyKey),
+			zap.Bool("already_booked", alreadyBooked),
 		)
 		return nil
 	})
 }
 
 func (s *LedgerService) createTransaction(ctx context.Context, repo ledgerrepos.LedgerRepository, transactionID string, entries []entity.LedgerEntryInput) (*entity.LedgerTransaction, error) {
-	if err := validateLedgerInputs(transactionID, entries); err != nil {
-		return nil, stackerr.Error(err)
+	log := logging.FromContext(ctx).Named("createTransaction")
+	transaction, err := entity.NewLedgerTransaction(transactionID, entries, time.Now().UTC())
+	if err != nil {
+		return nil, stackerr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 	}
 
-	now := time.Now().UTC()
-	transaction := &entity.LedgerTransaction{
-		TransactionID: strings.TrimSpace(transactionID),
-		CreatedAt:     now,
-	}
 	if err := repo.CreateTransaction(ctx, transaction); err != nil {
 		if errors.Is(err, ledgerrepo.ErrDuplicate) {
 			return nil, fmt.Errorf("%v: %s", ErrDuplicateTransaction, transaction.TransactionID)
@@ -160,20 +137,11 @@ func (s *LedgerService) createTransaction(ctx context.Context, repo ledgerrepos.
 		return nil, stackerr.Error(err)
 	}
 
-	ledgerEntries := make([]*entity.LedgerEntry, 0, len(entries))
-	for _, entry := range entries {
-		ledgerEntries = append(ledgerEntries, &entity.LedgerEntry{
-			TransactionID: transaction.TransactionID,
-			AccountID:     strings.TrimSpace(entry.AccountID),
-			Amount:        entry.Amount,
-			CreatedAt:     now,
-		})
-	}
-	if err := repo.InsertEntries(ctx, ledgerEntries); err != nil {
+	if err := repo.InsertEntries(ctx, transaction.Entries); err != nil {
 		return nil, stackerr.Error(err)
 	}
 
-	transaction, err := repo.GetTransaction(ctx, transaction.TransactionID)
+	transaction, err = repo.GetTransaction(ctx, transaction.TransactionID)
 	if errors.Is(err, ledgerrepo.ErrNotFound) {
 		return nil, fmt.Errorf("%v: %s", ErrTransactionNotFound, transactionID)
 	}
@@ -181,37 +149,12 @@ func (s *LedgerService) createTransaction(ctx context.Context, repo ledgerrepos.
 		return nil, stackerr.Error(err)
 	}
 
-	logging.FromContext(ctx).Infow("ledger transaction created",
-		"transaction_id", transaction.TransactionID,
-		"entries_count", len(transaction.Entries),
+	log.Infow("ledger transaction created",
+		zap.String("transaction_id", transaction.TransactionID),
+		zap.Int("entries_count", len(transaction.Entries)),
 	)
 
 	return transaction, nil
-}
-
-func validateLedgerInputs(transactionID string, entries []entity.LedgerEntryInput) error {
-	if strings.TrimSpace(transactionID) == "" {
-		return fmt.Errorf("%v: transaction_id is required", ErrValidation)
-	}
-	if len(entries) < 2 {
-		return fmt.Errorf("%v: at least 2 entries are required", ErrValidation)
-	}
-
-	var sum int64
-	for idx, entry := range entries {
-		if strings.TrimSpace(entry.AccountID) == "" {
-			return fmt.Errorf("%v: entries[%d].account_id is required", ErrValidation, idx)
-		}
-		if entry.Amount == 0 {
-			return fmt.Errorf("%v: entries[%d].amount must be non-zero", ErrValidation, idx)
-		}
-		sum += entry.Amount
-	}
-
-	if sum != 0 {
-		return fmt.Errorf("%v: entries must balance to zero", ErrValidation)
-	}
-	return nil
 }
 
 func toLedgerEntryInputs(entries []ledgerin.LedgerEntryInput) []entity.LedgerEntryInput {
@@ -249,8 +192,4 @@ func wrapValidation(err error) error {
 		return nil
 	}
 	return fmt.Errorf("%v: %s", ErrValidation, err.Error())
-}
-
-func ledgerTransactionIDForPaymentSucceeded(paymentID string) string {
-	return fmt.Sprintf("payment:%s:succeeded", strings.TrimSpace(paymentID))
 }

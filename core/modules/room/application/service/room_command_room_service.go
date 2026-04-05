@@ -12,21 +12,10 @@ import (
 )
 
 func (s *RoomCommandService) CreateRoom(ctx context.Context, accountID string, command apptypes.CreateRoomCommand) (*apptypes.RoomResult, error) {
-	accountID = strings.TrimSpace(accountID)
-	name := strings.TrimSpace(command.Name)
-	if accountID == "" || name == "" {
-		return nil, errors.New("account_id and name are required")
-	}
-
 	now := time.Now().UTC()
-	room := &entity.Room{
-		ID:          newUUID(),
-		Name:        name,
-		Description: strings.TrimSpace(command.Description),
-		RoomType:    command.RoomType,
-		OwnerID:     accountID,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+	room, err := entity.NewRoom(newUUID(), command.Name, command.Description, accountID, command.RoomType, "", now)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
@@ -49,19 +38,14 @@ func (s *RoomCommandService) UpdateRoom(ctx context.Context, accountID, roomID s
 	if err != nil {
 		return nil, err
 	}
-	if name := strings.TrimSpace(command.Name); name != "" {
-		room.Name = name
-	}
-	if description := strings.TrimSpace(command.Description); description != "" {
-		room.Description = description
-	}
-	if command.RoomType != "" {
-		room.RoomType = command.RoomType
-	}
+
 	if accountID = strings.TrimSpace(accountID); accountID != "" {
 		room.OwnerID = accountID
 	}
-	room.UpdatedAt = time.Now().UTC()
+
+	if _, err := room.UpdateDetails(command.Name, command.Description, command.RoomType, time.Now().UTC()); err != nil {
+		return nil, err
+	}
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
 			return err

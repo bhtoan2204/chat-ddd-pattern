@@ -296,7 +296,7 @@ func (p *paymentProjectionRepoImpl) clearProjection(ctx context.Context, account
 		if accountID == "" {
 			txQuery = txQuery.Session(&gorm.Session{AllowGlobalUpdate: true})
 			if err := txQuery.Delete(&model.PaymentTransactionModel{}).Error; err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 		} else if err := txQuery.Where("account_id = ?", accountID).Delete(&model.PaymentTransactionModel{}).Error; err != nil {
 			return err

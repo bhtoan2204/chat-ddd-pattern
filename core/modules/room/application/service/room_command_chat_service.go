@@ -11,38 +11,28 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	roomtypes "go-socket/core/modules/room/types"
+	stackerr "go-socket/core/shared/pkg/stackErr"
 )
 
 func (s *RoomCommandService) CreateDirectConversation(ctx context.Context, accountID string, command apptypes.CreateDirectConversationCommand) (*apptypes.ConversationResult, error) {
-	accountID = strings.TrimSpace(accountID)
 	peerID := strings.TrimSpace(command.PeerAccountID)
-	if accountID == "" || peerID == "" {
-		return nil, errors.New("account_id and peer_account_id are required")
+	now := time.Now().UTC()
+	room, err := entity.NewDirectConversationRoom(newUUID(), accountID, peerID, now)
+	if err != nil {
+		return nil, err
 	}
-	if accountID == peerID {
-		return nil, errors.New("cannot create direct conversation with yourself")
-	}
-
-	directKey := canonicalDirectKey(accountID, peerID)
-	if existing, err := s.repos.RoomRepository().GetRoomByDirectKey(ctx, directKey); err == nil && existing != nil {
+	if existing, err := s.repos.RoomRepository().GetRoomByDirectKey(ctx, room.DirectKey); err == nil && existing != nil {
 		return buildConversationResult(ctx, s.repos, accountID, existing, true)
 	}
-
-	now := time.Now().UTC()
-	room := &entity.Room{
-		ID:          newUUID(),
-		Name:        "Direct chat",
-		Description: "",
-		RoomType:    roomtypes.RoomTypeDirect,
-		OwnerID:     accountID,
-		DirectKey:   directKey,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+	ownerMember, err := entity.NewRoomMember(newUUID(), room.ID, accountID, roomtypes.RoomRoleOwner, now)
+	if err != nil {
+		return nil, err
 	}
-	members := []*entity.RoomMemberEntity{
-		{ID: newUUID(), RoomID: room.ID, AccountID: accountID, Role: roomtypes.RoomRoleOwner, CreatedAt: now, UpdatedAt: now},
-		{ID: newUUID(), RoomID: room.ID, AccountID: peerID, Role: roomtypes.RoomRoleMember, CreatedAt: now, UpdatedAt: now},
+	peerMember, err := entity.NewRoomMember(newUUID(), room.ID, peerID, roomtypes.RoomRoleMember, now)
+	if err != nil {
+		return nil, err
 	}
+	members := []*entity.RoomMemberEntity{ownerMember, peerMember}
 
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.RoomRepository().CreateRoom(ctx, room); err != nil {
@@ -53,13 +43,13 @@ func (s *RoomCommandService) CreateDirectConversation(ctx context.Context, accou
 		}
 		for _, member := range members {
 			if err := txRepos.RoomMemberRepository().CreateRoomMember(ctx, member); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			if err := txRepos.RoomMemberReadRepository().UpsertRoomMember(ctx, member); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			if err := s.aggregateService.PublishMemberAdded(ctx, txRepos.RoomOutboxEventsRepository(), room.ID, member.AccountID, member.Role, member.CreatedAt); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 		}
 		if err := s.aggregateService.PublishRoomCreated(ctx, txRepos.RoomOutboxEventsRepository(), room.ID, room.RoomType, len(members)); err != nil {
@@ -78,32 +68,14 @@ func (s *RoomCommandService) CreateDirectConversation(ctx context.Context, accou
 }
 
 func (s *RoomCommandService) CreateGroup(ctx context.Context, accountID string, command apptypes.CreateGroupCommand) (*apptypes.ConversationResult, error) {
-	accountID = strings.TrimSpace(accountID)
-	name := strings.TrimSpace(command.Name)
-	if accountID == "" || name == "" {
-		return nil, errors.New("account_id and name are required")
-	}
-
-	memberSet := map[string]roomtypes.RoomRole{accountID: roomtypes.RoomRoleOwner}
-	for _, memberID := range command.MemberIDs {
-		memberID = strings.TrimSpace(memberID)
-		if memberID == "" {
-			continue
-		}
-		if _, exists := memberSet[memberID]; !exists {
-			memberSet[memberID] = roomtypes.RoomRoleMember
-		}
-	}
-
 	now := time.Now().UTC()
-	room := &entity.Room{
-		ID:          newUUID(),
-		Name:        name,
-		Description: strings.TrimSpace(command.Description),
-		RoomType:    roomtypes.RoomTypeGroup,
-		OwnerID:     accountID,
-		CreatedAt:   now,
-		UpdatedAt:   now,
+	room, err := entity.NewRoom(newUUID(), command.Name, command.Description, accountID, roomtypes.RoomTypeGroup, "", now)
+	if err != nil {
+		return nil, err
+	}
+	memberSet, err := entity.BuildGroupMemberRoles(accountID, command.MemberIDs)
+	if err != nil {
+		return nil, err
 	}
 
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
@@ -116,22 +88,18 @@ func (s *RoomCommandService) CreateGroup(ctx context.Context, accountID string, 
 
 		memberCount := 0
 		for memberID, role := range memberSet {
-			member := &entity.RoomMemberEntity{
-				ID:        newUUID(),
-				RoomID:    room.ID,
-				AccountID: memberID,
-				Role:      role,
-				CreatedAt: now,
-				UpdatedAt: now,
+			member, err := entity.NewRoomMember(newUUID(), room.ID, memberID, role, now)
+			if err != nil {
+				return stackerr.Error(err)
 			}
 			if err := txRepos.RoomMemberRepository().CreateRoomMember(ctx, member); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			if err := txRepos.RoomMemberReadRepository().UpsertRoomMember(ctx, member); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			if err := s.aggregateService.PublishMemberAdded(ctx, txRepos.RoomOutboxEventsRepository(), room.ID, member.AccountID, member.Role, member.CreatedAt); err != nil {
-				return err
+				return stackerr.Error(err)
 			}
 			memberCount++
 		}
@@ -156,21 +124,13 @@ func (s *RoomCommandService) UpdateGroup(ctx context.Context, accountID, roomID 
 	if err != nil {
 		return nil, err
 	}
-	if room.RoomType != roomtypes.RoomTypeGroup {
-		return nil, errors.New("room is not a group")
-	}
-	if member.Role != roomtypes.RoomRoleOwner && member.Role != roomtypes.RoomRoleAdmin {
-		return nil, errors.New("insufficient permissions")
+	if err := member.CanManageGroup(room); err != nil {
+		return nil, err
 	}
 
-	updated := false
-	if name := strings.TrimSpace(command.Name); name != "" && name != room.Name {
-		room.Name = name
-		updated = true
-	}
-	if description := strings.TrimSpace(command.Description); description != room.Description {
-		room.Description = description
-		updated = true
+	updated, err := room.UpdateDetails(command.Name, command.Description, "", time.Now().UTC())
+	if err != nil {
+		return nil, err
 	}
 	if !updated {
 		return buildConversationResult(ctx, s.repos, accountID, room, true)
@@ -178,7 +138,7 @@ func (s *RoomCommandService) UpdateGroup(ctx context.Context, accountID, roomID 
 
 	now := time.Now().UTC()
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
-		room.UpdatedAt = now
+		room.Touch(now)
 		if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
 			return err
 		}
@@ -207,19 +167,13 @@ func (s *RoomCommandService) AddMember(ctx context.Context, actorID, roomID stri
 	if err != nil {
 		return nil, err
 	}
-	if room.RoomType != roomtypes.RoomTypeGroup {
-		return nil, errors.New("room is not a group")
-	}
-	if member.Role != roomtypes.RoomRoleOwner && member.Role != roomtypes.RoomRoleAdmin {
-		return nil, errors.New("insufficient permissions")
+	if err := member.CanManageGroup(room); err != nil {
+		return nil, err
 	}
 
 	accountID := strings.TrimSpace(command.AccountID)
 	if accountID == "" {
 		return nil, errors.New("account_id is required")
-	}
-	if command.Role == "" {
-		command.Role = roomtypes.RoomRoleMember
 	}
 
 	if existing, err := s.repos.RoomMemberRepository().GetRoomMemberByAccount(ctx, roomID, accountID); err == nil && existing != nil {
@@ -227,13 +181,9 @@ func (s *RoomCommandService) AddMember(ctx context.Context, actorID, roomID stri
 	}
 
 	now := time.Now().UTC()
-	newMember := &entity.RoomMemberEntity{
-		ID:        newUUID(),
-		RoomID:    roomID,
-		AccountID: accountID,
-		Role:      command.Role,
-		CreatedAt: now,
-		UpdatedAt: now,
+	newMember, err := entity.NewRoomMember(newUUID(), roomID, accountID, command.Role, now)
+	if err != nil {
+		return nil, err
 	}
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.RoomMemberRepository().CreateRoomMember(ctx, newMember); err != nil {
@@ -246,7 +196,7 @@ func (s *RoomCommandService) AddMember(ctx context.Context, actorID, roomID stri
 			return err
 		}
 
-		room.UpdatedAt = now
+		room.Touch(now)
 		if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
 			return err
 		}
@@ -275,19 +225,10 @@ func (s *RoomCommandService) RemoveMember(ctx context.Context, actorID, roomID s
 	if err != nil {
 		return nil, err
 	}
-	if room.RoomType != roomtypes.RoomTypeGroup {
-		return nil, errors.New("room is not a group")
-	}
 
 	accountID := strings.TrimSpace(command.AccountID)
-	if accountID == "" {
-		return nil, errors.New("account_id is required")
-	}
-	if actorID != accountID && member.Role != roomtypes.RoomRoleOwner && member.Role != roomtypes.RoomRoleAdmin {
-		return nil, errors.New("insufficient permissions")
-	}
-	if actorID == accountID && member.Role == roomtypes.RoomRoleOwner {
-		return nil, errors.New("owner cannot leave without transferring ownership")
+	if err := member.CanRemoveFrom(room, accountID); err != nil {
+		return nil, err
 	}
 
 	removedMember, err := s.repos.RoomMemberRepository().GetRoomMemberByAccount(ctx, roomID, accountID)
@@ -307,7 +248,7 @@ func (s *RoomCommandService) RemoveMember(ctx context.Context, actorID, roomID s
 			return err
 		}
 
-		room.UpdatedAt = now
+		room.Touch(now)
 		if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
 			return err
 		}
@@ -336,30 +277,23 @@ func (s *RoomCommandService) PinMessage(ctx context.Context, actorID, roomID str
 	if err != nil {
 		return nil, err
 	}
-	if room.RoomType != roomtypes.RoomTypeGroup {
-		return nil, errors.New("room is not a group")
-	}
-	if member.Role != roomtypes.RoomRoleOwner && member.Role != roomtypes.RoomRoleAdmin {
-		return nil, errors.New("insufficient permissions")
-	}
-
-	messageID := strings.TrimSpace(command.MessageID)
-	if messageID == "" {
-		return nil, errors.New("message_id is required")
+	if err := member.CanManageGroup(room); err != nil {
+		return nil, err
 	}
 
 	now := time.Now().UTC()
-	room.PinnedMessageID = messageID
+	if err := room.PinMessage(command.MessageID, now); err != nil {
+		return nil, err
+	}
 	if err := s.repos.WithTransaction(ctx, func(txRepos repos.Repos) error {
-		room.UpdatedAt = now
 		if err := txRepos.RoomRepository().UpdateRoom(ctx, room); err != nil {
 			return err
 		}
-		if err := txRepos.RoomReadRepository().UpdatePinnedMessage(ctx, roomID, messageID, now); err != nil {
+		if err := txRepos.RoomReadRepository().UpdatePinnedMessage(ctx, roomID, room.PinnedMessageID, now); err != nil {
 			return err
 		}
 
-		message, err := createSystemMessageTx(ctx, txRepos, roomID, actorID, fmt.Sprintf("message %s pinned", messageID), now)
+		message, err := createSystemMessageTx(ctx, txRepos, roomID, actorID, fmt.Sprintf("message %s pinned", room.PinnedMessageID), now)
 		if err != nil {
 			return err
 		}
