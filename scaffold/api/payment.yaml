@@ -170,6 +170,7 @@ endpoints:
     path: /payment/intents
     handler: CreatePaymentHandler
     auth: true
+    successStatus: 201
     usecase:
       name: PaymentUsecase
       method: CreatePayment
@@ -223,10 +224,14 @@ endpoints:
         - name: provider
           type: string
           required: true
+          source: path
         - name: signature
           type: string
+          source: header
+          header: X-Signature
         - name: payload
           type: string
+          source: raw_body
     response:
       struct: ProcessWebhookResponse
       fields:

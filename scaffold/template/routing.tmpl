@@ -2,23 +2,41 @@
 package {{.PackageName}}
 
 import (
+	"{{.RequestDtoImport}}"
+	"{{.ResponseDtoImport}}"
+	"{{.HandlerImport}}"
+	"{{.DispatcherImport}}"
+	"{{.WrapperImport}}"
+
 	"github.com/gin-gonic/gin"
 )
 
-type RoutingHandler interface {
-	RegisterPublicHandlers(routes *gin.RouterGroup)
-	RegisterPrivateHandlers(routes *gin.RouterGroup)
-	Handle() gin.HandlerFunc
-}
-
-func (h *routingHandler) RegisterPublicHandlers(routes *gin.RouterGroup) {
+{{- if .PublicRoutes}}
+func RegisterPublicRoutes(
+	routes *gin.RouterGroup,
+{{- range .PublicParams}}
+	{{.Name}} cqrs.Dispatcher[{{.RequestType}}, {{.ResponseType}}],
+{{- end}}
+) {
 {{- range .PublicRoutes}}
-{{.}}
+	routes.{{.Method}}("{{.Path}}", httpx.Wrap(handler.New{{.HandlerName}}({{.ParamName}})))
 {{- end}}
 }
+{{- else}}
+func RegisterPublicRoutes(_ *gin.RouterGroup) {}
+{{- end}}
 
-func (h *routingHandler) RegisterPrivateHandlers(routes *gin.RouterGroup) {
+{{- if .PrivateRoutes}}
+func RegisterPrivateRoutes(
+	routes *gin.RouterGroup,
+{{- range .PrivateParams}}
+	{{.Name}} cqrs.Dispatcher[{{.RequestType}}, {{.ResponseType}}],
+{{- end}}
+) {
 {{- range .PrivateRoutes}}
-{{.}}
+	routes.{{.Method}}("{{.Path}}", httpx.Wrap(handler.New{{.HandlerName}}({{.ParamName}})))
 {{- end}}
 }
+{{- else}}
+func RegisterPrivateRoutes(_ *gin.RouterGroup) {}
+{{- end}}

@@ -74,13 +74,16 @@ func writeHandlerFile(tmpl *template.Template, module modulePaths, ep models.End
 		StructName:        lowerFirst(strings.TrimSuffix(ep.Handler, "Handler")) + "Handler",
 		Method:            strings.ToUpper(ep.Method),
 		RequestStruct:     ep.Request.Struct,
-		ResponseStruct:    ep.Response.Struct,
+		ResponseType:      responseType(ep.Response),
 		RequestDtoImport:  module.ImportRoot + "/application/dto/in",
 		ResponseDtoImport: module.ImportRoot + "/application/dto/out",
 		DispatcherImport:  "go-socket/core/shared/pkg/cqrs",
 		DispatcherPackage: "cqrs",
 		DispatcherField:   dispatcherField,
-		RequestInit:       buildRequestInit(ep),
+		RequestSetup:      buildRequestSetup(ep),
+		NeedsIO:           endpointNeedsRawBody(ep),
+		BindMode:          handlerBindMode(ep),
+		SuccessStatus:     ep.SuccessStatus,
 		ActionName:        ep.Usecase.Method,
 	}
 
@@ -116,13 +119,16 @@ type handlerTemplateData struct {
 	StructName        string
 	Method            string
 	RequestStruct     string
-	ResponseStruct    string
+	ResponseType      string
 	RequestDtoImport  string
 	ResponseDtoImport string
 	DispatcherImport  string
 	DispatcherPackage string
 	DispatcherField   string
-	RequestInit       string
+	RequestSetup      string
+	NeedsIO           bool
+	BindMode          string
+	SuccessStatus     int
 	ActionName        string
 }
 
@@ -133,30 +139,45 @@ func lowerFirst(s string) string {
 	return strings.ToLower(s[:1]) + s[1:]
 }
 
-func buildRequestInit(ep models.Endpoint) string {
-	paramPattern := regexp.MustCompile(`:([A-Za-z0-9_]+)`)
-	matches := paramPattern.FindAllStringSubmatch(ep.Path, -1)
-	if len(matches) == 0 {
+func buildRequestSetup(ep models.Endpoint) string {
+	lines := []string{"var request in." + ep.Request.Struct}
+	hasSetup := false
+
+	for _, field := range ep.Request.Fields {
+		source := fieldSource(ep, field)
+		fieldName := utils.Pascal(field.Name)
+
+		switch source {
+		case "path":
+			lines = append(lines, `request.`+fieldName+` = c.Param("`+field.Name+`")`)
+			hasSetup = true
+		case "header":
+			headerName := field.Header
+			if headerName == "" {
+				headerName = field.Name
+			}
+			lines = append(lines, `request.`+fieldName+` = c.GetHeader("`+headerName+`")`)
+			hasSetup = true
+		case "raw_body":
+			lines = append(lines,
+				"",
+				"payload, err := io.ReadAll(c.Request.Body)",
+				"if err != nil {",
+				`	logger.Errorw("Read request body failed", zap.Error(err))`,
+				`	c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "unable to read request body"})`,
+				"	return nil, nil",
+				"}",
+				`request.`+fieldName+` = string(payload)`,
+			)
+			hasSetup = true
+		}
+	}
+
+	if !hasSetup {
 		return ""
 	}
 
-	assignments := make([]string, 0, len(matches))
-	for _, match := range matches {
-		if len(match) < 2 {
-			continue
-		}
-		paramName := match[1]
-		fieldName := utils.Pascal(paramName)
-		if !requestHasField(ep.Request.Fields, paramName) {
-			continue
-		}
-		assignments = append(assignments, fieldName+`: c.Param("`+paramName+`")`)
-	}
-	if len(assignments) == 0 {
-		return ""
-	}
-
-	return "request := in." + ep.Request.Struct + "{" + strings.Join(assignments, ", ") + "}"
+	return strings.Join(lines, "\n")
 }
 
 func requestHasField(fields []models.FieldSpec, name string) bool {
@@ -166,4 +187,42 @@ func requestHasField(fields []models.FieldSpec, name string) bool {
 		}
 	}
 	return false
+}
+
+func handlerBindMode(ep models.Endpoint) string {
+	for _, field := range ep.Request.Fields {
+		source := fieldSource(ep, field)
+		if source == "" || source == "body" || source == "query" {
+			if strings.ToUpper(ep.Method) == "GET" || source == "query" {
+				return "query"
+			}
+			return "json"
+		}
+	}
+	return "none"
+}
+
+func endpointNeedsRawBody(ep models.Endpoint) bool {
+	for _, field := range ep.Request.Fields {
+		if fieldSource(ep, field) == "raw_body" {
+			return true
+		}
+	}
+	return false
+}
+
+func fieldSource(ep models.Endpoint, field models.FieldSpec) string {
+	if field.Source != "" {
+		return field.Source
+	}
+
+	paramPattern := regexp.MustCompile(`:([A-Za-z0-9_]+)`)
+	matches := paramPattern.FindAllStringSubmatch(ep.Path, -1)
+	for _, match := range matches {
+		if len(match) >= 2 && match[1] == field.Name {
+			return "path"
+		}
+	}
+
+	return ""
 }

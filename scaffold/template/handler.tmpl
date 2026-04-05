@@ -2,6 +2,10 @@
 package {{.PackageName}}
 
 import (
+{{- if .NeedsIO}}
+	"io"
+
+{{- end}}
 	"net/http"
 
 	"{{.RequestDtoImport}}"
@@ -15,11 +19,11 @@ import (
 )
 
 type {{.StructName}} struct {
-	{{.DispatcherField}} {{.DispatcherPackage}}.Dispatcher[*in.{{.RequestStruct}}, *out.{{.ResponseStruct}}]
+	{{.DispatcherField}} {{.DispatcherPackage}}.Dispatcher[*in.{{.RequestStruct}}, {{.ResponseType}}]
 }
 
 func New{{.HandlerName}}(
-	{{.DispatcherField}} {{.DispatcherPackage}}.Dispatcher[*in.{{.RequestStruct}}, *out.{{.ResponseStruct}}],
+	{{.DispatcherField}} {{.DispatcherPackage}}.Dispatcher[*in.{{.RequestStruct}}, {{.ResponseType}}],
 ) *{{.StructName}} {
 	return &{{.StructName}}{
 		{{.DispatcherField}}: {{.DispatcherField}},
@@ -29,20 +33,22 @@ func New{{.HandlerName}}(
 func (h *{{.StructName}}) Handle(c *gin.Context) (interface{}, error) {
 	ctx := c.Request.Context()
 	logger := logging.FromContext(ctx)
-{{- if .RequestInit}}
-	{{.RequestInit}}
+{{- if .RequestSetup}}
+	{{.RequestSetup}}
 {{- else}}
 	var request in.{{.RequestStruct}}
 {{- end}}
-{{- if eq .Method "GET"}}
+{{- if eq .BindMode "query"}}
 	if err := c.ShouldBindQuery(&request); err != nil {
-{{- else}}
+{{- else if eq .BindMode "json"}}
 	if err := c.ShouldBindJSON(&request); err != nil {
 {{- end}}
+{{- if ne .BindMode "none"}}
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return nil, nil
 	}
+{{- end}}
 
 	if err := request.Validate(); err != nil {
 		logger.Errorw("Validate request failed", zap.Error(err))
@@ -56,5 +62,10 @@ func (h *{{.StructName}}) Handle(c *gin.Context) (interface{}, error) {
 		return nil, stackerr.Error(err)
 	}
 
+{{- if gt .SuccessStatus 0}}
+	c.JSON({{.SuccessStatus}}, result)
+	return nil, nil
+{{- else}}
 	return result, nil
+{{- end}}
 }

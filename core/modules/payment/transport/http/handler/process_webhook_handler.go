@@ -2,13 +2,13 @@
 package handler
 
 import (
+	"io"
 	"net/http"
 
 	"go-socket/core/modules/payment/application/dto/in"
 	"go-socket/core/modules/payment/application/dto/out"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
-	stackerr "go-socket/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -29,11 +29,17 @@ func NewProcessWebhookHandler(
 func (h *processWebhookHandler) Handle(c *gin.Context) (interface{}, error) {
 	ctx := c.Request.Context()
 	logger := logging.FromContext(ctx)
-	request := in.ProcessWebhookRequest{Provider: c.Param("provider")}
-	if err := c.ShouldBindJSON(&request); err != nil {
-		logger.Errorw("Unmarshal request failed", zap.Error(err))
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	payload, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		logger.Errorw("Read request body failed", zap.Error(err))
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "unable to read request body"})
 		return nil, nil
+	}
+
+	request := in.ProcessWebhookRequest{
+		Provider:  c.Param("provider"),
+		Signature: c.GetHeader("X-Signature"),
+		Payload:   string(payload),
 	}
 
 	if err := request.Validate(); err != nil {
@@ -45,8 +51,10 @@ func (h *processWebhookHandler) Handle(c *gin.Context) (interface{}, error) {
 	result, err := h.processWebhook.Dispatch(ctx, &request)
 	if err != nil {
 		logger.Errorw("ProcessWebhook failed", zap.Error(err))
-		return nil, stackerr.Error(err)
+		writeProviderError(c, err)
+		return nil, nil
 	}
 
-	return result, nil
+	c.JSON(http.StatusOK, result)
+	return nil, nil
 }

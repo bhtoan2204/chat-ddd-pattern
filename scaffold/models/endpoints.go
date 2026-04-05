@@ -17,14 +17,15 @@ type APISpec struct {
 }
 
 type Endpoint struct {
-	Name     string  `json:"name" yaml:"name"`
-	Method   string  `json:"method" yaml:"method"`
-	Path     string  `json:"path" yaml:"path"`
-	Handler  string  `json:"handler" yaml:"handler"`
-	Auth     bool    `json:"auth,omitempty" yaml:"auth,omitempty"`
-	Usecase  Usecase `json:"usecase" yaml:"usecase"`
-	Request  Payload `json:"request" yaml:"request"`
-	Response Payload `json:"response" yaml:"response"`
+	Name          string  `json:"name" yaml:"name"`
+	Method        string  `json:"method" yaml:"method"`
+	Path          string  `json:"path" yaml:"path"`
+	Handler       string  `json:"handler" yaml:"handler"`
+	Auth          bool    `json:"auth,omitempty" yaml:"auth,omitempty"`
+	SuccessStatus int     `json:"successStatus,omitempty" yaml:"successStatus,omitempty"`
+	Usecase       Usecase `json:"usecase" yaml:"usecase"`
+	Request       Payload `json:"request" yaml:"request"`
+	Response      Payload `json:"response" yaml:"response"`
 }
 
 type Usecase struct {
@@ -33,13 +34,16 @@ type Usecase struct {
 }
 
 type Payload struct {
-	Struct string      `json:"struct" yaml:"struct"`
-	Fields []FieldSpec `json:"fields" yaml:"fields"`
+	Struct     string      `json:"struct" yaml:"struct"`
+	Collection bool        `json:"collection,omitempty" yaml:"collection,omitempty"`
+	Fields     []FieldSpec `json:"fields" yaml:"fields"`
 }
 
 type FieldSpec struct {
 	Name     string   `json:"name" yaml:"name"`
 	Type     string   `json:"type" yaml:"type"`
+	Source   string   `json:"source,omitempty" yaml:"source,omitempty"`
+	Header   string   `json:"header,omitempty" yaml:"header,omitempty"`
 	Items    *Payload `json:"items,omitempty" yaml:"items,omitempty"`
 	Required bool     `json:"required,omitempty" yaml:"required,omitempty"`
 }

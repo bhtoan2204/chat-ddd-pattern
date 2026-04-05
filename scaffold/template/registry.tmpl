@@ -2,15 +2,43 @@
 package {{.PackageName}}
 
 import (
-	"go-socket/core/shared/config"
-	"go-socket/core/delivery/http/handler"
-	"go-socket/core/application/usecase"
+	"context"
+
+	"{{.RequestDtoImport}}"
+	"{{.ResponseDtoImport}}"
+	{{.ModuleHTTPAlias}} "{{.ModuleHTTPImport}}"
+	"{{.DispatcherImport}}"
+	infrahttp "{{.HTTPImport}}"
+
+	"github.com/gin-gonic/gin"
 )
 
-func BuildRegistry(config *config.Config, usecase usecase.Usecase) map[string]routingConfig {
-	return map[string]routingConfig{
-{{- range .Entries}}
-{{.}}
+type {{.ServerStructName}} struct {
+{{- range .Fields}}
+	{{.Name}} cqrs.Dispatcher[{{.RequestType}}, {{.ResponseType}}]
 {{- end}}
-	}
+}
+
+func NewHTTPServer(
+{{- range .Fields}}
+	{{.Name}} cqrs.Dispatcher[{{.RequestType}}, {{.ResponseType}}],
+{{- end}}
+) (infrahttp.HTTPServer, error) {
+	return &{{.ServerStructName}}{
+{{- range .Fields}}
+		{{.Name}}: {{.Name}},
+{{- end}}
+	}, nil
+}
+
+func (s *{{.ServerStructName}}) RegisterPublicRoutes(routes *gin.RouterGroup) {
+	{{.ModuleHTTPAlias}}.RegisterPublicRoutes(routes{{- range .PublicParams}}, s.{{.Name}}{{- end}})
+}
+
+func (s *{{.ServerStructName}}) RegisterPrivateRoutes(routes *gin.RouterGroup) {
+	{{.ModuleHTTPAlias}}.RegisterPrivateRoutes(routes{{- range .PrivateParams}}, s.{{.Name}}{{- end}})
+}
+
+func (s *{{.ServerStructName}}) Stop(_ context.Context) error {
+	return nil
 }

@@ -3,8 +3,11 @@ package generator
 import (
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
+
+	"go-socket/scaffold/models"
 )
 
 func fileExists(path string) bool {
@@ -28,4 +31,56 @@ func structExistsInDir(dir, structName string) bool {
 		return nil
 	})
 	return found
+}
+
+type moduleEndpoints struct {
+	Module    modulePaths
+	Endpoints []models.Endpoint
+}
+
+func groupEndpointsByModule(endpoints []models.Endpoint) ([]moduleEndpoints, error) {
+	groups := make([]moduleEndpoints, 0)
+	indexByRoot := make(map[string]int)
+
+	for _, ep := range endpoints {
+		module, err := moduleForUsecase(ep.Usecase.Name)
+		if err != nil {
+			return nil, err
+		}
+
+		idx, ok := indexByRoot[module.FsRoot]
+		if !ok {
+			idx = len(groups)
+			indexByRoot[module.FsRoot] = idx
+			groups = append(groups, moduleEndpoints{Module: module})
+		}
+		groups[idx].Endpoints = append(groups[idx].Endpoints, ep)
+	}
+
+	return groups, nil
+}
+
+func modulePackageName(importRoot string) string {
+	return path.Base(importRoot)
+}
+
+func dispatcherParamName(ep models.Endpoint) string {
+	return lowerFirst(ep.Usecase.Method)
+}
+
+func requestType(req models.Payload) string {
+	if req.Struct == "" {
+		return "interface{}"
+	}
+	return "*in." + req.Struct
+}
+
+func responseType(resp models.Payload) string {
+	if resp.Struct == "" {
+		return "interface{}"
+	}
+	if resp.Collection {
+		return "[]*out." + resp.Struct
+	}
+	return "*out." + resp.Struct
 }
