@@ -1,0 +1,1 @@
+DROP INDEX idx_acc_outbox_aggregate_version;

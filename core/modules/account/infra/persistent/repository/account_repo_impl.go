@@ -8,6 +8,7 @@ import (
 	valueobject "go-socket/core/modules/account/domain/value_object"
 	accountcache "go-socket/core/modules/account/infra/cache"
 	"go-socket/core/modules/account/infra/persistent/models"
+	accounttypes "go-socket/core/modules/account/types"
 	sharedcache "go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
@@ -16,21 +17,42 @@ import (
 	"gorm.io/gorm"
 )
 
+type afterCommitRegistrar func(ctx context.Context, fn func(context.Context))
+
 type accountRepoImpl struct {
-	db           *gorm.DB
-	accountCache accountcache.AccountCache
+	db            *gorm.DB
+	accountCache  accountcache.AccountCache
+	readFromCache bool
+	afterCommit   afterCommitRegistrar
 }
 
-func NewAccountRepoImpl(db *gorm.DB, sharedCache sharedcache.Cache) accountrepos.AccountRepository {
+func NewAccountRepoImpl(
+	db *gorm.DB,
+	sharedCache sharedcache.Cache,
+	readFromCache bool,
+	afterCommit afterCommitRegistrar,
+) accountrepos.AccountRepository {
+	if afterCommit == nil {
+		afterCommit = func(ctx context.Context, fn func(context.Context)) {
+			if fn != nil {
+				fn(ctx)
+			}
+		}
+	}
+
 	return &accountRepoImpl{
-		db:           db,
-		accountCache: accountcache.NewAccountCache(sharedCache),
+		db:            db,
+		accountCache:  accountcache.NewAccountCache(sharedCache),
+		readFromCache: readFromCache,
+		afterCommit:   afterCommit,
 	}
 }
 
 func (r *accountRepoImpl) GetAccountByID(ctx context.Context, id string) (*entity.Account, error) {
-	if cached, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
-		return cached, nil
+	if r.readFromCache {
+		if cached, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
+			return cached, nil
+		}
 	}
 	var m models.AccountModel
 
@@ -42,18 +64,27 @@ func (r *accountRepoImpl) GetAccountByID(ctx context.Context, id string) (*entit
 		return nil, stackErr.Error(err)
 	}
 
-	entity, err := r.toEntity(&m)
+	accountEntity, err := r.toEntity(&m)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	_ = r.accountCache.Set(ctx, entity)
+	if r.readFromCache {
+		r.afterCommit(ctx, func(hookCtx context.Context) {
+			log := logging.FromContext(hookCtx).Named("AccountCacheSetByID")
+			if cacheErr := r.accountCache.Set(hookCtx, accountEntity); cacheErr != nil {
+				log.Errorw("Failed to warm account cache", zap.Error(cacheErr), zap.String("accountID", accountEntity.ID))
+			}
+		})
+	}
 
-	return entity, nil
+	return accountEntity, nil
 }
 
 func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (*entity.Account, error) {
-	if cached, ok, err := r.accountCache.GetByEmail(ctx, email); err == nil && ok {
-		return cached, nil
+	if r.readFromCache {
+		if cached, ok, err := r.accountCache.GetByEmail(ctx, email); err == nil && ok {
+			return cached, nil
+		}
 	}
 	var m models.AccountModel
 	err := r.db.WithContext(ctx).
@@ -62,12 +93,19 @@ func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	entity, err := r.toEntity(&m)
+	accountEntity, err := r.toEntity(&m)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	_ = r.accountCache.SetByEmail(ctx, entity)
-	return entity, nil
+	if r.readFromCache {
+		r.afterCommit(ctx, func(hookCtx context.Context) {
+			log := logging.FromContext(hookCtx).Named("AccountCacheSetByEmail")
+			if cacheErr := r.accountCache.SetByEmail(hookCtx, accountEntity); cacheErr != nil {
+				log.Errorw("Failed to warm account email cache", zap.Error(cacheErr), zap.String("email", accountEntity.Email.Value()))
+			}
+		})
+	}
+	return accountEntity, nil
 }
 
 func (r *accountRepoImpl) IsEmailExists(ctx context.Context, email string) (bool, error) {
@@ -88,6 +126,8 @@ func (r *accountRepoImpl) CreateAccount(ctx context.Context, account *entity.Acc
 		Create(m).Error; err != nil {
 		return stackErr.Error(err)
 	}
+
+	r.syncCacheAfterCommit(ctx, account)
 	return nil
 }
 
@@ -99,29 +139,32 @@ func (r *accountRepoImpl) UpdateAccount(ctx context.Context, account *entity.Acc
 		return stackErr.Error(err)
 	}
 
-	if entity, err := r.toEntity(m); err != nil {
-		return stackErr.Error(err)
-	} else {
-		_ = r.accountCache.Set(ctx, entity)
-		_ = r.accountCache.SetByEmail(ctx, entity)
-	}
+	r.syncCacheAfterCommit(ctx, account)
 	return nil
 }
 
 func (r *accountRepoImpl) DeleteAccount(ctx context.Context, id string) error {
-	log := logging.FromContext(ctx).Named("DeleteAccount")
-	if cached, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
-		_ = r.accountCache.DeleteByEmail(ctx, cached.Email.Value())
+	email, err := r.lookupAccountEmail(ctx, id)
+	if err != nil {
+		return stackErr.Error(err)
 	}
+
 	if err := r.db.WithContext(ctx).
 		Delete(&models.AccountModel{}, "id = ?", id).Error; err != nil {
 		return stackErr.Error(err)
 	}
 
-	if err := r.accountCache.Delete(ctx, id); err != nil {
-		log.Errorw("Failed to delete account cache", zap.Error(err))
-		return stackErr.Error(err)
-	}
+	r.afterCommit(ctx, func(hookCtx context.Context) {
+		log := logging.FromContext(hookCtx).Named("DeleteAccountCache")
+		if cacheErr := r.accountCache.Delete(hookCtx, id); cacheErr != nil {
+			log.Errorw("Failed to delete account cache by id", zap.Error(cacheErr), zap.String("accountID", id))
+		}
+		if email != "" {
+			if cacheErr := r.accountCache.DeleteByEmail(hookCtx, email); cacheErr != nil {
+				log.Errorw("Failed to delete account cache by email", zap.Error(cacheErr), zap.String("email", email))
+			}
+		}
+	})
 	return nil
 }
 
@@ -154,18 +197,22 @@ func (r *accountRepoImpl) toEntity(m *models.AccountModel) (*entity.Account, err
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	password, err := valueobject.NewPassword(m.Password)
+	passwordHash, err := valueobject.NewHashedPassword(m.Password)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	status, err := accounttypes.ParseAccountStatus(m.Status)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
 	return &entity.Account{
 		ID:                m.ID,
 		Email:             email,
-		Password:          password,
+		PasswordHash:      passwordHash,
 		DisplayName:       m.DisplayName,
 		Username:          m.Username,
 		AvatarObjectKey:   m.AvatarObjectKey,
-		Status:            m.Status,
+		Status:            status,
 		EmailVerifiedAt:   m.EmailVerifiedAt,
 		LastLoginAt:       m.LastLoginAt,
 		PasswordChangedAt: m.PasswordChangedAt,
@@ -180,11 +227,11 @@ func (r *accountRepoImpl) toModel(e *entity.Account) *models.AccountModel {
 	return &models.AccountModel{
 		ID:                e.ID,
 		Email:             e.Email.Value(),
-		Password:          e.Password.Value(),
+		Password:          e.PasswordHash.Value(),
 		DisplayName:       e.DisplayName,
 		Username:          e.Username,
 		AvatarObjectKey:   e.AvatarObjectKey,
-		Status:            e.Status,
+		Status:            e.Status.String(),
 		EmailVerifiedAt:   e.EmailVerifiedAt,
 		LastLoginAt:       e.LastLoginAt,
 		PasswordChangedAt: e.PasswordChangedAt,
@@ -193,4 +240,38 @@ func (r *accountRepoImpl) toModel(e *entity.Account) *models.AccountModel {
 		BannedReason:      e.BannedReason,
 		BannedUntil:       e.BannedUntil,
 	}
+}
+
+func (r *accountRepoImpl) syncCacheAfterCommit(ctx context.Context, account *entity.Account) {
+	if account == nil {
+		return
+	}
+
+	accountClone := *account
+	r.afterCommit(ctx, func(hookCtx context.Context) {
+		log := logging.FromContext(hookCtx).Named("SyncAccountCache")
+		if cacheErr := r.accountCache.Set(hookCtx, &accountClone); cacheErr != nil {
+			log.Errorw("Failed to update account cache by id", zap.Error(cacheErr), zap.String("accountID", accountClone.ID))
+		}
+		if cacheErr := r.accountCache.SetByEmail(hookCtx, &accountClone); cacheErr != nil {
+			log.Errorw("Failed to update account cache by email", zap.Error(cacheErr), zap.String("email", accountClone.Email.Value()))
+		}
+	})
+}
+
+func (r *accountRepoImpl) lookupAccountEmail(ctx context.Context, id string) (string, error) {
+	if r.readFromCache {
+		if cached, ok, err := r.accountCache.Get(ctx, id); err == nil && ok {
+			return cached.Email.Value(), nil
+		}
+	}
+
+	var model models.AccountModel
+	if err := r.db.WithContext(ctx).
+		Select("email").
+		Where("id = ?", id).
+		First(&model).Error; err != nil {
+		return "", err
+	}
+	return model.Email, nil
 }

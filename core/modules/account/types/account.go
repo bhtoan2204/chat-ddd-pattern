@@ -1,5 +1,10 @@
 package types
 
+import (
+	"errors"
+	"strings"
+)
+
 type AccountType string
 
 const (
@@ -14,9 +19,22 @@ const (
 	AccountRoleAdmin AccountRole = "admin"
 )
 
-type AccountStatus int
+type AccountStatus string
 
 const (
-	AccountStatusActive AccountStatus = iota + 1
-	AccountStatusInactive
+	AccountStatusActive   AccountStatus = "active"
+	AccountStatusInactive AccountStatus = "inactive"
 )
+
+func ParseAccountStatus(value string) (AccountStatus, error) {
+	switch normalized := AccountStatus(strings.ToLower(strings.TrimSpace(value))); normalized {
+	case AccountStatusActive, AccountStatusInactive:
+		return normalized, nil
+	default:
+		return "", errors.New("status is invalid")
+	}
+}
+
+func (s AccountStatus) String() string {
+	return string(s)
+}

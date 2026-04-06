@@ -26,7 +26,6 @@ type AppContext struct {
 	smtp         smtp.SMTP
 	storage      storage.Storage
 	consulClient discovery.ConsulClient
-	services     map[string]interface{}
 }
 
 func NewAppContext(ctx context.Context, opts ...Option) (*AppContext, error) {
@@ -128,24 +127,11 @@ func (appCtx *AppContext) GetConsulClient() discovery.ConsulClient {
 }
 
 func (appCtx *AppContext) Close() {
-	appCtx.redisClient.Close()
+	if appCtx.redisClient != nil {
+		appCtx.redisClient.Close()
+	}
 	if appCtx.db != nil {
 		ins, _ := appCtx.db.DB()
 		ins.Close()
 	}
-}
-
-func (appCtx *AppContext) RegisterService(name string, service interface{}) {
-	if appCtx.services == nil {
-		appCtx.services = make(map[string]interface{})
-	}
-	appCtx.services[name] = service
-}
-
-func (appCtx *AppContext) GetService(name string) (interface{}, bool) {
-	if appCtx.services == nil {
-		return nil, false
-	}
-	service, ok := appCtx.services[name]
-	return service, ok
 }

@@ -2,14 +2,17 @@ package command
 
 import (
 	"context"
+	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
+	"go-socket/core/modules/account/application/service"
+	repos "go-socket/core/modules/account/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 )
 
 type logoutHandler struct{}
 
-func NewLogoutHandler() cqrs.Handler[*in.LogoutRequest, *out.LogoutResponse] {
+func NewLogoutHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.LogoutRequest, *out.LogoutResponse] {
 	return &logoutHandler{}
 }
 

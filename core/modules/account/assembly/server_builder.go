@@ -14,20 +14,19 @@ import (
 )
 
 func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
-	accountRepos := accountrepo.NewRepoImpl(appContext)
-	accountAggregateService := accountservice.NewAccountAggregateService()
-	emailVerificationService := accountservice.NewEmailVerificationService(appContext.GetCache(), appContext.GetSMTP())
+	accountRepos := accountrepo.NewRepoImpl(appContext.GetDB(), appContext.GetCache())
+	accountServices := accountservice.NewServices(appContext, accountRepos)
 
-	login := cqrs.NewDispatcher(command.NewLoginHandler(appContext, accountRepos))
-	register := cqrs.NewDispatcher(command.NewRegisterHandler(appContext, accountRepos, accountAggregateService))
-	logout := cqrs.NewDispatcher(command.NewLogoutHandler())
-	getProfile := cqrs.NewDispatcher(query.NewGetProfileHandler(accountRepos))
-	getAvatar := cqrs.NewDispatcher(query.NewGetAvatarHandler(accountRepos, appContext.GetStorage()))
-	getPresignedUrl := cqrs.NewDispatcher(command.NewCreatePresignedUrlHandler(appContext))
-	updateProfile := cqrs.NewDispatcher(command.NewUpdateProfileHandler(accountRepos, accountAggregateService))
-	verifyEmail := cqrs.NewDispatcher(command.NewVerifyEmailHandler(accountRepos, accountAggregateService, emailVerificationService))
-	confirmVerifyEmail := cqrs.NewDispatcher(command.NewConfirmVerifyEmailHandler(accountRepos, accountAggregateService, emailVerificationService))
-	changePassword := cqrs.NewDispatcher(command.NewChangePasswordHandler(appContext, accountRepos, accountAggregateService))
+	login := cqrs.NewDispatcher(command.NewLoginHandler(appContext, accountRepos, accountServices))
+	register := cqrs.NewDispatcher(command.NewRegisterHandler(appContext, accountRepos, accountServices))
+	logout := cqrs.NewDispatcher(command.NewLogoutHandler(appContext, accountRepos, accountServices))
+	getProfile := cqrs.NewDispatcher(query.NewGetProfileHandler(appContext, accountRepos, accountServices))
+	getAvatar := cqrs.NewDispatcher(query.NewGetAvatarHandler(appContext, accountRepos, accountServices))
+	getPresignedUrl := cqrs.NewDispatcher(command.NewCreatePresignedUrlHandler(appContext, accountRepos, accountServices))
+	updateProfile := cqrs.NewDispatcher(command.NewUpdateProfileHandler(appContext, accountRepos, accountServices))
+	verifyEmail := cqrs.NewDispatcher(command.NewVerifyEmailHandler(appContext, accountRepos, accountServices))
+	confirmVerifyEmail := cqrs.NewDispatcher(command.NewConfirmVerifyEmailHandler(appContext, accountRepos, accountServices))
+	changePassword := cqrs.NewDispatcher(command.NewChangePasswordHandler(appContext, accountRepos, accountServices))
 
 	server, err := accountserver.NewHTTPServer(
 		login,

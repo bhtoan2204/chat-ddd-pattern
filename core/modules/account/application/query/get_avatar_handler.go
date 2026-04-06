@@ -4,8 +4,10 @@ import (
 	"context"
 	"time"
 
+	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
+	"go-socket/core/modules/account/application/service"
 	repos "go-socket/core/modules/account/domain/repos"
 	"go-socket/core/shared/infra/storage"
 	"go-socket/core/shared/pkg/cqrs"
@@ -22,10 +24,10 @@ type getAvatarHandler struct {
 	storage     storage.Storage
 }
 
-func NewGetAvatarHandler(baseRepo repos.Repos, storage storage.Storage) cqrs.Handler[*in.GetAvatarRequest, *out.GetAvatarResponse] {
+func NewGetAvatarHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.GetAvatarRequest, *out.GetAvatarResponse] {
 	return &getAvatarHandler{
 		accountRepo: baseRepo.AccountRepository(),
-		storage:     storage,
+		storage:     appCtx.GetStorage(),
 	}
 }
 

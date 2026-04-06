@@ -3,11 +3,11 @@ package command
 import (
 	"context"
 
+	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
 	"go-socket/core/modules/account/application/service"
 	"go-socket/core/modules/account/application/support"
-	"go-socket/core/modules/account/domain/entity"
 	repos "go-socket/core/modules/account/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
@@ -19,15 +19,15 @@ import (
 
 type verifyEmailHandler struct {
 	baseRepo            repos.Repos
-	aggregateService    *service.AccountAggregateService
-	verificationService *service.EmailVerificationService
+	verificationService service.EmailVerificationService
+	accountService      service.AccountService
 }
 
-func NewVerifyEmailHandler(baseRepo repos.Repos, aggregateService *service.AccountAggregateService, verificationService *service.EmailVerificationService) cqrs.Handler[*in.VerifyEmailRequest, *out.VerifyEmailResponse] {
+func NewVerifyEmailHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.VerifyEmailRequest, *out.VerifyEmailResponse] {
 	return &verifyEmailHandler{
 		baseRepo:            baseRepo,
-		aggregateService:    aggregateService,
-		verificationService: verificationService,
+		accountService:      services.AccountService(),
+		verificationService: services.EmailVerificationService(),
 	}
 }
 
@@ -41,13 +41,20 @@ func (u *verifyEmailHandler) Handle(ctx context.Context, req *in.VerifyEmailRequ
 		return nil, stackErr.Error(err)
 	}
 
-	accountEntity, err := u.baseRepo.AccountRepository().GetAccountByID(ctx, accountID)
+	accountAggregate, err := u.accountService.LoadAccountAggregate(ctx, accountID)
 	if err != nil {
-		log.Errorw("Failed to get account by ID", zap.Error(err))
+		log.Errorw("Failed to load account aggregate", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
-	if accountEntity.EmailVerifiedAt != nil {
-		return nil, stackErr.Error(entity.ErrAccountAlreadyVerified)
+
+	accountEntity, err := accountAggregate.Snapshot()
+	if err != nil {
+		log.Errorw("Failed to build account projection", zap.Error(err))
+		return nil, stackErr.Error(err)
+	}
+	if err := accountAggregate.EnsureEmailVerificationAllowed(); err != nil {
+		log.Errorw("Email verification is not allowed", zap.Error(err))
+		return nil, stackErr.Error(err)
 	}
 
 	requestedAt := utils.NowUTC()
@@ -56,9 +63,13 @@ func (u *verifyEmailHandler) Handle(ctx context.Context, req *in.VerifyEmailRequ
 		log.Errorw("Failed to send verification email", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
+	if err := accountAggregate.RequestEmailVerification(token, requestedAt); err != nil {
+		log.Errorw("Failed to record verification request", zap.Error(err))
+		return nil, stackErr.Error(err)
+	}
 
 	if txErr := u.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
-		return u.aggregateService.PublishEmailVerificationRequested(ctx, txRepos.AccountOutboxEventsRepository(), accountEntity, token, requestedAt)
+		return txRepos.AccountAggregateRepository().Save(ctx, accountAggregate)
 	}); txErr != nil {
 		log.Errorw("Failed to publish verification requested event", zap.Error(txErr))
 		return nil, stackErr.Error(txErr)

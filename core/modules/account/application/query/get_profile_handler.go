@@ -2,8 +2,10 @@ package query
 
 import (
 	"context"
+	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
+	"go-socket/core/modules/account/application/service"
 	"go-socket/core/modules/account/application/support"
 	repos "go-socket/core/modules/account/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
@@ -17,7 +19,7 @@ type getProfileHandler struct {
 	accountRepo repos.AccountRepository
 }
 
-func NewGetProfileHandler(baseRepo repos.Repos) cqrs.Handler[*in.GetProfileRequest, *out.GetProfileResponse] {
+func NewGetProfileHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.GetProfileRequest, *out.GetProfileResponse] {
 	return &getProfileHandler{
 		accountRepo: baseRepo.AccountRepository(),
 	}

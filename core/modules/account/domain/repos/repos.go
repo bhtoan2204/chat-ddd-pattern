@@ -4,7 +4,7 @@ import "context"
 
 type Repos interface {
 	AccountRepository() AccountRepository
-	AccountOutboxEventsRepository() AccountOutboxEventsRepository
+	AccountAggregateRepository() AccountAggregateRepository
 
 	WithTransaction(ctx context.Context, fn func(Repos) error) error
 }

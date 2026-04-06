@@ -6,7 +6,9 @@ import (
 	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
+	"go-socket/core/modules/account/application/service"
 	"go-socket/core/modules/account/application/support"
+	repos "go-socket/core/modules/account/domain/repos"
 	"go-socket/core/shared/infra/storage"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
@@ -20,7 +22,7 @@ type createPresignedURLHandler struct {
 	avatarBucket string
 }
 
-func NewCreatePresignedUrlHandler(appCtx *appCtx.AppContext) cqrs.Handler[*in.CreatePresignedUrlRequest, *out.CreatePresignedUrlResponse] {
+func NewCreatePresignedUrlHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.CreatePresignedUrlRequest, *out.CreatePresignedUrlResponse] {
 	return &createPresignedURLHandler{
 		storage: appCtx.GetStorage(),
 	}

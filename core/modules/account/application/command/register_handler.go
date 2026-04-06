@@ -2,13 +2,15 @@ package command
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
-	accountservice "go-socket/core/modules/account/application/service"
-	"go-socket/core/modules/account/domain/entity"
+	"go-socket/core/modules/account/application/service"
+	"go-socket/core/modules/account/domain/aggregate"
 	repos "go-socket/core/modules/account/domain/repos"
+	domainservice "go-socket/core/modules/account/domain/service"
 	valueobject "go-socket/core/modules/account/domain/value_object"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/cqrs"
@@ -22,18 +24,16 @@ import (
 )
 
 type registerHandler struct {
-	baseRepo         repos.Repos
-	hasher           hasher.Hasher
-	paseto           xpaseto.PasetoService
-	aggregateService *accountservice.AccountAggregateService
+	baseRepo repos.Repos
+	hasher   hasher.Hasher
+	paseto   xpaseto.PasetoService
 }
 
-func NewRegisterHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, aggregateService *accountservice.AccountAggregateService) cqrs.Handler[*in.RegisterRequest, *out.RegisterResponse] {
+func NewRegisterHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.RegisterRequest, *out.RegisterResponse] {
 	return &registerHandler{
-		baseRepo:         baseRepo,
-		hasher:           appCtx.GetHasher(),
-		paseto:           appCtx.GetPaseto(),
-		aggregateService: aggregateService,
+		baseRepo: baseRepo,
+		hasher:   appCtx.GetHasher(),
+		paseto:   appCtx.GetPaseto(),
 	}
 }
 
@@ -47,17 +47,16 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 		return nil, stackErr.Error(err)
 	}
 
-	exists, err := accountRepo.IsEmailExists(ctx, email.Value())
-	if err != nil {
-		log.Errorw("Failed to check existing account", zap.Error(err))
+	if err := domainservice.EnsureEmailAvailable(ctx, accountRepo, email); err != nil {
+		if errors.Is(err, domainservice.ErrAccountEmailAlreadyExists) {
+			log.Errorw("Account already exists", zap.String("email", email.Value()))
+			return nil, stackErr.Error(ErrAccountExists)
+		}
+		log.Errorw("Failed to check existing account", zap.Error(err), zap.String("email", email.Value()))
 		return nil, stackErr.Error(ErrCheckAccountFailed)
 	}
-	if exists {
-		log.Errorw("Account already exists", zap.String("email", email.Value()))
-		return nil, stackErr.Error(ErrAccountExists)
-	}
 
-	password, err := valueobject.NewPassword(req.Password)
+	password, err := valueobject.NewPlainPassword(req.Password)
 	if err != nil {
 		log.Errorw("Failed to create password", zap.Error(err))
 		return nil, stackErr.Error(err)
@@ -69,16 +68,25 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 		return nil, stackErr.Error(err)
 	}
 
-	hashedPasswordVO, err := valueobject.NewPassword(hashedPassword)
+	hashedPasswordVO, err := valueobject.NewHashedPassword(hashedPassword)
 	if err != nil {
 		log.Errorw("Failed to create hashed password value object", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
 
 	now := time.Now().UTC()
-	newAccountEntity, err := entity.NewAccount(uuid.New().String(), email, hashedPasswordVO, req.DisplayName, now)
+	accountAggregate, err := aggregate.NewAccountAggregate(uuid.New().String())
 	if err != nil {
-		log.Errorw("Failed to create account entity", zap.Error(err))
+		log.Errorw("Failed to create account aggregate", zap.Error(err))
+		return nil, stackErr.Error(err)
+	}
+	if err := accountAggregate.Register(email, hashedPasswordVO, req.DisplayName, now); err != nil {
+		log.Errorw("Failed to register account aggregate", zap.Error(err))
+		return nil, stackErr.Error(err)
+	}
+	newAccountEntity, err := accountAggregate.Snapshot()
+	if err != nil {
+		log.Errorw("Failed to build account projection", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
 
@@ -88,8 +96,8 @@ func (u *registerHandler) Handle(ctx context.Context, req *in.RegisterRequest) (
 			return stackErr.Error(fmt.Errorf("create account failed: %v", err))
 		}
 
-		if err := u.aggregateService.PublishAccountCreated(ctx, txRepos.AccountOutboxEventsRepository(), newAccountEntity); err != nil {
-			return fmt.Errorf("publish account created event failed: %v", err)
+		if err := txRepos.AccountAggregateRepository().Save(ctx, accountAggregate); err != nil {
+			return fmt.Errorf("save account aggregate failed: %v", err)
 		}
 		return nil
 	}); txErr != nil {

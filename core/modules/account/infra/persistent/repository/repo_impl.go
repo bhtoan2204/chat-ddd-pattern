@@ -2,8 +2,8 @@ package repos
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/domain/repos"
+	sharedcache "go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/pkg/logging"
 
 	"go.uber.org/zap"
@@ -11,35 +11,37 @@ import (
 )
 
 type repoImpl struct {
-	db     *gorm.DB
-	appCtx *appCtx.AppContext
+	db    *gorm.DB
+	cache sharedcache.Cache
 
-	accountRepo             repos.AccountRepository
-	accountOutboxEventsRepo repos.AccountOutboxEventsRepository
+	inTransaction bool
+	afterCommit   []func(context.Context)
+
+	accountRepo          repos.AccountRepository
+	accountAggregateRepo repos.AccountAggregateRepository
 }
 
-func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
-	return newRepoImplWithDB(appCtx, appCtx.GetDB())
+func NewRepoImpl(db *gorm.DB, cache sharedcache.Cache) repos.Repos {
+	return newRepoImplWithDB(db, cache, false)
 }
 
-func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
-	accountRepo := NewAccountRepoImpl(db, appCtx.GetCache())
-	accountOutboxEventsRepo := NewAccountOutboxEventsRepoImpl(db)
-	return &repoImpl{
-		appCtx: appCtx,
-		db:     db,
-
-		accountRepo:             accountRepo,
-		accountOutboxEventsRepo: accountOutboxEventsRepo,
+func newRepoImplWithDB(db *gorm.DB, cache sharedcache.Cache, inTransaction bool) *repoImpl {
+	r := &repoImpl{
+		db:            db,
+		cache:         cache,
+		inTransaction: inTransaction,
 	}
+	r.accountRepo = NewAccountRepoImpl(db, cache, !inTransaction, r.runAfterCommit)
+	r.accountAggregateRepo = NewAccountAggregateRepoImpl(db)
+	return r
 }
 
 func (r *repoImpl) AccountRepository() repos.AccountRepository {
 	return r.accountRepo
 }
 
-func (r *repoImpl) AccountOutboxEventsRepository() repos.AccountOutboxEventsRepository {
-	return r.accountOutboxEventsRepo
+func (r *repoImpl) AccountAggregateRepository() repos.AccountAggregateRepository {
+	return r.accountAggregateRepo
 }
 
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) (err error) {
@@ -49,7 +51,7 @@ func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) err
 		log.Errorw("Failed to begin transaction", zap.Error(beginErr))
 		return beginErr
 	}
-	tr := newRepoImplWithDB(r.appCtx, tx)
+	tr := newRepoImplWithDB(tx, r.cache, true)
 
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -66,6 +68,7 @@ func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) err
 			log.Errorw("Commit failed", zap.Error(commitErr))
 			err = commitErr
 		} else {
+			tr.flushAfterCommit(ctx)
 			log.Infow("Transaction committed")
 		}
 	}()
@@ -73,4 +76,22 @@ func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) err
 	err = fn(tr)
 
 	return err
+}
+
+func (r *repoImpl) runAfterCommit(ctx context.Context, fn func(context.Context)) {
+	if fn == nil {
+		return
+	}
+	if !r.inTransaction {
+		fn(ctx)
+		return
+	}
+	r.afterCommit = append(r.afterCommit, fn)
+}
+
+func (r *repoImpl) flushAfterCommit(ctx context.Context) {
+	for _, fn := range r.afterCommit {
+		fn(ctx)
+	}
+	r.afterCommit = nil
 }

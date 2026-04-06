@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 
+	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
 	"go-socket/core/modules/account/application/service"
@@ -17,14 +18,12 @@ import (
 )
 
 type updateProfileHandler struct {
-	baseRepo         repos.Repos
-	aggregateService *service.AccountAggregateService
+	baseRepo repos.Repos
 }
 
-func NewUpdateProfileHandler(baseRepo repos.Repos, aggregateService *service.AccountAggregateService) cqrs.Handler[*in.UpdateProfileRequest, *out.UpdateProfileResponse] {
+func NewUpdateProfileHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.UpdateProfileRequest, *out.UpdateProfileResponse] {
 	return &updateProfileHandler{
-		baseRepo:         baseRepo,
-		aggregateService: aggregateService,
+		baseRepo: baseRepo,
 	}
 }
 
@@ -37,30 +36,42 @@ func (u *updateProfileHandler) Handle(ctx context.Context, req *in.UpdateProfile
 		return nil, stackErr.Error(err)
 	}
 
-	accountEntity, err := u.baseRepo.AccountRepository().GetAccountByID(ctx, accountID)
+	accountAggregate, err := u.baseRepo.AccountAggregateRepository().Load(ctx, accountID)
 	if err != nil {
-		log.Errorw("Failed to get account by ID", zap.Error(err))
+		log.Errorw("Failed to load account aggregate", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
 
-	updated, err := accountEntity.UpdateProfile(req.DisplayName, req.Username, req.AvatarObjectKey, utils.NowUTC())
+	updated, err := accountAggregate.UpdateProfile(req.DisplayName, req.Username, req.AvatarObjectKey, utils.NowUTC())
 	if err != nil {
-		log.Errorw("Failed to update account profile", zap.Error(err))
+		log.Errorw("Failed to update account profile aggregate", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
 	if !updated {
+		accountEntity, err := accountAggregate.Snapshot()
+		if err != nil {
+			return nil, stackErr.Error(err)
+		}
 		return support.ToUpdateProfileResponse(accountEntity), nil
 	}
 
 	if txErr := u.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
+		accountEntity, err := accountAggregate.Snapshot()
+		if err != nil {
+			return stackErr.Error(err)
+		}
 		if err := txRepos.AccountRepository().UpdateAccount(ctx, accountEntity); err != nil {
 			return stackErr.Error(err)
 		}
-		return u.aggregateService.PublishProfileUpdated(ctx, txRepos.AccountOutboxEventsRepository(), accountEntity)
+		return txRepos.AccountAggregateRepository().Save(ctx, accountAggregate)
 	}); txErr != nil {
 		log.Errorw("Failed to persist updated profile", zap.Error(txErr))
 		return nil, stackErr.Error(txErr)
 	}
 
+	accountEntity, err := accountAggregate.Snapshot()
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
 	return support.ToUpdateProfileResponse(accountEntity), nil
 }

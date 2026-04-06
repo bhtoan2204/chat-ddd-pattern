@@ -1,13 +1,17 @@
 package aggregate
 
-import "time"
+import (
+	accounttypes "go-socket/core/modules/account/types"
+	"time"
+)
 
 type EventAccountCreated struct {
-	AccountID   string
-	Email       string
-	DisplayName string
-	Status      string
-	CreatedAt   time.Time
+	AccountID    string
+	Email        string
+	PasswordHash string
+	DisplayName  string
+	Status       accounttypes.AccountStatus
+	CreatedAt    time.Time
 }
 
 type EventAccountUpdated struct {
@@ -38,6 +42,7 @@ type EventAccountEmailVerified struct {
 
 type EventAccountPasswordChanged struct {
 	AccountID         string
+	PasswordHash      string
 	PasswordChangedAt time.Time
 }
 
