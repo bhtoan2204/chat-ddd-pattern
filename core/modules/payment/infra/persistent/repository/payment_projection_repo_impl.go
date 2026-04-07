@@ -22,7 +22,7 @@ type paymentProjectionRepoImpl struct {
 	serializer eventpkg.Serializer
 }
 
-func NewPaymentProjectionRepoImpl(db *gorm.DB) repos.PaymentProjectionRepository {
+func newPaymentProjectionRepoImpl(db *gorm.DB) repos.PaymentProjectionRepository {
 	return &paymentProjectionRepoImpl{
 		db:         db,
 		serializer: newPaymentBalanceSerializer(),

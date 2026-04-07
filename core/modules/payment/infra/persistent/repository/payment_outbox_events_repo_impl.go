@@ -17,7 +17,7 @@ type paymentOutboxEventsRepoImpl struct {
 	serializer eventpkg.Serializer
 }
 
-func NewPaymentOutboxEventsRepoImpl(db *gorm.DB) paymentrepos.PaymentOutboxEventsRepository {
+func newPaymentOutboxEventsRepoImpl(db *gorm.DB) paymentrepos.PaymentOutboxEventsRepository {
 	return &paymentOutboxEventsRepoImpl{
 		db:         db,
 		serializer: eventpkg.NewSerializer(),

@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ func (r *UpdateGroupChatRequest) Normalize() {
 func (r *UpdateGroupChatRequest) Validate() error {
 	r.Normalize()
 	if r.RoomID == "" {
-		return errors.New("room_id is required")
+		return stackErr.Error(errors.New("room_id is required"))
 	}
 	return nil
 }

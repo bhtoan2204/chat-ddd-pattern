@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ func (r *GetTransactionRequest) Normalize() {
 func (r *GetTransactionRequest) Validate() error {
 	r.Normalize()
 	if r.TransactionID == "" {
-		return errors.New("transaction_id is required")
+		return stackErr.Error(errors.New("transaction_id is required"))
 	}
 	return nil
 }

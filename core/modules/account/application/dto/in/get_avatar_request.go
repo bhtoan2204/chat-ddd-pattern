@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ func (r *GetAvatarRequest) Normalize() {
 func (r *GetAvatarRequest) Validate() error {
 	r.Normalize()
 	if r.AccountID == "" {
-		return errors.New("account_id is required")
+		return stackErr.Error(errors.New("account_id is required"))
 	}
 	return nil
 }

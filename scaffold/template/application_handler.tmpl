@@ -1,0 +1,29 @@
+// CODE_GENERATOR: application-handler
+package {{.PackageName}}
+
+import (
+	"context"
+	"fmt"
+{{range .Imports -}}
+	{{if .Alias}}{{.Alias}} {{end}}"{{.Path}}"
+{{end -}}
+	"{{.RequestDtoImport}}"
+	"{{.ResponseDtoImport}}"
+	"{{.CQRSImport}}"
+)
+
+type {{.StructName}} struct {
+}
+
+func New{{.HandlerName}}(
+{{range .Params -}}
+	{{.Name}} {{.Type}},
+{{end -}}
+) cqrs.Handler[*in.{{.RequestStruct}}, {{.ResponseType}}] {
+	return &{{.StructName}}{
+	}
+}
+
+func (u *{{.StructName}}) Handle(ctx context.Context, req *in.{{.RequestStruct}}) ({{.ResponseType}}, error) {
+	return nil, fmt.Errorf("not implemented yet")
+}

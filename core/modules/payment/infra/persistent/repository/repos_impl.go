@@ -19,6 +19,7 @@ type repoImpl struct {
 	paymentOutboxEventsRepo      repos.PaymentOutboxEventsRepository
 	paymentAccountProjectionRepo repos.PaymentAccountProjectionRepository
 	paymentHistoryRepo           repos.PaymentHistoryRepository
+	providerPaymentRepo          repos.ProviderPaymentRepository
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
@@ -26,11 +27,12 @@ func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
 }
 
 func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
-	paymentBalanceAggregateRepo := NewPaymentBalanceAggregateRepoImpl(db)
-	paymentProjectionRepo := NewPaymentProjectionRepoImpl(db)
-	paymentOutboxEventsRepo := NewPaymentOutboxEventsRepoImpl(db)
-	paymentAccountProjectionRepo := NewPaymentAccountProjectionRepoImpl(db)
-	paymentHistoryRepo := NewPaymentHistoryRepoImpl(db)
+	paymentBalanceAggregateRepo := newPaymentBalanceAggregateRepoImpl(db)
+	paymentProjectionRepo := newPaymentProjectionRepoImpl(db)
+	paymentOutboxEventsRepo := newPaymentOutboxEventsRepoImpl(db)
+	paymentAccountProjectionRepo := newPaymentAccountProjectionRepoImpl(db)
+	paymentHistoryRepo := newPaymentHistoryRepoImpl(db)
+	providerPaymentRepo := newProviderPaymentRepoImpl(db)
 	return &repoImpl{
 		appCtx: appCtx,
 		db:     db,
@@ -40,6 +42,7 @@ func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
 		paymentOutboxEventsRepo:      paymentOutboxEventsRepo,
 		paymentAccountProjectionRepo: paymentAccountProjectionRepo,
 		paymentHistoryRepo:           paymentHistoryRepo,
+		providerPaymentRepo:          providerPaymentRepo,
 	}
 }
 
@@ -61,6 +64,10 @@ func (r *repoImpl) PaymentAccountProjectionRepository() repos.PaymentAccountProj
 
 func (r *repoImpl) PaymentHistoryRepository() repos.PaymentHistoryRepository {
 	return r.paymentHistoryRepo
+}
+
+func (r *repoImpl) ProviderPaymentRepository() repos.ProviderPaymentRepository {
+	return r.providerPaymentRepo
 }
 
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) (err error) {

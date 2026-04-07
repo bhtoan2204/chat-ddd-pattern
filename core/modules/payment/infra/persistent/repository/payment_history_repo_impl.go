@@ -15,7 +15,7 @@ type paymentHistoryRepoImpl struct {
 	db *gorm.DB
 }
 
-func NewPaymentHistoryRepoImpl(db *gorm.DB) repos.PaymentHistoryRepository {
+func newPaymentHistoryRepoImpl(db *gorm.DB) repos.PaymentHistoryRepository {
 	return &paymentHistoryRepoImpl{
 		db: db,
 	}

@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ func (r *CreateDirectConversationRequest) Normalize() {
 func (r *CreateDirectConversationRequest) Validate() error {
 	r.Normalize()
 	if r.PeerAccountID == "" {
-		return errors.New("peer_account_id is required")
+		return stackErr.Error(errors.New("peer_account_id is required"))
 	}
 	return nil
 }

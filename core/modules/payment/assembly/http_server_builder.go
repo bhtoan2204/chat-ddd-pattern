@@ -18,16 +18,15 @@ import (
 
 func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
 	paymentRepos := paymentrepo.NewRepoImpl(appContext)
-	intentStore := paymentrepo.NewProviderPaymentRepoImpl(appContext.GetDB())
 	providerRegistry := providers.NewProviderRegistry()
 	providerRegistry.Register(mockprovider.NewProvider(appContext.GetConfig().LedgerConfig.MockWebhookSecret))
 	if stripe := stripeprovider.NewProvider(appContext.GetConfig().LedgerConfig.Stripe); stripe.Enabled() {
 		providerRegistry.Register(stripe)
 	}
-	providerPaymentService := paymentservice.NewPaymentService(intentStore, providerRegistry)
+	services := paymentservice.NewServices(appContext, paymentRepos, providerRegistry)
 
-	createPayment := cqrs.NewDispatcher(paymentcommand.NewCreateProviderPaymentHandler(providerPaymentService))
-	processWebhook := cqrs.NewDispatcher(paymentcommand.NewProcessProviderWebhookHandler(providerPaymentService))
+	createPayment := cqrs.NewDispatcher(paymentcommand.NewCreatePayment(appContext, paymentRepos, services))
+	processWebhook := cqrs.NewDispatcher(paymentcommand.NewProcessWebhook(appContext, paymentRepos, services))
 	deposit := cqrs.NewDispatcher(paymentcommand.NewDepositHandler(paymentRepos))
 	rebuildProjection := cqrs.NewDispatcher(paymentcommand.NewRebuildProjectionHandler(paymentRepos))
 	transfer := cqrs.NewDispatcher(paymentcommand.NewTransferHandler(paymentRepos))

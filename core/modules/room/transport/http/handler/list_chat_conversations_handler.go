@@ -33,13 +33,13 @@ func (h *listChatConversationsHandler) Handle(c *gin.Context) (interface{}, erro
 	if err := c.ShouldBindQuery(&request); err != nil {
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil, nil
+		return nil, stackErr.Error(err)
 	}
 
 	if err := request.Validate(); err != nil {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil, nil
+		return nil, stackErr.Error(err)
 	}
 
 	result, err := h.listChatConversations.Dispatch(ctx, &request)

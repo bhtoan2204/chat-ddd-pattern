@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -22,10 +23,10 @@ func (r *SavePushSubscriptionRequest) Normalize() {
 func (r *SavePushSubscriptionRequest) Validate() error {
 	r.Normalize()
 	if r.Endpoint == "" {
-		return errors.New("endpoint is required")
+		return stackErr.Error(errors.New("endpoint is required"))
 	}
 	if len(r.Keys) == 0 {
-		return errors.New("keys is required")
+		return stackErr.Error(errors.New("keys is required"))
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -26,7 +27,7 @@ func (r *UpdateProfileRequest) Normalize() {
 func (r *UpdateProfileRequest) Validate() error {
 	r.Normalize()
 	if r.DisplayName == "" {
-		return errors.New("display_name is required")
+		return stackErr.Error(errors.New("display_name is required"))
 	}
 	return nil
 }

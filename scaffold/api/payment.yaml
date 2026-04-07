@@ -180,9 +180,6 @@ endpoints:
         - name: provider
           type: string
           required: true
-        - name: transaction_id
-          type: string
-          required: true
         - name: amount
           type: int64
           required: true

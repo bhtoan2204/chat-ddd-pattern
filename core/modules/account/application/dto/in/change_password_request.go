@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -20,10 +21,10 @@ func (r *ChangePasswordRequest) Normalize() {
 func (r *ChangePasswordRequest) Validate() error {
 	r.Normalize()
 	if r.CurrentPassword == "" {
-		return errors.New("current_password is required")
+		return stackErr.Error(errors.New("current_password is required"))
 	}
 	if r.NewPassword == "" {
-		return errors.New("new_password is required")
+		return stackErr.Error(errors.New("new_password is required"))
 	}
 	return nil
 }

@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -20,7 +21,7 @@ func (r *DeleteChatMessageRequest) Normalize() {
 func (r *DeleteChatMessageRequest) Validate() error {
 	r.Normalize()
 	if r.MessageID == "" {
-		return errors.New("message_id is required")
+		return stackErr.Error(errors.New("message_id is required"))
 	}
 	return nil
 }

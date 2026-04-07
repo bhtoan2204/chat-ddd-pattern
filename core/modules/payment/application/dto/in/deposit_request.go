@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type DepositRequest struct {
@@ -12,7 +13,7 @@ type DepositRequest struct {
 
 func (r *DepositRequest) Validate() error {
 	if r.Amount == 0 {
-		return errors.New("amount is required")
+		return stackErr.Error(errors.New("amount is required"))
 	}
 	return nil
 }

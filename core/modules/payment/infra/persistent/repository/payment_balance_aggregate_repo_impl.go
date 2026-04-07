@@ -24,7 +24,7 @@ type paymentBalanceAggregateRepoImpl struct {
 	serializer eventpkg.Serializer
 }
 
-func NewPaymentBalanceAggregateRepoImpl(db *gorm.DB) repos.PaymentBalanceAggregateRepository {
+func newPaymentBalanceAggregateRepoImpl(db *gorm.DB) repos.PaymentBalanceAggregateRepository {
 	return &paymentBalanceAggregateRepoImpl{
 		db:         db,
 		serializer: newPaymentBalanceSerializer(),

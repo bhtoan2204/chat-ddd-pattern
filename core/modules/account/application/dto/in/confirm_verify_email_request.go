@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ func (r *ConfirmVerifyEmailRequest) Normalize() {
 func (r *ConfirmVerifyEmailRequest) Validate() error {
 	r.Normalize()
 	if r.Token == "" {
-		return errors.New("token is required")
+		return stackErr.Error(errors.New("token is required"))
 	}
 	return nil
 }

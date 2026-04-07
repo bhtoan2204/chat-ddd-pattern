@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 )
 
 type WithdrawalRequest struct {
@@ -12,7 +13,7 @@ type WithdrawalRequest struct {
 
 func (r *WithdrawalRequest) Validate() error {
 	if r.Amount == 0 {
-		return errors.New("amount is required")
+		return stackErr.Error(errors.New("amount is required"))
 	}
 	return nil
 }

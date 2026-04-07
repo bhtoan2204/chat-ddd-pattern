@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -22,7 +23,7 @@ func (r *ProcessWebhookRequest) Normalize() {
 func (r *ProcessWebhookRequest) Validate() error {
 	r.Normalize()
 	if r.Provider == "" {
-		return errors.New("provider is required")
+		return stackErr.Error(errors.New("provider is required"))
 	}
 	return nil
 }

@@ -6,6 +6,7 @@ package {{.PackageName}}
 import (
 {{- if .NeedsErrors}}
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 {{- end}}
 {{- if .NeedsStrings}}
 	"strings"
@@ -46,7 +47,7 @@ func (r *{{.StructName}}) Validate() error {
 {{- if .Required}}
 {{- if .ZeroCheck}}
 	if {{.ZeroCheck}} {
-		return errors.New("{{.JSONName}} is required")
+		return stackErr.Error(errors.New("{{.JSONName}} is required"))
 	}
 {{- end}}
 {{- end}}

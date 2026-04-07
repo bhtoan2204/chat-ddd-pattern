@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -20,7 +21,7 @@ func (r *RebuildProjectionRequest) Normalize() {
 func (r *RebuildProjectionRequest) Validate() error {
 	r.Normalize()
 	if r.Mode == "" {
-		return errors.New("mode is required")
+		return stackErr.Error(errors.New("mode is required"))
 	}
 	return nil
 }

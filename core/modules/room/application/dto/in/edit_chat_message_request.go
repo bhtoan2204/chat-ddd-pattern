@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -20,10 +21,10 @@ func (r *EditChatMessageRequest) Normalize() {
 func (r *EditChatMessageRequest) Validate() error {
 	r.Normalize()
 	if r.MessageID == "" {
-		return errors.New("message_id is required")
+		return stackErr.Error(errors.New("message_id is required"))
 	}
 	if r.Message == "" {
-		return errors.New("message is required")
+		return stackErr.Error(errors.New("message is required"))
 	}
 	return nil
 }

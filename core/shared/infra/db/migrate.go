@@ -182,13 +182,16 @@ func applyMigrationFile(db *sql.DB, path string, version int) error {
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("begin tx failed: %v", err))
 	}
-	for _, stmt := range statements {
+	for i, stmt := range statements {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			if isObjectExistsError(err) {
 				continue
 			}
 			_ = tx.Rollback()
-			return stackErr.Error(fmt.Errorf("exec migration failed: %v", err))
+			return stackErr.Error(fmt.Errorf(
+				"exec migration failed: version=%d file=%s stmt_index=%d stmt=%q err=%v",
+				version, path, i+1, stmt, err,
+			))
 		}
 	}
 	if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migrations(version) VALUES (:1)", version); err != nil {

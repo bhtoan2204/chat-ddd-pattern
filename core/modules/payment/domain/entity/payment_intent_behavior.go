@@ -2,8 +2,12 @@ package entity
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
+
+	sharedevents "go-socket/core/shared/contracts/events"
+	eventpkg "go-socket/core/shared/pkg/event"
 )
 
 var (
@@ -100,6 +104,18 @@ func (p *PaymentIntent) SetProviderState(externalRef, status string, updatedAt t
 	return nil
 }
 
+func (p *PaymentIntent) ApplyProviderResult(result PaymentProviderResult, updatedAt time.Time) error {
+	if err := p.ValidateProviderResult(result.Amount, result.Currency); err != nil {
+		return err
+	}
+
+	return p.SetProviderState(result.ExternalRef, NormalizePaymentStatusOrPending(result.Status), updatedAt)
+}
+
+func (p *PaymentIntent) MarkCreateFailed(updatedAt time.Time) error {
+	return p.SetProviderState("", PaymentStatusFailed, updatedAt)
+}
+
 func (p *PaymentIntent) ValidateProviderResult(amount int64, currency string) error {
 	if p == nil {
 		return ErrPaymentTransactionIDRequired
@@ -124,6 +140,108 @@ func (p *PaymentIntent) PaymentIdempotencyKey(eventID, externalRef string) strin
 		return externalRef
 	}
 	return strings.TrimSpace(p.TransactionID)
+}
+
+func (p *PaymentIntent) CreatedEvent(metadata map[string]string, createdAt time.Time) eventpkg.Event {
+	occurredAt := normalizePaymentTime(createdAt)
+	return eventpkg.Event{
+		AggregateID:   p.TransactionID,
+		AggregateType: PaymentAggregateType,
+		Version:       1,
+		EventName:     sharedevents.EventPaymentCreated,
+		EventData: sharedevents.PaymentCreatedEvent{
+			PaymentID:       p.TransactionID,
+			TransactionID:   p.TransactionID,
+			Provider:        p.Provider,
+			Amount:          p.Amount,
+			Currency:        p.Currency,
+			DebitAccountID:  p.DebitAccountID,
+			CreditAccountID: p.CreditAccountID,
+			Status:          p.Status,
+			Metadata:        metadata,
+			CreatedAt:       occurredAt,
+		},
+		CreatedAt: occurredAt.Unix(),
+	}
+}
+
+func (p *PaymentIntent) CheckoutSessionCreatedEvent(checkoutURL string, occurredAt time.Time) eventpkg.Event {
+	eventTime := normalizePaymentTime(occurredAt)
+	return eventpkg.Event{
+		AggregateID:   p.TransactionID,
+		AggregateType: PaymentAggregateType,
+		Version:       1,
+		EventName:     sharedevents.EventPaymentCheckoutSessionCreated,
+		EventData: sharedevents.PaymentCheckoutSessionCreatedEvent{
+			PaymentID:          p.TransactionID,
+			TransactionID:      p.TransactionID,
+			Provider:           p.Provider,
+			ProviderPaymentRef: p.ExternalRef,
+			CheckoutURL:        strings.TrimSpace(checkoutURL),
+			Amount:             p.Amount,
+			Currency:           p.Currency,
+			Status:             p.Status,
+			OccurredAt:         eventTime,
+		},
+		CreatedAt: eventTime.Unix(),
+	}
+}
+
+func (p *PaymentIntent) SucceededEvent(result PaymentProviderResult, occurredAt time.Time) eventpkg.Event {
+	eventTime := normalizePaymentTime(occurredAt)
+	return eventpkg.Event{
+		AggregateID:   p.TransactionID,
+		AggregateType: PaymentAggregateType,
+		Version:       1,
+		EventName:     sharedevents.EventPaymentSucceeded,
+		EventData: sharedevents.PaymentSucceededEvent{
+			PaymentID:          p.TransactionID,
+			TransactionID:      p.TransactionID,
+			Provider:           p.Provider,
+			ProviderEventID:    strings.TrimSpace(result.EventID),
+			ProviderEventType:  strings.TrimSpace(result.EventType),
+			ProviderPaymentRef: coalescePaymentValue(result.ExternalRef, p.ExternalRef),
+			Amount:             p.Amount,
+			Currency:           p.Currency,
+			DebitAccountID:     p.DebitAccountID,
+			CreditAccountID:    p.CreditAccountID,
+			IdempotencyKey:     fmt.Sprintf("%s:%s", sharedevents.EventPaymentSucceeded, p.TransactionID),
+			SucceededAt:        eventTime,
+		},
+		CreatedAt: eventTime.Unix(),
+	}
+}
+
+func (p *PaymentIntent) FailedEvent(result PaymentProviderResult, occurredAt time.Time) eventpkg.Event {
+	eventTime := normalizePaymentTime(occurredAt)
+	return eventpkg.Event{
+		AggregateID:   p.TransactionID,
+		AggregateType: PaymentAggregateType,
+		Version:       1,
+		EventName:     sharedevents.EventPaymentFailed,
+		EventData: sharedevents.PaymentFailedEvent{
+			PaymentID:          p.TransactionID,
+			TransactionID:      p.TransactionID,
+			Provider:           p.Provider,
+			ProviderEventID:    strings.TrimSpace(result.EventID),
+			ProviderEventType:  strings.TrimSpace(result.EventType),
+			ProviderPaymentRef: coalescePaymentValue(result.ExternalRef, p.ExternalRef),
+			Amount:             p.Amount,
+			Currency:           p.Currency,
+			Status:             NormalizePaymentStatusOrPending(result.Status),
+			OccurredAt:         eventTime,
+		},
+		CreatedAt: eventTime.Unix(),
+	}
+}
+
+func (p *PaymentIntent) NewProcessedEvent(result PaymentProviderResult, createdAt time.Time) (*ProcessedPaymentEvent, error) {
+	return NewProcessedPaymentEvent(
+		p.Provider,
+		p.PaymentIdempotencyKey(result.EventID, result.ExternalRef),
+		p.TransactionID,
+		createdAt,
+	)
 }
 
 func NewProcessedPaymentEvent(provider, idempotencyKey, transactionID string, createdAt time.Time) (*ProcessedPaymentEvent, error) {
@@ -153,4 +271,13 @@ func normalizePaymentTime(value time.Time) time.Time {
 		return time.Now().UTC()
 	}
 	return value.UTC()
+}
+
+func coalescePaymentValue(values ...string) string {
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			return value
+		}
+	}
+	return ""
 }

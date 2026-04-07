@@ -16,5 +16,4 @@ type ProviderPaymentRepository interface {
 	IsProcessed(ctx context.Context, provider, idempotencyKey string) (bool, error)
 	MarkProcessed(ctx context.Context, event *entity.ProcessedPaymentEvent) error
 	AppendOutboxEvent(ctx context.Context, event eventpkg.Event) error
-	WithTransaction(ctx context.Context, fn func(ProviderPaymentRepository) error) error
 }

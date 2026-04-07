@@ -4,6 +4,7 @@ package in
 
 import (
 	"errors"
+	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ func (r *DeleteRoomRequest) Normalize() {
 func (r *DeleteRoomRequest) Validate() error {
 	r.Normalize()
 	if r.ID == "" {
-		return errors.New("id is required")
+		return stackErr.Error(errors.New("id is required"))
 	}
 	return nil
 }

@@ -3,24 +3,25 @@ package repository
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"go-socket/core/modules/payment/domain/entity"
 	paymentrepos "go-socket/core/modules/payment/domain/repos"
 	"go-socket/core/modules/payment/infra/persistent/model"
 	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/logging"
 
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
+
+const pendingExternalRefPrefix = "__pending__:"
 
 type providerPaymentRepoImpl struct {
 	db         *gorm.DB
 	serializer eventpkg.Serializer
 }
 
-func NewProviderPaymentRepoImpl(db *gorm.DB) paymentrepos.ProviderPaymentRepository {
+func newProviderPaymentRepoImpl(db *gorm.DB) paymentrepos.ProviderPaymentRepository {
 	return &providerPaymentRepoImpl{
 		db:         db,
 		serializer: eventpkg.NewSerializer(),
@@ -31,7 +32,7 @@ func (r *providerPaymentRepoImpl) CreateIntent(ctx context.Context, intent *enti
 	err := r.db.WithContext(ctx).Create(&model.ProviderPaymentIntentModel{
 		TransactionID:   intent.TransactionID,
 		Provider:        intent.Provider,
-		ExternalRef:     toNullableString(intent.ExternalRef),
+		ExternalRef:     toStorageExternalRef(intent.Provider, intent.TransactionID, intent.ExternalRef),
 		Amount:          intent.Amount,
 		Currency:        intent.Currency,
 		DebitAccountID:  intent.DebitAccountID,
@@ -65,8 +66,7 @@ func (r *providerPaymentRepoImpl) GetIntentByExternalRef(ctx context.Context, pr
 
 func (r *providerPaymentRepoImpl) UpdateIntentProviderState(ctx context.Context, transactionID, externalRef, status string) error {
 	updates := map[string]interface{}{
-		"status":     status,
-		"updated_at": time.Now().UTC(),
+		"status": status,
 	}
 	if externalRef != "" {
 		updates["external_ref"] = externalRef
@@ -148,46 +148,10 @@ func (r *providerPaymentRepoImpl) AppendOutboxEvent(ctx context.Context, evt eve
 	}).Error
 }
 
-func (r *providerPaymentRepoImpl) WithTransaction(ctx context.Context, fn func(paymentrepos.ProviderPaymentRepository) error) (err error) {
-	log := logging.FromContext(ctx).Named("ProviderPaymentTransaction")
-	tx := r.db.WithContext(ctx).Begin()
-	if beginErr := tx.Error; beginErr != nil {
-		log.Errorw("failed to begin transaction", zap.Error(beginErr))
-		return beginErr
-	}
-
-	tr := NewProviderPaymentRepoImpl(tx)
-
-	defer func() {
-		if rec := recover(); rec != nil {
-			_ = tx.Rollback().Error
-			log.Errorw("panic -> rollback", zap.Any("panic", rec))
-			panic(rec)
-		}
-
-		if err != nil {
-			_ = tx.Rollback().Error
-			log.Errorw("transaction rollback", zap.Error(err))
-			return
-		}
-
-		if commitErr := tx.Commit().Error; commitErr != nil {
-			log.Errorw("commit failed", zap.Error(commitErr))
-			err = commitErr
-			return
-		}
-
-		log.Info("transaction committed")
-	}()
-
-	err = fn(tr)
-	return err
-}
-
 func toProviderPaymentIntentEntity(modelIntent *model.ProviderPaymentIntentModel) *entity.PaymentIntent {
 	externalRef := ""
 	if modelIntent.ExternalRef != nil {
-		externalRef = *modelIntent.ExternalRef
+		externalRef = fromStorageExternalRef(*modelIntent.ExternalRef)
 	}
 	return &entity.PaymentIntent{
 		TransactionID:   modelIntent.TransactionID,
@@ -203,9 +167,19 @@ func toProviderPaymentIntentEntity(modelIntent *model.ProviderPaymentIntentModel
 	}
 }
 
-func toNullableString(value string) *string {
-	if value == "" {
-		return nil
+func toStorageExternalRef(provider, transactionID, externalRef string) *string {
+	if value := strings.TrimSpace(externalRef); value != "" {
+		return &value
 	}
-	return &value
+
+	placeholder := pendingExternalRefPrefix + strings.ToLower(strings.TrimSpace(provider)) + ":" + strings.TrimSpace(transactionID)
+	return &placeholder
+}
+
+func fromStorageExternalRef(value string) string {
+	value = strings.TrimSpace(value)
+	if strings.HasPrefix(value, pendingExternalRefPrefix) {
+		return ""
+	}
+	return value
 }

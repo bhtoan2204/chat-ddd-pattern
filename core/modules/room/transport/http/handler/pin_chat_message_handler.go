@@ -34,13 +34,13 @@ func (h *pinChatMessageHandler) Handle(c *gin.Context) (interface{}, error) {
 	if err := c.ShouldBindJSON(&request); err != nil {
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil, nil
+		return nil, stackErr.Error(err)
 	}
 
 	if err := request.Validate(); err != nil {
 		logger.Errorw("Validate request failed", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return nil, nil
+		return nil, stackErr.Error(err)
 	}
 
 	result, err := h.pinChatMessage.Dispatch(ctx, &request)

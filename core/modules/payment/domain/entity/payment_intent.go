@@ -3,6 +3,7 @@ package entity
 import "time"
 
 const (
+	PaymentAggregateType  = "payment"
 	PaymentStatusCreating = "CREATING"
 	PaymentStatusPending  = "PENDING"
 	PaymentStatusSuccess  = "SUCCESS"
@@ -20,6 +21,16 @@ type PaymentIntent struct {
 	Status          string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+}
+
+type PaymentProviderResult struct {
+	TransactionID string
+	EventID       string
+	EventType     string
+	Status        string
+	Amount        int64
+	Currency      string
+	ExternalRef   string
 }
 
 type ProcessedPaymentEvent struct {

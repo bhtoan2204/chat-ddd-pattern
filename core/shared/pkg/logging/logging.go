@@ -45,7 +45,7 @@ var productionEncoderConfig = zapcore.EncoderConfig{
 	EncodeLevel:    levelEncoder(),
 	EncodeTime:     timeEncoder(),
 	EncodeDuration: zapcore.SecondsDurationEncoder,
-	EncodeCaller:   zapcore.ShortCallerEncoder,
+	EncodeCaller:   zapcore.FullCallerEncoder,
 }
 
 var developmentEncoderConfig = zapcore.EncoderConfig{
@@ -60,7 +60,7 @@ var developmentEncoderConfig = zapcore.EncoderConfig{
 	EncodeLevel:    zapcore.CapitalLevelEncoder,
 	EncodeTime:     zapcore.ISO8601TimeEncoder,
 	EncodeDuration: zapcore.StringDurationEncoder,
-	EncodeCaller:   zapcore.ShortCallerEncoder,
+	EncodeCaller:   zapcore.FullCallerEncoder,
 }
 
 func DefaultLogger() *zap.SugaredLogger {
@@ -84,7 +84,10 @@ func NewLogger(logLevel string, env string) *zap.SugaredLogger {
 		ErrorOutputPaths: outputStderr,
 	}
 
-	logger, err := config.Build()
+	logger, err := config.Build(
+		zap.AddCaller(),
+		zap.AddStacktrace(zap.ErrorLevel),
+	)
 	if err != nil {
 		logger = zap.NewNop()
 	}

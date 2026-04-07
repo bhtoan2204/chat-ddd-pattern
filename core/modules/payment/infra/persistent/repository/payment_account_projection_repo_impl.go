@@ -16,7 +16,7 @@ type paymentAccountProjectionRepoImpl struct {
 	db *gorm.DB
 }
 
-func NewPaymentAccountProjectionRepoImpl(db *gorm.DB) paymentrepos.PaymentAccountProjectionRepository {
+func newPaymentAccountProjectionRepoImpl(db *gorm.DB) paymentrepos.PaymentAccountProjectionRepository {
 	return &paymentAccountProjectionRepoImpl{db: db}
 }
 
