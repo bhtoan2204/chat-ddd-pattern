@@ -65,6 +65,7 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 	r.Use(gin.CustomRecovery(func(c *gin.Context, err interface{}) {
 		c.JSON(http.StatusInternalServerError, gin.H{"errors": gin.H{"error": "something went wrong"}})
 	}))
+	r.Use(middleware.ErrorMiddleware())
 
 	// cors
 	corsConfig := cors.DefaultConfig()
