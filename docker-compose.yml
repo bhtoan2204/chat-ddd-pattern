@@ -68,6 +68,7 @@ services:
     volumes:
       - oracle_data:/opt/oracle/oradata
       - ./oracle-init:/container-entrypoint-initdb.d
+      - ./oracle-startup:/container-entrypoint-startdb.d
     shm_size: "1g"
     restart: unless-stopped
 
@@ -172,8 +173,8 @@ services:
       mc mb -p local/chat-media || true;
       mc anonymous set public local/chat-media || true;
 
-      echo 'register connectors...';
-      /bin/sh /connector/register_connectors.sh;
+      echo 'skip connector registration in init';
+      echo 'run make connector after the app starts and finishes migrations';
 
       echo 'done';
       "

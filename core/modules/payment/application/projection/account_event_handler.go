@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"go-socket/core/modules/account/domain/aggregate"
 	"go-socket/core/modules/payment/domain/entity"
+	sharedevents "go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
 
@@ -36,12 +36,11 @@ func (p *processor) handleAccountEvent(ctx context.Context, value []byte) error 
 
 func (p *processor) handleAccountCreatedEvent(ctx context.Context, event *accountOutboxMessage) error {
 	log := logging.FromContext(ctx).Named("handleAccountCreatedEvent")
-	payloadAny, err := decodeEventPayload(ctx, p.eventSerializer, event.AggregateType, event.EventName, event.EventData)
+	payload, err := decodeExternalEventPayload[sharedevents.AccountCreatedEvent](event.EventData)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("decode event payload failed: %v", err))
 	}
-	payload, ok := payloadAny.(*aggregate.EventAccountCreated)
-	if !ok || payload == nil {
+	if payload == nil {
 		return stackErr.Error(fmt.Errorf("invalid payload type for event %s", "EventAccountCreated"))
 	}
 
@@ -62,12 +61,11 @@ func (p *processor) handleAccountCreatedEvent(ctx context.Context, event *accoun
 
 func (p *processor) handleAccountUpdatedEvent(ctx context.Context, event *accountOutboxMessage) error {
 	log := logging.FromContext(ctx).Named("handleAccountUpdatedEvent")
-	payloadAny, err := decodeEventPayload(ctx, p.eventSerializer, event.AggregateType, event.EventName, event.EventData)
+	payload, err := decodeExternalEventPayload[sharedevents.AccountUpdatedEvent](event.EventData)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("decode event payload failed: %v", err))
 	}
-	payload, ok := payloadAny.(*aggregate.EventAccountUpdated)
-	if !ok || payload == nil {
+	if payload == nil {
 		return stackErr.Error(fmt.Errorf("invalid payload type for event %s", "EventAccountUpdated"))
 	}
 
@@ -104,12 +102,11 @@ func (p *processor) handleAccountUpdatedEvent(ctx context.Context, event *accoun
 
 func (p *processor) handleAccountBannedEvent(ctx context.Context, event *accountOutboxMessage) error {
 	log := logging.FromContext(ctx).Named("handleAccountBannedEvent")
-	payloadAny, err := decodeEventPayload(ctx, p.eventSerializer, event.AggregateType, event.EventName, event.EventData)
+	payload, err := decodeExternalEventPayload[sharedevents.AccountBannedEvent](event.EventData)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("decode event payload failed: %v", err))
 	}
-	payload, ok := payloadAny.(*aggregate.EventAccountBanned)
-	if !ok || payload == nil {
+	if payload == nil {
 		return stackErr.Error(fmt.Errorf("invalid payload type for event %s", "EventAccountBanned"))
 	}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	accountaggregate "go-socket/core/modules/account/domain/aggregate"
 	paymentaggregate "go-socket/core/modules/payment/domain/aggregate"
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
@@ -18,7 +17,6 @@ import (
 func newProjectionSerializer() (eventpkg.Serializer, error) {
 	serializer := eventpkg.NewSerializer()
 	aggregates := []eventpkg.BaseAggregate{
-		&accountaggregate.AccountAggregate{},
 		&paymentaggregate.PaymentBalanceAggregate{},
 		&paymentaggregate.PaymentTransactionAggregate{},
 	}
@@ -95,4 +93,12 @@ func unmarshalEventData(raw []byte, target interface{}) error {
 	}
 
 	return nil
+}
+
+func decodeExternalEventPayload[T any](raw []byte) (*T, error) {
+	var payload T
+	if err := unmarshalEventData(raw, &payload); err != nil {
+		return nil, stackErr.Error(fmt.Errorf("unmarshal external event_data failed: %v", err))
+	}
+	return &payload, nil
 }

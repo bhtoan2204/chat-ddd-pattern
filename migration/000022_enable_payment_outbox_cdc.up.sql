@@ -1,0 +1,2 @@
+GRANT SELECT ON payment_outbox_events TO C##DBZUSER;
+ALTER TABLE payment_outbox_events ADD SUPPLEMENTAL LOG DATA (ALL) COLUMNS;
