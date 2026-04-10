@@ -49,6 +49,7 @@ type KafkaConfig struct {
 	KafkaNotificationConsumer KafkaNotificationConsumer
 	KafkaPaymentConsumer      KafkaPaymentConsumer
 	KafkaLedgerConsumer       KafkaLedgerConsumer
+	KafkaRoomConsumer         KafkaRoomConsumer
 }
 
 type KafkaNotificationConsumer struct {
@@ -62,6 +63,11 @@ type KafkaPaymentConsumer struct {
 
 	AccountTopic       string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
 	PaymentEventsTopic string `env:"KAFKA_CONSUMER_PAYMENT_EVENTS_TOPIC"`
+}
+
+type KafkaRoomConsumer struct {
+	RoomGroup    string `env:"KAFKA_ROOM_CONSUMER_GROUP"`
+	AccountTopic string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
 }
 
 type KafkaLedgerConsumer struct {

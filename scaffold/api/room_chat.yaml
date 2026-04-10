@@ -47,6 +47,10 @@ endpoints:
                 type: string
               - name: role
                 type: string
+              - name: display_name
+                type: string
+              - name: avatar_object_key
+                type: string
         - name: created_at
           type: string
         - name: updated_at

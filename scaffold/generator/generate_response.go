@@ -56,7 +56,7 @@ func GenerateResponse(endpoints []models.Endpoint) (string, error) {
 		}
 		if fileExists(dst) && !isGeneratedFile(dst, "response") {
 			skipped++
-			continue
+			// continue
 		}
 
 		data := responseTemplateData{

@@ -29,7 +29,7 @@ func GenerateHandler(endpoints []models.Endpoint) (string, error) {
 	skipped := 0
 	for _, ep := range endpoints {
 		if !shouldGenerateHandler(ep) {
-			// continue
+			continue
 		}
 		module, err := moduleForUsecase(ep.Usecase.Name)
 		if err != nil {

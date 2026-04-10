@@ -30,6 +30,7 @@ func RegisterPrivateRoutes(
 	changePassword cqrs.Dispatcher[*in.ChangePasswordRequest, *out.ChangePasswordResponse],
 	getAvatar cqrs.Dispatcher[*in.GetAvatarRequest, *out.GetAvatarResponse],
 	createPresignedUrl cqrs.Dispatcher[*in.CreatePresignedUrlRequest, *out.CreatePresignedUrlResponse],
+	searchUsers cqrs.Dispatcher[*in.SearchUsersRequest, *out.SearchUsersResponse],
 ) {
 	routes.POST("/auth/logout", httpx.Wrap(handler.NewLogoutHandler(logout)))
 	routes.GET("/account/profile", httpx.Wrap(handler.NewGetProfileHandler(getProfile)))
@@ -38,4 +39,5 @@ func RegisterPrivateRoutes(
 	routes.PUT("/account/change-password", httpx.Wrap(handler.NewChangePasswordHandler(changePassword)))
 	routes.GET("/account/avatar/:account_id", httpx.Wrap(handler.NewGetAvatarHandler(getAvatar)))
 	routes.POST("/account/avatar/presigned-url", httpx.Wrap(handler.NewCreatePresignedUrlHandler(createPresignedUrl)))
+	routes.GET("/account/search-users", httpx.Wrap(handler.NewSearchUsersHandler(searchUsers)))
 }

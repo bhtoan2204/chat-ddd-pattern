@@ -262,3 +262,47 @@ endpoints:
           type: string
         - name: method
           type: string
+  - name: AccountSearchUsers
+    method: GET
+    path: /account/search-users
+    handler: SearchUsersHandler
+    auth: true
+    usecase:
+      name: AuthUsecase
+      method: SearchUsers
+    request:
+      struct: SearchUsersRequest
+      fields:
+        - name: q
+          type: string
+          required: true
+        - name: limit
+          type: int
+        - name: offset
+          type: int
+    response:
+      struct: SearchUsersResponse
+      fields:
+        - name: total
+          type: int64
+        - name: limit
+          type: int
+        - name: offset
+          type: int
+        - name: items
+          type: array
+          items:
+            struct: SearchUserItem
+            fields:
+              - name: id
+                type: string
+              - name: display_name
+                type: string
+              - name: username
+                type: string
+              - name: avatar_object_key
+                type: string
+              - name: status
+                type: string
+              - name: email_verified
+                type: bool

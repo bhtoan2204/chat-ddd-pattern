@@ -17,6 +17,7 @@ type Repos interface {
 	RoomReadRepository() RoomReadRepository
 	MessageReadRepository() MessageReadRepository
 	RoomMemberReadRepository() RoomMemberReadRepository
+	RoomAccountProjectionRepository() RoomAccountProjectionRepository
 
 	WithTransaction(ctx context.Context, fn func(Repos) error) error
 }
@@ -25,6 +26,7 @@ type QueryRepos interface {
 	RoomReadRepository() RoomReadRepository
 	MessageReadRepository() MessageReadRepository
 	RoomMemberReadRepository() RoomMemberReadRepository
+	RoomAccountProjectionRepository() RoomAccountProjectionRepository
 }
 
 type MessageListOptions struct {

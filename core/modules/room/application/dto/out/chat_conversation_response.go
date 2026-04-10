@@ -15,3 +15,10 @@ type ChatConversationResponse struct {
 	CreatedAt       string                   `json:"created_at"`
 	UpdatedAt       string                   `json:"updated_at"`
 }
+
+type ChatRoomMemberResponse struct {
+	AccountID       string `json:"account_id"`
+	Role            string `json:"role"`
+	DisplayName     string `json:"display_name"`
+	AvatarObjectKey string `json:"avatar_object_key"`
+}

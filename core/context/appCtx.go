@@ -2,6 +2,7 @@ package appCtx
 
 import (
 	"context"
+	"go-socket/core/modules/account/infra/lock"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/infra/discovery"
@@ -26,6 +27,7 @@ type AppContext struct {
 	smtp         smtp.SMTP
 	storage      storage.Storage
 	consulClient discovery.ConsulClient
+	locker       lock.Lock
 }
 
 func NewAppContext(ctx context.Context, opts ...Option) (*AppContext, error) {
@@ -90,6 +92,12 @@ func WithConsulClient(consulClient discovery.ConsulClient) Option {
 	}
 }
 
+func WithLocker(locker lock.Lock) Option {
+	return func(appCtx *AppContext) {
+		appCtx.locker = locker
+	}
+}
+
 func (appCtx *AppContext) GetRedisClient() *redis.Client {
 	return appCtx.redisClient
 }
@@ -124,6 +132,10 @@ func (appCtx *AppContext) GetStorage() storage.Storage {
 
 func (appCtx *AppContext) GetConsulClient() discovery.ConsulClient {
 	return appCtx.consulClient
+}
+
+func (appCtx *AppContext) Locker() lock.Lock {
+	return appCtx.locker
 }
 
 func (appCtx *AppContext) Close() {

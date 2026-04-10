@@ -13,8 +13,10 @@ func ToConversationResponse(res *apptypes.ConversationResult) *out.ChatConversat
 	members := make([]out.ChatRoomMemberResponse, 0, len(res.Members))
 	for _, member := range res.Members {
 		members = append(members, out.ChatRoomMemberResponse{
-			AccountID: member.AccountID,
-			Role:      member.Role,
+			AccountID:       member.AccountID,
+			Role:            member.Role,
+			DisplayName:     member.DisplayName,
+			AvatarObjectKey: member.AvatarObjectKey,
 		})
 	}
 

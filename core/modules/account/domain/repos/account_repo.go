@@ -13,4 +13,6 @@ type AccountRepository interface {
 	UpdateAccount(ctx context.Context, account *entity.Account) error
 	DeleteAccount(ctx context.Context, id string) error
 	ListAccountsByRoomID(ctx context.Context, roomID string) ([]*entity.Account, error)
+
+	SearchUsers(ctx context.Context, q string, limit, offset int) ([]*entity.Account, int64, error)
 }

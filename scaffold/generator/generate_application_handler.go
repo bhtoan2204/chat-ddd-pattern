@@ -89,7 +89,9 @@ func writeApplicationHandlerFile(tmpl *template.Template, module modulePaths, ep
 	if fileExists(dst) && !isGeneratedFile(dst, "application-handler") {
 		return false, nil
 	}
-
+	if fileExists(dst) {
+		return false, nil
+	}
 	data := applicationHandlerTemplateData{
 		PackageName:       kind,
 		HandlerName:       handlerName,

@@ -9,6 +9,9 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/stackErr"
+
+	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 )
 
 func buildRoomResult(room *entity.Room) *apptypes.RoomResult {
@@ -27,7 +30,13 @@ func buildRoomResult(room *entity.Room) *apptypes.RoomResult {
 	}
 }
 
-func buildConversationResult(ctx context.Context, readRepos repos.QueryRepos, viewerID string, room *entity.Room, includeMembers bool) (*apptypes.ConversationResult, error) {
+func buildConversationResult(
+	ctx context.Context,
+	readRepos repos.QueryRepos,
+	viewerID string,
+	room *entity.Room,
+	includeMembers bool,
+) (*apptypes.ConversationResult, error) {
 	members, err := readRepos.RoomMemberReadRepository().ListRoomMembers(ctx, room.ID)
 	if err != nil {
 		return nil, stackErr.Error(err)
@@ -37,24 +46,80 @@ func buildConversationResult(ctx context.Context, readRepos repos.QueryRepos, vi
 	for _, member := range members {
 		if member.AccountID == viewerID {
 			viewerMember = member
-			break
 		}
 	}
 	if viewerMember == nil {
-		return nil, errors.New("viewer is not a member of this room")
+		return nil, stackErr.Error(errors.New("viewer is not a member of this room"))
 	}
 
-	unreadCount, err := readRepos.MessageReadRepository().CountUnreadMessages(ctx, room.ID, viewerID, viewerMember.LastReadAt)
-	if err != nil {
-		return nil, stackErr.Error(err)
+	accountIDs := lo.Map(members, func(member *entity.RoomMemberEntity, _ int) string {
+		return member.AccountID
+	})
+
+	var (
+		accountProjections []*entity.AccountEntity
+		unreadCount        int64
+		lastMessage        *entity.MessageEntity
+	)
+
+	eg, egCtx := errgroup.WithContext(ctx)
+
+	eg.Go(func() error {
+		var err error
+		accountProjections, err = readRepos.RoomAccountProjectionRepository().ListByAccountIDs(egCtx, accountIDs)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		return nil
+	})
+
+	eg.Go(func() error {
+		var err error
+		unreadCount, err = readRepos.MessageReadRepository().CountUnreadMessages(
+			egCtx,
+			room.ID,
+			viewerID,
+			viewerMember.LastReadAt,
+		)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		return nil
+	})
+
+	eg.Go(func() error {
+		var err error
+		lastMessage, err = readRepos.MessageReadRepository().GetLastMessage(egCtx, room.ID)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		return nil
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
 	}
+
+	accountMap := lo.SliceToMap(accountProjections, func(acc *entity.AccountEntity) (string, *entity.AccountEntity) {
+		return acc.AccountID, acc
+	})
 
 	name := room.Name
 	if string(room.RoomType) == "direct" {
-		for _, member := range members {
-			if member.AccountID != viewerID {
-				name = member.AccountID
-				break
+		if otherMember, found := lo.Find(members, func(member *entity.RoomMemberEntity) bool {
+			return member.AccountID != viewerID
+		}); found {
+			if acc, ok := accountMap[otherMember.AccountID]; ok {
+				switch {
+				case acc.DisplayName != "":
+					name = acc.DisplayName
+				case acc.Username != "":
+					name = acc.Username
+				default:
+					name = otherMember.AccountID
+				}
+			} else {
+				name = otherMember.AccountID
 			}
 		}
 	}
@@ -73,17 +138,23 @@ func buildConversationResult(ctx context.Context, readRepos repos.QueryRepos, vi
 	}
 
 	if includeMembers {
-		result.Members = make([]apptypes.ConversationMemberResult, 0, len(members))
-		for _, member := range members {
-			result.Members = append(result.Members, apptypes.ConversationMemberResult{
+		result.Members = lo.Map(members, func(member *entity.RoomMemberEntity, _ int) apptypes.ConversationMemberResult {
+			item := apptypes.ConversationMemberResult{
 				AccountID: member.AccountID,
 				Role:      string(member.Role),
-			})
-		}
+			}
+
+			if acc, ok := accountMap[member.AccountID]; ok {
+				item.DisplayName = acc.DisplayName
+				item.Username = acc.Username
+				item.AvatarObjectKey = acc.AvatarObjectKey
+			}
+
+			return item
+		})
 	}
 
-	lastMessage, err := readRepos.MessageReadRepository().GetLastMessage(ctx, room.ID)
-	if err == nil && lastMessage != nil {
+	if lastMessage != nil {
 		result.LastMessage, err = buildMessageResult(ctx, readRepos, viewerID, lastMessage)
 		if err != nil {
 			return nil, stackErr.Error(err)

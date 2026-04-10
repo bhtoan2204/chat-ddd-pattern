@@ -6,8 +6,11 @@ type PresenceResult struct {
 }
 
 type ConversationMemberResult struct {
-	AccountID string
-	Role      string
+	AccountID       string
+	Role            string
+	DisplayName     string
+	Username        string
+	AvatarObjectKey string
 }
 
 type MessagePreviewResult struct {

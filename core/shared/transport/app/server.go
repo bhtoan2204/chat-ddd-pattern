@@ -7,6 +7,7 @@ import (
 	ledgerassembly "go-socket/core/modules/ledger/assembly"
 	notificationassembly "go-socket/core/modules/notification/assembly"
 	paymentassembly "go-socket/core/modules/payment/assembly"
+	roomassembly "go-socket/core/modules/room/assembly"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
@@ -87,7 +88,17 @@ func (s *appServer) buildModuleServers(appContext *appCtx.AppContext) error {
 		return fmt.Errorf("build payment processor failed: %v", err)
 	}
 
-	s.moduleServers = []moduleServer{notificationServer, ledgerServer, paymentProcessor}
+	roomServer, err := roomassembly.BuildMessageServer(s.cfg, appContext)
+	if err != nil {
+		return fmt.Errorf("build room server failed: %v", err)
+	}
+
+	s.moduleServers = []moduleServer{
+		notificationServer,
+		ledgerServer,
+		paymentProcessor,
+		roomServer,
+	}
 	return nil
 }
 

@@ -24,6 +24,7 @@ type accountHTTPServer struct {
 	changePassword     cqrs.Dispatcher[*in.ChangePasswordRequest, *out.ChangePasswordResponse]
 	getAvatar          cqrs.Dispatcher[*in.GetAvatarRequest, *out.GetAvatarResponse]
 	createPresignedUrl cqrs.Dispatcher[*in.CreatePresignedUrlRequest, *out.CreatePresignedUrlResponse]
+	searchUsers        cqrs.Dispatcher[*in.SearchUsersRequest, *out.SearchUsersResponse]
 }
 
 func NewHTTPServer(
@@ -37,6 +38,7 @@ func NewHTTPServer(
 	changePassword cqrs.Dispatcher[*in.ChangePasswordRequest, *out.ChangePasswordResponse],
 	getAvatar cqrs.Dispatcher[*in.GetAvatarRequest, *out.GetAvatarResponse],
 	createPresignedUrl cqrs.Dispatcher[*in.CreatePresignedUrlRequest, *out.CreatePresignedUrlResponse],
+	searchUsers cqrs.Dispatcher[*in.SearchUsersRequest, *out.SearchUsersResponse],
 ) (infrahttp.HTTPServer, error) {
 	return &accountHTTPServer{
 		login:              login,
@@ -49,6 +51,7 @@ func NewHTTPServer(
 		changePassword:     changePassword,
 		getAvatar:          getAvatar,
 		createPresignedUrl: createPresignedUrl,
+		searchUsers:        searchUsers,
 	}, nil
 }
 
@@ -57,7 +60,7 @@ func (s *accountHTTPServer) RegisterPublicRoutes(routes *gin.RouterGroup) {
 }
 
 func (s *accountHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {
-	accounthttp.RegisterPrivateRoutes(routes, s.logout, s.getProfile, s.updateProfile, s.verifyEmail, s.changePassword, s.getAvatar, s.createPresignedUrl)
+	accounthttp.RegisterPrivateRoutes(routes, s.logout, s.getProfile, s.updateProfile, s.verifyEmail, s.changePassword, s.getAvatar, s.createPresignedUrl, s.searchUsers)
 }
 
 func (s *accountHTTPServer) Stop(_ context.Context) error {

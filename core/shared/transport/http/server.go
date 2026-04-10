@@ -60,8 +60,8 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 	)
 	if s.cfg.ServerConfig.Environment == "prod" {
 		r.Use(middleware.IdempotencyMiddleware(idemManager))
+		r.Use(middleware.RateLimitMiddleware(cache))
 	}
-	r.Use(middleware.RateLimitMiddleware(cache))
 	r.Use(gin.CustomRecovery(func(c *gin.Context, err interface{}) {
 		c.JSON(http.StatusInternalServerError, gin.H{"errors": gin.H{"error": "something went wrong"}})
 	}))
@@ -76,7 +76,6 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 		"Content-Length",
 		"Content-Type",
 		"Authorization",
-		"X-Inside-Token",
 	}
 	r.Use(cors.New(corsConfig))
 

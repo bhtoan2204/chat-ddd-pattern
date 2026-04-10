@@ -2,6 +2,7 @@ package repos
 
 import (
 	"context"
+	"strings"
 
 	"go-socket/core/modules/account/domain/entity"
 	accountrepos "go-socket/core/modules/account/domain/repos"
@@ -274,4 +275,74 @@ func (r *accountRepoImpl) lookupAccountEmail(ctx context.Context, id string) (st
 		return "", err
 	}
 	return model.Email, nil
+}
+
+func (r *accountRepoImpl) SearchUsers(ctx context.Context, q string, limit, offset int) ([]*entity.Account, int64, error) {
+	q = strings.TrimSpace(strings.ToLower(q))
+	if q == "" {
+		return []*entity.Account{}, 0, nil
+	}
+
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 50 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	prefixQuery := q + "%"
+	containsQuery := "%" + q + "%"
+
+	baseQuery := r.db.WithContext(ctx).
+		Model(&models.AccountModel{}).
+		Where("status = ?", accounttypes.AccountStatusActive.String()).
+		Where(`
+			USERNAME_NORM LIKE ?
+			OR DISPLAY_NAME_NORM LIKE ?
+			OR EMAIL_NORM LIKE ?
+		`, prefixQuery, containsQuery, prefixQuery)
+
+	var total int64
+	if err := baseQuery.Count(&total).Error; err != nil {
+		return nil, 0, stackErr.Error(err)
+	}
+
+	if total == 0 {
+		return []*entity.Account{}, 0, nil
+	}
+
+	var accounts []*models.AccountModel
+	if err := baseQuery.
+		Order(gorm.Expr(`
+			CASE
+				WHEN USERNAME_NORM = ? THEN 1
+				WHEN USERNAME_NORM LIKE ? THEN 2
+				WHEN DISPLAY_NAME_NORM = ? THEN 3
+				WHEN DISPLAY_NAME_NORM LIKE ? THEN 4
+				WHEN EMAIL_NORM = ? THEN 5
+				WHEN EMAIL_NORM LIKE ? THEN 6
+				ELSE 7
+			END
+		`, q, prefixQuery, q, prefixQuery, q, prefixQuery)).
+		Order("LAST_LOGIN_AT DESC NULLS LAST").
+		Order("CREATED_AT DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&accounts).Error; err != nil {
+		return nil, 0, stackErr.Error(err)
+	}
+
+	result := make([]*entity.Account, 0, len(accounts))
+	for _, account := range accounts {
+		e, err := r.toEntity(account)
+		if err != nil {
+			return nil, 0, stackErr.Error(err)
+		}
+		result = append(result, e)
+	}
+
+	return result, total, nil
 }

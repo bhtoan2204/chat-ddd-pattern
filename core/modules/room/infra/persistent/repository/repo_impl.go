@@ -21,6 +21,7 @@ type repoImpl struct {
 	roomReadRepo    repos.RoomReadRepository
 	messageReadRepo repos.MessageReadRepository
 	memberReadRepo  repos.RoomMemberReadRepository
+	accountRepo     repos.RoomAccountProjectionRepository
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
@@ -35,6 +36,7 @@ func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
 	roomReadRepo := NewRoomReadRepoImpl(db)
 	messageReadRepo := NewMessageReadRepoImpl(db)
 	memberReadRepo := NewRoomMemberReadRepoImpl(db)
+	accountRepo := NewRoomAccountProjectionImpl(db)
 
 	return &repoImpl{
 		db:              db,
@@ -46,6 +48,7 @@ func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
 		roomReadRepo:    roomReadRepo,
 		messageReadRepo: messageReadRepo,
 		memberReadRepo:  memberReadRepo,
+		accountRepo:     accountRepo,
 	}
 }
 
@@ -75,6 +78,10 @@ func (r *repoImpl) MessageReadRepository() repos.MessageReadRepository {
 
 func (r *repoImpl) RoomMemberReadRepository() repos.RoomMemberReadRepository {
 	return r.memberReadRepo
+}
+
+func (r *repoImpl) RoomAccountProjectionRepository() repos.RoomAccountProjectionRepository {
+	return r.accountRepo
 }
 
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) (err error) {

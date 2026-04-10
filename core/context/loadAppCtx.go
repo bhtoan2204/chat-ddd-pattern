@@ -2,6 +2,7 @@ package appCtx
 
 import (
 	"context"
+	"go-socket/core/modules/account/infra/lock"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/constant"
 	"go-socket/core/shared/infra/cache"
@@ -61,6 +62,9 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 		return nil, stackErr.Error(err)
 	}
 	opts = append(opts, WithConsulClient(consulClient))
+
+	locker := lock.NewLock(redisClient)
+	opts = append(opts, WithLocker(locker))
 
 	return NewAppContext(ctx, opts...)
 }

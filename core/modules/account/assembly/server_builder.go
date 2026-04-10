@@ -27,7 +27,7 @@ func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 	verifyEmail := cqrs.NewDispatcher(command.NewVerifyEmailHandler(appContext, accountRepos, accountServices))
 	confirmVerifyEmail := cqrs.NewDispatcher(command.NewConfirmVerifyEmailHandler(appContext, accountRepos, accountServices))
 	changePassword := cqrs.NewDispatcher(command.NewChangePasswordHandler(appContext, accountRepos, accountServices))
-
+	searchUsers := cqrs.NewDispatcher(query.NewSearchUsers(appContext, accountRepos, accountServices))
 	server, err := accountserver.NewHTTPServer(
 		login,
 		register,
@@ -39,6 +39,7 @@ func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 		changePassword,
 		getAvatar,
 		getPresignedUrl,
+		searchUsers,
 	)
 	if err != nil {
 		return nil, stackErr.Error(err)

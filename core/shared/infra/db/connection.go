@@ -42,5 +42,27 @@ func NewConnection(ctx context.Context, cfg *config.Config) (*gorm.DB, error) {
 		return nil, stackErr.Error(fmt.Errorf("ping db failed: %v", err))
 	}
 
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				stats := sqlDB.Stats()
+				logger.Infow("db pool stats",
+					"max_open", stats.MaxOpenConnections,
+					"open", stats.OpenConnections,
+					"in_use", stats.InUse,
+					"idle", stats.Idle,
+					"wait_count", stats.WaitCount,
+					"wait_duration", stats.WaitDuration.String(),
+				)
+			}
+		}
+	}()
+
 	return db, nil
 }
