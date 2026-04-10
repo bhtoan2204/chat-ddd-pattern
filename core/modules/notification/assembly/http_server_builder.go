@@ -12,7 +12,7 @@ import (
 	"go-socket/core/shared/transport/http"
 )
 
-func BuildHTTPServer(_ context.Context, appCtx *appCtx.AppContext) (http.HTTPServer, error) {
+func buildHTTPServer(_ context.Context, appCtx *appCtx.AppContext) (http.HTTPServer, error) {
 	notificationRepos := notificationrepo.NewRepoImpl(appCtx)
 	notificationReadRepo := notificationrepo.NewNotificationReadRepository(appCtx.GetDB())
 	savePushSubscription := cqrs.NewDispatcher(notificationcommand.NewSavePushSubscriptionHandler(notificationRepos))

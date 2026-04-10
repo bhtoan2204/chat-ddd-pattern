@@ -9,6 +9,7 @@ import (
 )
 
 const API_SPEC_DIR = "scaffold/api"
+const ASSEMBLY_SPEC_PATH = "scaffold/assembly/modules.yaml"
 
 func main() {
 	apiSpec, err := models.LoadAPISpecDir(API_SPEC_DIR)
@@ -43,6 +44,16 @@ func main() {
 	msg, err = generator.GenerateRegistry(apiSpec)
 	if err != nil {
 		log.Fatalf("Failed to generate registry: %v", err)
+	}
+	fmt.Println(msg)
+
+	assemblySpec, err := models.LoadAssemblySpec(ASSEMBLY_SPEC_PATH)
+	if err != nil {
+		log.Fatalf("Failed to load assembly spec: %v", err)
+	}
+	msg, err = generator.GenerateAssembly(assemblySpec)
+	if err != nil {
+		log.Fatalf("Failed to generate assembly builders: %v", err)
 	}
 	fmt.Println(msg)
 

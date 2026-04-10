@@ -5,10 +5,11 @@ import (
 	notificationserver "go-socket/core/modules/notification/transport/server"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/stackErr"
+	modruntime "go-socket/core/shared/runtime"
 )
 
-func BuildServer(cfg *config.Config, appCtx *appCtx.AppContext) (notificationserver.Server, error) {
-	messageHandler, err := BuildMessageHandler(cfg, appCtx)
+func buildMessagingRuntime(cfg *config.Config, appCtx *appCtx.AppContext) (modruntime.Module, error) {
+	messageHandler, err := buildMessagingHandler(cfg, appCtx)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}

@@ -11,7 +11,7 @@ import (
 	infrahttp "go-socket/core/shared/transport/http"
 )
 
-func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (infrahttp.HTTPServer, error) {
+func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (infrahttp.HTTPServer, error) {
 	ledgerService := BuildService(appContext)
 	ledgerQueryService := BuildQueryService(appContext)
 	createTransaction := cqrs.NewDispatcher(ledgercommand.NewCreateTransactionHandler(ledgerService))

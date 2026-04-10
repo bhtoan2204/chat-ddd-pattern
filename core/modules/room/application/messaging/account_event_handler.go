@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"go-socket/core/modules/room/domain/entity"
 	sharedevents "go-socket/core/shared/contracts/events"
@@ -23,8 +24,9 @@ func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json
 
 	if err := h.accountRepo.ProjectAccount(ctx, &entity.AccountEntity{
 		AccountID:   payload.AccountID,
-		DisplayName: payload.DisplayName,
+		DisplayName: resolveAccountCreatedDisplayName(payload),
 		CreatedAt:   payload.CreatedAt,
+		UpdatedAt:   payload.CreatedAt,
 	}); err != nil {
 		return stackErr.Error(err)
 	}
@@ -61,4 +63,18 @@ func optionalStringValue(value *string) string {
 		return ""
 	}
 	return *value
+}
+
+func resolveAccountCreatedDisplayName(payload *sharedevents.AccountCreatedEvent) string {
+	if payload == nil {
+		return ""
+	}
+
+	if displayName := strings.TrimSpace(payload.DisplayName); displayName != "" {
+		return displayName
+	}
+	if email := strings.TrimSpace(payload.Email); email != "" {
+		return email
+	}
+	return strings.TrimSpace(payload.AccountID)
 }

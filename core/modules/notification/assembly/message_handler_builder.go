@@ -7,7 +7,7 @@ import (
 	"go-socket/core/shared/config"
 )
 
-func BuildMessageHandler(cfg *config.Config, appCtx *appCtx.AppContext) (notificationmessaging.MessageHandler, error) {
+func buildMessagingHandler(cfg *config.Config, appCtx *appCtx.AppContext) (notificationmessaging.MessageHandler, error) {
 	repos := notificationrepo.NewRepoImpl(appCtx)
 	return notificationmessaging.NewMessageHandler(cfg, appCtx.GetSMTP(), repos.NotificationRepository())
 }

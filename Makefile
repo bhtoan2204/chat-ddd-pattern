@@ -27,3 +27,7 @@ generate:
 connector:
 	@CONNECT_URL=$${CONNECT_URL:-http://localhost:8083} CONNECTOR_CONFIG_FILE=./connector/connector_config.json CONNECTOR_NAME=$${CONNECTOR_NAME:-} /bin/sh ./connector/register_connectors.sh
 .PHONY: connector
+
+connector-reset:
+	@CONNECT_URL=$${CONNECT_URL:-http://localhost:8083} CONNECTOR_NAME=$${CONNECTOR_NAME:-} /bin/sh ./connector/reset_connector_offsets.sh
+.PHONY: connector-reset

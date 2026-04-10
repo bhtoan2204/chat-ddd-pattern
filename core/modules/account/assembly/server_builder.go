@@ -13,7 +13,7 @@ import (
 	"go-socket/core/shared/transport/http"
 )
 
-func BuildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
+func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
 	accountRepos := accountrepo.NewRepoImpl(appContext.GetDB(), appContext.GetCache())
 	accountServices := accountservice.NewServices(appContext, accountRepos)
 

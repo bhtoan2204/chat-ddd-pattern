@@ -7,15 +7,15 @@ import (
 	roomquery "go-socket/core/modules/room/application/query"
 	roomservice "go-socket/core/modules/room/application/service"
 	roomrepo "go-socket/core/modules/room/infra/persistent/repository"
-	"go-socket/core/modules/room/transport/server"
 	roomserver "go-socket/core/modules/room/transport/server"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
+	modruntime "go-socket/core/shared/runtime"
 	"go-socket/core/shared/transport/http"
 )
 
-func BuildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
+func buildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
 	roomRepos := roomrepo.NewRepoImpl(appContext)
 	roomAggregateService := roomservice.NewRoomAggregateService()
 	roomCommandService := roomservice.NewRoomCommandService(roomRepos, roomAggregateService)
@@ -71,8 +71,8 @@ func BuildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.H
 	return server, nil
 }
 
-func BuildMessageServer(cfg *config.Config, appContext *appCtx.AppContext) (server.Server, error) {
-	messageHandler, err := BuildMessageHandler(cfg, appContext)
+func buildProjectionRuntime(cfg *config.Config, appContext *appCtx.AppContext) (modruntime.Module, error) {
+	messageHandler, err := buildProjectionHandler(cfg, appContext)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}

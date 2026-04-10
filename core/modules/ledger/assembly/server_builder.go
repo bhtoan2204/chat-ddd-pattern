@@ -6,9 +6,10 @@ import (
 	ledgerserver "go-socket/core/modules/ledger/transport/server"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/stackErr"
+	modruntime "go-socket/core/shared/runtime"
 )
 
-func BuildServer(cfg *config.Config, appCtx *appCtx.AppContext) (ledgerserver.Server, error) {
+func buildMessagingRuntime(cfg *config.Config, appCtx *appCtx.AppContext) (modruntime.Module, error) {
 	messageHandler, err := ledgermessaging.NewMessageHandler(cfg, BuildService(appCtx))
 	if err != nil {
 		return nil, stackErr.Error(err)

@@ -11,6 +11,7 @@ import (
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
+	modruntime "go-socket/core/shared/runtime"
 	httptransport "go-socket/core/shared/transport/http"
 
 	"go.uber.org/zap"
@@ -20,16 +21,11 @@ type Server interface {
 	Start(ctx context.Context, appCtx *appCtx.AppContext) error
 }
 
-type moduleServer interface {
-	Start() error
-	Stop() error
-}
-
 type appServer struct {
-	cfg           *config.Config
-	httpServer    *httptransport.Server
-	httpOptions   []httptransport.Option
-	moduleServers []moduleServer
+	cfg            *config.Config
+	httpServer     *httptransport.Server
+	httpOptions    []httptransport.Option
+	moduleRuntimes []modruntime.Module
 }
 
 type Option func(*appServer)
@@ -60,70 +56,70 @@ func NewServer(cfg *config.Config, opts ...Option) Server {
 }
 
 func (s *appServer) Start(ctx context.Context, appContext *appCtx.AppContext) error {
-	if err := s.buildModuleServers(appContext); err != nil {
+	if err := s.buildModuleRuntimes(appContext); err != nil {
 		return stackErr.Error(err)
 	}
 
-	if err := s.startModuleServers(ctx); err != nil {
+	if err := s.startModuleRuntimes(ctx); err != nil {
 		return stackErr.Error(err)
 	}
-	defer s.stopModuleServers(ctx)
+	defer s.stopModuleRuntimes(ctx)
 
 	return s.httpServer.Start(ctx, appContext)
 }
 
-func (s *appServer) buildModuleServers(appContext *appCtx.AppContext) error {
-	notificationServer, err := notificationassembly.BuildServer(s.cfg, appContext)
+func (s *appServer) buildModuleRuntimes(appContext *appCtx.AppContext) error {
+	notificationRuntime, err := notificationassembly.BuildMessagingRuntime(s.cfg, appContext)
 	if err != nil {
-		return fmt.Errorf("build notification server failed: %v", err)
+		return stackErr.Error(fmt.Errorf("build notification messaging runtime failed: %v", err))
 	}
 
-	ledgerServer, err := ledgerassembly.BuildServer(s.cfg, appContext)
+	ledgerRuntime, err := ledgerassembly.BuildMessagingRuntime(s.cfg, appContext)
 	if err != nil {
-		return fmt.Errorf("build ledger server failed: %v", err)
+		return stackErr.Error(fmt.Errorf("build ledger messaging runtime failed: %v", err))
 	}
 
-	paymentProcessor, err := paymentassembly.BuildProcessors(s.cfg, appContext)
+	paymentRuntime, err := paymentassembly.BuildProjectionRuntime(s.cfg, appContext)
 	if err != nil {
-		return fmt.Errorf("build payment processor failed: %v", err)
+		return stackErr.Error(fmt.Errorf("build payment projection runtime failed: %v", err))
 	}
 
-	roomServer, err := roomassembly.BuildMessageServer(s.cfg, appContext)
+	roomRuntime, err := roomassembly.BuildProjectionRuntime(s.cfg, appContext)
 	if err != nil {
-		return fmt.Errorf("build room server failed: %v", err)
+		return stackErr.Error(fmt.Errorf("build room projection runtime failed: %v", err))
 	}
 
-	s.moduleServers = []moduleServer{
-		notificationServer,
-		ledgerServer,
-		paymentProcessor,
-		roomServer,
+	s.moduleRuntimes = []modruntime.Module{
+		notificationRuntime,
+		ledgerRuntime,
+		paymentRuntime,
+		roomRuntime,
 	}
 	return nil
 }
 
-func (s *appServer) startModuleServers(ctx context.Context) error {
-	for idx, module := range s.moduleServers {
-		if err := module.Start(); err != nil {
-			s.stopStartedModules(ctx, idx-1)
-			return fmt.Errorf("start module server %T failed: %v", module, err)
+func (s *appServer) startModuleRuntimes(ctx context.Context) error {
+	for idx, runtime := range s.moduleRuntimes {
+		if err := runtime.Start(); err != nil {
+			s.stopStartedRuntimes(ctx, idx-1)
+			return stackErr.Error(fmt.Errorf("start module runtime %T failed: %v", runtime, err))
 		}
 	}
 	return nil
 }
 
-func (s *appServer) stopStartedModules(ctx context.Context, lastIdx int) {
+func (s *appServer) stopStartedRuntimes(ctx context.Context, lastIdx int) {
 	for i := lastIdx; i >= 0; i-- {
-		if err := s.moduleServers[i].Stop(); err != nil {
-			logging.FromContext(ctx).Errorw("Failed to stop module server", zap.Error(err))
+		if err := s.moduleRuntimes[i].Stop(); err != nil {
+			logging.FromContext(ctx).Errorw("Failed to stop module runtime", zap.Error(err))
 		}
 	}
 }
 
-func (s *appServer) stopModuleServers(ctx context.Context) {
-	for i := len(s.moduleServers) - 1; i >= 0; i-- {
-		if err := s.moduleServers[i].Stop(); err != nil {
-			logging.FromContext(ctx).Errorw("Failed to stop module server", zap.Error(err))
+func (s *appServer) stopModuleRuntimes(ctx context.Context) {
+	for i := len(s.moduleRuntimes) - 1; i >= 0; i-- {
+		if err := s.moduleRuntimes[i].Stop(); err != nil {
+			logging.FromContext(ctx).Errorw("Failed to stop module runtime", zap.Error(err))
 		}
 	}
 }

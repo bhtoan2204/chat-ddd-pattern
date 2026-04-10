@@ -1,0 +1,21 @@
+// CODE_GENERATOR: assembly
+package assembly
+
+import (
+{{- if .UsesContext }}
+	"context"
+{{- end }}
+	appCtx "go-socket/core/context"
+{{- if .UsesConfig }}
+	"go-socket/core/shared/config"
+{{- end }}
+{{- if .IsHTTP }}
+	infrahttp "go-socket/core/shared/transport/http"
+{{- else }}
+	modruntime "go-socket/core/shared/runtime"
+{{- end }}
+)
+
+func {{.FunctionName}}({{.Signature}}) ({{.ReturnType}}, error) {
+	return {{.ImplFunctionName}}({{.Arguments}})
+}
