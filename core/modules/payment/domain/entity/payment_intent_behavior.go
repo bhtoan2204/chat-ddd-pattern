@@ -112,8 +112,44 @@ func (p *PaymentIntent) ApplyProviderResult(result PaymentProviderResult, update
 	return p.SetProviderState(result.ExternalRef, NormalizePaymentStatusOrPending(result.Status), updatedAt)
 }
 
+func (p *PaymentIntent) CurrentProviderResult(source PaymentProviderResult) PaymentProviderResult {
+	if p == nil {
+		return PaymentProviderResult{}
+	}
+
+	amount := source.Amount
+	if amount == 0 {
+		amount = p.Amount
+	}
+
+	return PaymentProviderResult{
+		TransactionID: coalescePaymentValue(source.TransactionID, p.TransactionID),
+		EventID:       strings.TrimSpace(source.EventID),
+		EventType:     strings.TrimSpace(source.EventType),
+		Status:        NormalizePaymentStatusOrPending(coalescePaymentValue(source.Status, p.Status)),
+		Amount:        amount,
+		Currency:      coalescePaymentValue(source.Currency, p.Currency),
+		ExternalRef:   coalescePaymentValue(source.ExternalRef, p.ExternalRef),
+	}
+}
+
 func (p *PaymentIntent) MarkCreateFailed(updatedAt time.Time) error {
 	return p.SetProviderState("", PaymentStatusFailed, updatedAt)
+}
+
+func (p *PaymentIntent) IsSucceeded() bool {
+	return p != nil && p.Status == PaymentStatusSuccess
+}
+
+func (p *PaymentIntent) IsFailed() bool {
+	return p != nil && p.Status == PaymentStatusFailed
+}
+
+func (p *PaymentIntent) ShouldEmitCheckoutSessionCreated(checkoutURL string) bool {
+	if p == nil {
+		return false
+	}
+	return strings.TrimSpace(checkoutURL) != "" || strings.TrimSpace(p.ExternalRef) != ""
 }
 
 func (p *PaymentIntent) ValidateProviderResult(amount int64, currency string) error {

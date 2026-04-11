@@ -7,6 +7,7 @@ import (
 	paymentquery "go-socket/core/modules/payment/application/query"
 	paymentservice "go-socket/core/modules/payment/application/service"
 	paymentrepo "go-socket/core/modules/payment/infra/persistent/repository"
+	provideradapter "go-socket/core/modules/payment/infra/provider"
 	"go-socket/core/modules/payment/providers"
 	mockprovider "go-socket/core/modules/payment/providers/mock"
 	stripeprovider "go-socket/core/modules/payment/providers/stripe"
@@ -23,10 +24,10 @@ func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 	if stripe := stripeprovider.NewProvider(appContext.GetConfig().LedgerConfig.Stripe); stripe.Enabled() {
 		providerRegistry.Register(stripe)
 	}
-	services := paymentservice.NewServices(providerRegistry)
+	services := paymentservice.NewServices(paymentRepos, provideradapter.NewPaymentProviderRegistry(providerRegistry))
 
-	createPayment := cqrs.NewDispatcher(paymentcommand.NewCreatePayment(paymentRepos, services))
-	processWebhook := cqrs.NewDispatcher(paymentcommand.NewProcessWebhook(paymentRepos, services))
+	createPayment := cqrs.NewDispatcher(paymentcommand.NewCreatePayment(services))
+	processWebhook := cqrs.NewDispatcher(paymentcommand.NewProcessWebhook(services))
 	deposit := cqrs.NewDispatcher(paymentcommand.NewDepositHandler(paymentRepos))
 	rebuildProjection := cqrs.NewDispatcher(paymentcommand.NewRebuildProjectionHandler(paymentRepos))
 	transfer := cqrs.NewDispatcher(paymentcommand.NewTransferHandler(paymentRepos))

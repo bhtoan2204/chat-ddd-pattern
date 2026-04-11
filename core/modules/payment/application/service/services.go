@@ -1,24 +1,25 @@
 package service
 
 import (
-	"go-socket/core/modules/payment/providers"
+	repos "go-socket/core/modules/payment/domain/repos"
+	domainservice "go-socket/core/modules/payment/domain/service"
 )
 
 type Services interface {
-	ProviderService() ProviderService
+	PaymentCommandService() PaymentCommandService
 }
 
 type services struct {
-	providerService ProviderService
+	paymentCommandService PaymentCommandService
 }
 
-func NewServices(providerRegistry *providers.ProviderRegistry) Services {
-	providerSvc := newProviderService(providerRegistry)
+func NewServices(baseRepo repos.Repos, providerRegistry domainservice.PaymentProviderRegistry) Services {
+	paymentCommandService := NewPaymentCommandService(baseRepo, providerRegistry)
 	return &services{
-		providerService: providerSvc,
+		paymentCommandService: paymentCommandService,
 	}
 }
 
-func (s *services) ProviderService() ProviderService {
-	return s.providerService
+func (s *services) PaymentCommandService() PaymentCommandService {
+	return s.paymentCommandService
 }
