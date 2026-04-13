@@ -183,15 +183,12 @@ func (r *roomAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.RoomSta
 		if senderName == "" {
 			senderName = message.SenderID
 		}
-		pendingOutboxEvents = append(pendingOutboxEvents, buildMessageAggregateProjectionSyncEvent(
-			message,
-			room,
-			senderName,
-			senderEmail,
-			nil,
-			filterPendingReceiptsByMessage(message.ID, agg.PendingReceipts()),
-			nil,
-		))
+		pendingOutboxEvents = append(pendingOutboxEvents, buildMessageAggregateProjectionSyncEvent(messageAggregateProjectionPayload{
+			Message:  message,
+			Room:     room,
+			Sender:   projectionSenderIdentity{Name: senderName, Email: senderEmail},
+			Receipts: filterPendingReceiptsByMessage(message.ID, agg.PendingReceipts()),
+		}))
 	}
 
 	for _, pendingEvent := range domainPendingEvents {

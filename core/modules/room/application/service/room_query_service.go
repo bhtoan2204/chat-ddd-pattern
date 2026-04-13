@@ -6,8 +6,11 @@ import (
 	"go-socket/core/modules/room/application/projection"
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
+	"go-socket/core/modules/room/infra/projection/cassandra/views"
 	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
+
+	"github.com/samber/lo"
 )
 
 type RoomQueryService struct {
@@ -49,13 +52,13 @@ func (s *RoomQueryService) ListRooms(ctx context.Context, query apptypes.ListRoo
 	result := &apptypes.ListRoomsResult{
 		Page:  page,
 		Limit: limit,
-		Rooms: make([]apptypes.RoomResult, 0, len(rooms)),
-	}
-	for _, room := range rooms {
-		roomResult := roomsupport.BuildRoomResult(room)
-		if roomResult != nil {
-			result.Rooms = append(result.Rooms, *roomResult)
-		}
+		Rooms: lo.FilterMap(rooms, func(room *views.RoomView, _ int) (apptypes.RoomResult, bool) {
+			roomResult := roomsupport.BuildRoomResult(room)
+			if roomResult == nil {
+				return apptypes.RoomResult{}, false
+			}
+			return *roomResult, true
+		}),
 	}
 
 	return result, nil

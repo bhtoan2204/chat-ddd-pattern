@@ -21,6 +21,24 @@ type MessageListOptions struct {
 	Ascending bool
 }
 
+type MessageReceiptLookup struct {
+	MessageID string
+	AccountID string
+}
+
+type MessageReceiptStatus struct {
+	Status      string
+	DeliveredAt *time.Time
+	SeenAt      *time.Time
+}
+
+type MentionCandidateSearch struct {
+	RoomID           string
+	Keyword          string
+	ExcludeAccountID string
+	Limit            int
+}
+
 type RoomReadRepository interface {
 	ListRooms(ctx context.Context, options utils.QueryOptions) ([]*views.RoomView, error)
 	ListRoomsByAccount(ctx context.Context, accountID string, options utils.QueryOptions) ([]*views.RoomView, error)
@@ -31,7 +49,7 @@ type MessageReadRepository interface {
 	GetMessageByID(ctx context.Context, id string) (*views.MessageView, error)
 	GetLastMessage(ctx context.Context, roomID string) (*views.MessageView, error)
 	ListMessages(ctx context.Context, accountID, roomID string, options MessageListOptions) ([]*views.MessageView, error)
-	GetMessageReceipt(ctx context.Context, messageID, accountID string) (string, *time.Time, *time.Time, error)
+	GetMessageReceipt(ctx context.Context, lookup MessageReceiptLookup) (*MessageReceiptStatus, error)
 	CountMessageReceiptsByStatus(ctx context.Context, messageID, status string) (int64, error)
 	CountUnreadMessages(ctx context.Context, roomID, accountID string, lastReadAt *time.Time) (int64, error)
 }
@@ -39,5 +57,5 @@ type MessageReadRepository interface {
 type RoomMemberReadRepository interface {
 	ListRoomMembers(ctx context.Context, roomID string) ([]*views.RoomMemberView, error)
 	GetRoomMemberByAccount(ctx context.Context, roomID, accountID string) (*views.RoomMemberView, error)
-	SearchMentionCandidates(ctx context.Context, roomID, keyword, excludeAccountID string, limit int) ([]*views.MentionCandidateView, error)
+	SearchMentionCandidates(ctx context.Context, search MentionCandidateSearch) ([]*views.MentionCandidateView, error)
 }

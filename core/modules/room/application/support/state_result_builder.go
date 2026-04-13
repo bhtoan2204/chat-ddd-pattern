@@ -27,16 +27,15 @@ func BuildConversationResultFromState(
 	}
 
 	var viewerMember *entity.RoomMemberEntity
-	accountIDs := make([]string, 0, len(members))
-	for _, member := range members {
+	accountIDs := lo.FilterMap(members, func(member *entity.RoomMemberEntity, _ int) (string, bool) {
 		if member == nil {
-			continue
+			return "", false
 		}
-		accountIDs = append(accountIDs, member.AccountID)
 		if member.AccountID == viewerID {
 			viewerMember = member
 		}
-	}
+		return member.AccountID, true
+	})
 	if viewerMember == nil {
 		return nil, stackErr.Error(ErrViewerNotMemberOfRoom)
 	}
@@ -77,10 +76,9 @@ func BuildConversationResultFromState(
 	}
 
 	if includeMembers {
-		result.Members = make([]apptypes.ConversationMemberResult, 0, len(members))
-		for _, member := range members {
+		result.Members = lo.FilterMap(members, func(member *entity.RoomMemberEntity, _ int) (apptypes.ConversationMemberResult, bool) {
 			if member == nil {
-				continue
+				return apptypes.ConversationMemberResult{}, false
 			}
 
 			item := apptypes.ConversationMemberResult{
@@ -97,8 +95,8 @@ func BuildConversationResultFromState(
 				item.AvatarObjectKey = firstNonEmpty(acc.AvatarObjectKey, item.AvatarObjectKey)
 			}
 
-			result.Members = append(result.Members, item)
-		}
+			return item, true
+		})
 	}
 
 	if lastMessage != nil {
@@ -153,14 +151,13 @@ func BuildMessageResultFromState(
 	}
 
 	if len(message.Mentions) > 0 {
-		result.Mentions = make([]apptypes.MessageMentionResult, 0, len(message.Mentions))
-		for _, mention := range message.Mentions {
-			result.Mentions = append(result.Mentions, apptypes.MessageMentionResult{
+		result.Mentions = lo.Map(message.Mentions, func(mention entity.MessageMention, _ int) apptypes.MessageMentionResult {
+			return apptypes.MessageMentionResult{
 				AccountID:   mention.AccountID,
 				DisplayName: mention.DisplayName,
 				Username:    mention.Username,
-			})
-		}
+			}
+		})
 	}
 
 	if message.ReplyToMessageID != "" {

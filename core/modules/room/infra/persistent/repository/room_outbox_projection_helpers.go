@@ -16,6 +16,7 @@ import (
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/stackErr"
 
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
 
@@ -23,6 +24,26 @@ type pendingRoomOutboxEvent struct {
 	EventName string
 	Payload   interface{}
 	CreatedAt time.Time
+}
+
+type projectionSenderIdentity struct {
+	Name  string
+	Email string
+}
+
+type messageProjectionPayload struct {
+	Message *entity.MessageEntity
+	Room    *entity.Room
+	Sender  projectionSenderIdentity
+}
+
+type messageAggregateProjectionPayload struct {
+	Message   *entity.MessageEntity
+	Room      *entity.Room
+	Sender    projectionSenderIdentity
+	Members   []*entity.RoomMemberEntity
+	Receipts  []aggregate.PendingMessageReceipt
+	Deletions []*aggregate.PendingMessageDeletion
 }
 
 func loadLatestRoomOutboxVersion(ctx context.Context, db *gorm.DB, roomID string) (int, error) {
@@ -91,51 +112,29 @@ func buildRoomAggregateProjectionDeleteEvent(roomID string, createdAt time.Time)
 	}
 }
 
-func buildMessageAggregateProjectionSyncEvent(
-	message *entity.MessageEntity,
-	room *entity.Room,
-	senderName,
-	senderEmail string,
-	members []*entity.RoomMemberEntity,
-	receipts []aggregate.PendingMessageReceipt,
-	deletions []*aggregate.PendingMessageDeletion,
-) pendingRoomOutboxEvent {
-	createdAt := message.CreatedAt.UTC()
-	if message.EditedAt != nil && message.EditedAt.UTC().After(createdAt) {
-		createdAt = message.EditedAt.UTC()
-	}
-	if message.DeletedForEveryoneAt != nil && message.DeletedForEveryoneAt.UTC().After(createdAt) {
-		createdAt = message.DeletedForEveryoneAt.UTC()
-	}
-	for _, member := range members {
-		if member != nil && member.UpdatedAt.UTC().After(createdAt) {
-			createdAt = member.UpdatedAt.UTC()
-		}
-	}
-	for _, receipt := range receipts {
-		if receipt.UpdatedAt.UTC().After(createdAt) {
-			createdAt = receipt.UpdatedAt.UTC()
-		}
-	}
-	for _, deletion := range deletions {
-		if deletion != nil && deletion.CreatedAt.UTC().After(createdAt) {
-			createdAt = deletion.CreatedAt.UTC()
-		}
+func buildMessageAggregateProjectionSyncEvent(payload messageAggregateProjectionPayload) pendingRoomOutboxEvent {
+	roomID := ""
+	if payload.Room != nil {
+		roomID = strings.TrimSpace(payload.Room.ID)
 	}
 
 	return pendingRoomOutboxEvent{
 		EventName: roomprojection.EventMessageAggregateProjectionSynced,
 		Payload: &roomprojection.MessageAggregateSync{
-			Message:  buildMessageProjection(message, room, senderName, senderEmail),
-			Members:  mapRoomMemberProjections(members),
-			Receipts: mapMessageReceiptProjections(strings.TrimSpace(room.ID), receipts),
+			Message: buildMessageProjection(messageProjectionPayload{
+				Message: payload.Message,
+				Room:    payload.Room,
+				Sender:  payload.Sender,
+			}),
+			Members:  mapRoomMemberProjections(payload.Members),
+			Receipts: mapMessageReceiptProjections(roomID, payload.Receipts),
 			Deletions: mapMessageDeletionProjections(
-				strings.TrimSpace(room.ID),
-				message,
-				deletions,
+				roomID,
+				payload.Message,
+				payload.Deletions,
 			),
 		},
-		CreatedAt: createdAt,
+		CreatedAt: resolveMessageProjectionCreatedAt(payload),
 	}
 }
 
@@ -153,33 +152,33 @@ func buildRoomLastMessageProjection(message *entity.MessageEntity) *roomprojecti
 	}
 }
 
-func buildMessageProjection(message *entity.MessageEntity, room *entity.Room, senderName, senderEmail string) *roomprojection.MessageProjection {
-	if message == nil || room == nil {
+func buildMessageProjection(payload messageProjectionPayload) *roomprojection.MessageProjection {
+	if payload.Message == nil || payload.Room == nil {
 		return nil
 	}
 
 	return &roomprojection.MessageProjection{
-		RoomID:                 room.ID,
-		RoomName:               room.Name,
-		RoomType:               string(room.RoomType),
-		MessageID:              message.ID,
-		MessageContent:         message.Message,
-		MessageType:            message.MessageType,
-		ReplyToMessageID:       message.ReplyToMessageID,
-		ForwardedFromMessageID: message.ForwardedFromMessageID,
-		FileName:               message.FileName,
-		FileSize:               message.FileSize,
-		MimeType:               message.MimeType,
-		ObjectKey:              message.ObjectKey,
-		MessageSenderID:        message.SenderID,
-		MessageSenderName:      strings.TrimSpace(senderName),
-		MessageSenderEmail:     strings.TrimSpace(senderEmail),
-		MessageSentAt:          message.CreatedAt.UTC(),
-		Mentions:               mapProjectionMentions(message.Mentions),
-		MentionAll:             message.MentionAll,
-		MentionedAccountIDs:    mapMentionedAccountIDs(message.Mentions),
-		EditedAt:               cloneProjectionTime(message.EditedAt),
-		DeletedForEveryoneAt:   cloneProjectionTime(message.DeletedForEveryoneAt),
+		RoomID:                 payload.Room.ID,
+		RoomName:               payload.Room.Name,
+		RoomType:               string(payload.Room.RoomType),
+		MessageID:              payload.Message.ID,
+		MessageContent:         payload.Message.Message,
+		MessageType:            payload.Message.MessageType,
+		ReplyToMessageID:       payload.Message.ReplyToMessageID,
+		ForwardedFromMessageID: payload.Message.ForwardedFromMessageID,
+		FileName:               payload.Message.FileName,
+		FileSize:               payload.Message.FileSize,
+		MimeType:               payload.Message.MimeType,
+		ObjectKey:              payload.Message.ObjectKey,
+		MessageSenderID:        payload.Message.SenderID,
+		MessageSenderName:      strings.TrimSpace(payload.Sender.Name),
+		MessageSenderEmail:     strings.TrimSpace(payload.Sender.Email),
+		MessageSentAt:          payload.Message.CreatedAt.UTC(),
+		Mentions:               mapProjectionMentions(payload.Message.Mentions),
+		MentionAll:             payload.Message.MentionAll,
+		MentionedAccountIDs:    mapMentionedAccountIDs(payload.Message.Mentions),
+		EditedAt:               cloneProjectionTime(payload.Message.EditedAt),
+		DeletedForEveryoneAt:   cloneProjectionTime(payload.Message.DeletedForEveryoneAt),
 	}
 }
 
@@ -188,15 +187,13 @@ func mapProjectionMentions(mentions []entity.MessageMention) []roomprojection.Pr
 		return nil
 	}
 
-	results := make([]roomprojection.ProjectionMention, 0, len(mentions))
-	for _, mention := range mentions {
-		results = append(results, roomprojection.ProjectionMention{
+	return lo.Map(mentions, func(mention entity.MessageMention, _ int) roomprojection.ProjectionMention {
+		return roomprojection.ProjectionMention{
 			AccountID:   mention.AccountID,
 			DisplayName: mention.DisplayName,
 			Username:    mention.Username,
-		})
-	}
-	return results
+		}
+	})
 }
 
 func mapMentionedAccountIDs(mentions []entity.MessageMention) []string {
@@ -204,18 +201,12 @@ func mapMentionedAccountIDs(mentions []entity.MessageMention) []string {
 		return nil
 	}
 
-	seen := make(map[string]struct{}, len(mentions))
-	results := make([]string, 0, len(mentions))
-	for _, mention := range mentions {
+	results := lo.Uniq(lo.FilterMap(mentions, func(mention entity.MessageMention, _ int) (string, bool) {
 		accountID := strings.TrimSpace(mention.AccountID)
-		if accountID == "" {
-			continue
-		}
-		if _, ok := seen[accountID]; ok {
-			continue
-		}
-		seen[accountID] = struct{}{}
-		results = append(results, accountID)
+		return accountID, accountID != ""
+	}))
+	if len(results) == 0 {
+		return nil
 	}
 	return results
 }
@@ -225,13 +216,12 @@ func mapRoomMemberProjections(members []*entity.RoomMemberEntity) []roomprojecti
 		return nil
 	}
 
-	results := make([]roomprojection.RoomMemberProjection, 0, len(members))
-	for _, member := range members {
+	results := lo.FilterMap(members, func(member *entity.RoomMemberEntity, _ int) (roomprojection.RoomMemberProjection, bool) {
 		if member == nil {
-			continue
+			return roomprojection.RoomMemberProjection{}, false
 		}
 
-		results = append(results, roomprojection.RoomMemberProjection{
+		return roomprojection.RoomMemberProjection{
 			RoomID:          member.RoomID,
 			MemberID:        member.ID,
 			AccountID:       member.AccountID,
@@ -243,7 +233,10 @@ func mapRoomMemberProjections(members []*entity.RoomMemberEntity) []roomprojecti
 			LastReadAt:      cloneProjectionTime(member.LastReadAt),
 			CreatedAt:       member.CreatedAt.UTC(),
 			UpdatedAt:       member.UpdatedAt.UTC(),
-		})
+		}, true
+	})
+	if len(results) == 0 {
+		return nil
 	}
 	return results
 }
@@ -253,9 +246,8 @@ func mapMessageReceiptProjections(roomID string, receipts []aggregate.PendingMes
 		return nil
 	}
 
-	results := make([]roomprojection.MessageReceiptProjection, 0, len(receipts))
-	for _, receipt := range receipts {
-		results = append(results, roomprojection.MessageReceiptProjection{
+	return lo.Map(receipts, func(receipt aggregate.PendingMessageReceipt, _ int) roomprojection.MessageReceiptProjection {
+		return roomprojection.MessageReceiptProjection{
 			RoomID:      roomID,
 			MessageID:   receipt.MessageID,
 			AccountID:   receipt.AccountID,
@@ -264,9 +256,8 @@ func mapMessageReceiptProjections(roomID string, receipts []aggregate.PendingMes
 			SeenAt:      cloneProjectionTime(receipt.SeenAt),
 			CreatedAt:   receipt.CreatedAt.UTC(),
 			UpdatedAt:   receipt.UpdatedAt.UTC(),
-		})
-	}
-	return results
+		}
+	})
 }
 
 func mapMessageDeletionProjections(roomID string, message *entity.MessageEntity, deletions []*aggregate.PendingMessageDeletion) []roomprojection.MessageDeletionProjection {
@@ -274,19 +265,21 @@ func mapMessageDeletionProjections(roomID string, message *entity.MessageEntity,
 		return nil
 	}
 
-	results := make([]roomprojection.MessageDeletionProjection, 0, len(deletions))
-	for _, deletion := range deletions {
+	results := lo.FilterMap(deletions, func(deletion *aggregate.PendingMessageDeletion, _ int) (roomprojection.MessageDeletionProjection, bool) {
 		if deletion == nil {
-			continue
+			return roomprojection.MessageDeletionProjection{}, false
 		}
 
-		results = append(results, roomprojection.MessageDeletionProjection{
+		return roomprojection.MessageDeletionProjection{
 			RoomID:        roomID,
 			MessageID:     deletion.MessageID,
 			AccountID:     deletion.AccountID,
 			MessageSentAt: message.CreatedAt.UTC(),
 			CreatedAt:     deletion.CreatedAt.UTC(),
-		})
+		}, true
+	})
+	if len(results) == 0 {
+		return nil
 	}
 	return results
 }
@@ -311,29 +304,18 @@ func enrichRoomMembersWithAccountProjections(
 		return nil, nil
 	}
 
-	results := make([]*entity.RoomMemberEntity, 0, len(members))
-	accountIDs := make([]string, 0, len(members))
-	seenAccountIDs := make(map[string]struct{}, len(members))
-
-	for _, member := range members {
+	results := lo.FilterMap(members, func(member *entity.RoomMemberEntity, _ int) (*entity.RoomMemberEntity, bool) {
 		if member == nil {
-			continue
+			return nil, false
 		}
 
 		copyMember := *member
-		results = append(results, &copyMember)
-
+		return &copyMember, true
+	})
+	accountIDs := lo.Uniq(lo.FilterMap(results, func(member *entity.RoomMemberEntity, _ int) (string, bool) {
 		accountID := strings.TrimSpace(member.AccountID)
-		if accountID == "" {
-			continue
-		}
-		if _, exists := seenAccountIDs[accountID]; exists {
-			continue
-		}
-
-		seenAccountIDs[accountID] = struct{}{}
-		accountIDs = append(accountIDs, accountID)
-	}
+		return accountID, accountID != ""
+	}))
 
 	if accountRepo == nil || len(accountIDs) == 0 {
 		return results, nil
@@ -344,13 +326,11 @@ func enrichRoomMembersWithAccountProjections(
 		return nil, stackErr.Error(err)
 	}
 
-	accountMap := make(map[string]*entity.AccountEntity, len(accountProjections))
-	for _, account := range accountProjections {
-		if account == nil {
-			continue
-		}
-		accountMap[strings.TrimSpace(account.AccountID)] = account
-	}
+	accountMap := lo.SliceToMap(lo.Filter(accountProjections, func(account *entity.AccountEntity, _ int) bool {
+		return account != nil
+	}), func(account *entity.AccountEntity) (string, *entity.AccountEntity) {
+		return strings.TrimSpace(account.AccountID), account
+	})
 
 	for _, member := range results {
 		if member == nil {
@@ -377,20 +357,20 @@ func enrichRoomMembersWithAccountProjections(
 }
 
 func senderIdentityFromPendingEvents(messageID string, pendingEvents []aggregate.PendingRoomOutboxEvent) (string, string) {
-	for _, pendingEvent := range pendingEvents {
+	pendingEvent, found := lo.Find(pendingEvents, func(pendingEvent aggregate.PendingRoomOutboxEvent) bool {
 		if pendingEvent.EventName != sharedevents.EventRoomMessageCreated {
-			continue
+			return false
 		}
+
 		payload, ok := pendingEvent.Payload.(*sharedevents.RoomMessageCreatedEvent)
-		if !ok || payload == nil {
-			continue
-		}
-		if strings.TrimSpace(payload.MessageID) != strings.TrimSpace(messageID) {
-			continue
-		}
-		return strings.TrimSpace(payload.MessageSenderName), strings.TrimSpace(payload.MessageSenderEmail)
+		return ok && payload != nil && strings.TrimSpace(payload.MessageID) == strings.TrimSpace(messageID)
+	})
+	if !found {
+		return "", ""
 	}
-	return "", ""
+
+	payload, _ := pendingEvent.Payload.(*sharedevents.RoomMessageCreatedEvent)
+	return strings.TrimSpace(payload.MessageSenderName), strings.TrimSpace(payload.MessageSenderEmail)
 }
 
 func senderIdentityFromProjection(account *entity.AccountEntity, fallback string) (string, string) {
@@ -407,6 +387,34 @@ func senderIdentityFromProjection(account *entity.AccountEntity, fallback string
 	default:
 		return fallback, ""
 	}
+}
+
+func resolveMessageProjectionCreatedAt(payload messageAggregateProjectionPayload) time.Time {
+	createdAt := payload.Message.CreatedAt.UTC()
+	if payload.Message.EditedAt != nil && payload.Message.EditedAt.UTC().After(createdAt) {
+		createdAt = payload.Message.EditedAt.UTC()
+	}
+	if payload.Message.DeletedForEveryoneAt != nil && payload.Message.DeletedForEveryoneAt.UTC().After(createdAt) {
+		createdAt = payload.Message.DeletedForEveryoneAt.UTC()
+	}
+
+	for _, member := range payload.Members {
+		if member != nil && member.UpdatedAt.UTC().After(createdAt) {
+			createdAt = member.UpdatedAt.UTC()
+		}
+	}
+	for _, receipt := range payload.Receipts {
+		if receipt.UpdatedAt.UTC().After(createdAt) {
+			createdAt = receipt.UpdatedAt.UTC()
+		}
+	}
+	for _, deletion := range payload.Deletions {
+		if deletion != nil && deletion.CreatedAt.UTC().After(createdAt) {
+			createdAt = deletion.CreatedAt.UTC()
+		}
+	}
+
+	return createdAt
 }
 
 func cloneProjectionTime(value *time.Time) *time.Time {

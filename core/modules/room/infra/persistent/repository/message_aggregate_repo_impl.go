@@ -103,15 +103,14 @@ func (r *messageAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.Mess
 			deletions = append(deletions, deletion)
 		}
 
-		pendingOutboxEvents = append(pendingOutboxEvents, buildMessageAggregateProjectionSyncEvent(
-			agg.Message(),
-			room,
-			senderName,
-			senderEmail,
-			updatedMembers,
-			receipts,
-			deletions,
-		))
+		pendingOutboxEvents = append(pendingOutboxEvents, buildMessageAggregateProjectionSyncEvent(messageAggregateProjectionPayload{
+			Message:   agg.Message(),
+			Room:      room,
+			Sender:    projectionSenderIdentity{Name: senderName, Email: senderEmail},
+			Members:   updatedMembers,
+			Receipts:  receipts,
+			Deletions: deletions,
+		}))
 
 		if agg.MessageDirty() {
 			members, err := r.roomMemberRepo.ListRoomMembers(ctx, roomID)

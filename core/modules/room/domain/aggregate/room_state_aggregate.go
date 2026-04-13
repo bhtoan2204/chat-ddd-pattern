@@ -41,6 +41,14 @@ type MessageOutboxPayload struct {
 	MentionedAccountIDs []string
 }
 
+type UpdateGroupDetailsParams struct {
+	ActorID       string
+	Name          string
+	Description   string
+	Now           time.Time
+	SystemActorID string
+}
+
 type RoomStateAggregate struct {
 	room             *entity.Room
 	members          map[string]*entity.RoomMemberEntity
@@ -222,8 +230,8 @@ func (a *RoomStateAggregate) UpdateRoomDetails(name, description string, roomTyp
 	return updated, nil
 }
 
-func (a *RoomStateAggregate) UpdateGroupDetails(actorID, name, description string, now time.Time, systemActorID string) (bool, error) {
-	actor, err := a.requireMember(actorID)
+func (a *RoomStateAggregate) UpdateGroupDetails(params UpdateGroupDetailsParams) (bool, error) {
+	actor, err := a.requireMember(params.ActorID)
 	if err != nil {
 		return false, stackErr.Error(err)
 	}
@@ -231,7 +239,7 @@ func (a *RoomStateAggregate) UpdateGroupDetails(actorID, name, description strin
 		return false, stackErr.Error(err)
 	}
 
-	updated, err := a.room.UpdateDetails(name, description, "", now)
+	updated, err := a.room.UpdateDetails(params.Name, params.Description, "", params.Now)
 	if err != nil {
 		return false, stackErr.Error(err)
 	}
@@ -240,7 +248,7 @@ func (a *RoomStateAggregate) UpdateGroupDetails(actorID, name, description strin
 	}
 
 	a.roomDirty = true
-	if _, err := a.appendSystemMessage(systemActorID, fmt.Sprintf("group renamed to %s", a.room.Name), now); err != nil {
+	if _, err := a.appendSystemMessage(params.SystemActorID, fmt.Sprintf("group renamed to %s", a.room.Name), params.Now); err != nil {
 		return false, stackErr.Error(err)
 	}
 	return true, nil

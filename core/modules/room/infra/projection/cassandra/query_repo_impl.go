@@ -13,6 +13,7 @@ import (
 	"go-socket/core/shared/utils"
 
 	"github.com/gocql/gocql"
+	"github.com/samber/lo"
 )
 
 type queryRepoImpl struct {
@@ -98,8 +99,8 @@ func (r *messageQueryRepo) ListMessages(
 	return r.store.ListMessages(ctx, accountID, roomID, options)
 }
 
-func (r *messageQueryRepo) GetMessageReceipt(ctx context.Context, messageID, accountID string) (string, *time.Time, *time.Time, error) {
-	return r.store.GetMessageReceipt(ctx, messageID, accountID)
+func (r *messageQueryRepo) GetMessageReceipt(ctx context.Context, lookup projection.MessageReceiptLookup) (*projection.MessageReceiptStatus, error) {
+	return r.store.GetMessageReceipt(ctx, lookup)
 }
 
 func (r *messageQueryRepo) CountMessageReceiptsByStatus(ctx context.Context, messageID, status string) (int64, error) {
@@ -143,44 +144,40 @@ func (r *roomMemberQueryRepo) GetRoomMemberByAccount(ctx context.Context, roomID
 
 func (r *roomMemberQueryRepo) SearchMentionCandidates(
 	ctx context.Context,
-	roomID,
-	keyword,
-	excludeAccountID string,
-	limit int,
+	search projection.MentionCandidateSearch,
 ) ([]*views.MentionCandidateView, error) {
-	members, err := r.ListRoomMembers(ctx, roomID)
+	members, err := r.ListRoomMembers(ctx, search.RoomID)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
 
-	normalizedKeyword := strings.ToLower(strings.TrimSpace(keyword))
-	excludeAccountID = strings.TrimSpace(excludeAccountID)
+	normalizedKeyword := strings.ToLower(strings.TrimSpace(search.Keyword))
+	excludeAccountID := strings.TrimSpace(search.ExcludeAccountID)
 
-	results := make([]*views.MentionCandidateView, 0, len(members))
-	for _, member := range members {
+	results := lo.FilterMap(members, func(member *views.RoomMemberView, _ int) (*views.MentionCandidateView, bool) {
 		if member == nil {
-			continue
+			return nil, false
 		}
 
 		accountID := strings.TrimSpace(member.AccountID)
 		if accountID == "" || accountID == excludeAccountID {
-			continue
+			return nil, false
 		}
 
 		if normalizedKeyword != "" &&
 			!strings.Contains(strings.ToLower(member.DisplayName), normalizedKeyword) &&
 			!strings.Contains(strings.ToLower(member.Username), normalizedKeyword) &&
 			!strings.Contains(strings.ToLower(accountID), normalizedKeyword) {
-			continue
+			return nil, false
 		}
 
-		results = append(results, &views.MentionCandidateView{
+		return &views.MentionCandidateView{
 			AccountID:       accountID,
 			DisplayName:     strings.TrimSpace(member.DisplayName),
 			Username:        strings.TrimSpace(member.Username),
 			AvatarObjectKey: strings.TrimSpace(member.AvatarObjectKey),
-		})
-	}
+		}, true
+	})
 
 	sort.Slice(results, func(i, j int) bool {
 		leftName := strings.ToLower(firstNonEmpty(results[i].DisplayName, results[i].AccountID))
@@ -198,7 +195,7 @@ func (r *roomMemberQueryRepo) SearchMentionCandidates(
 		return results[i].AccountID < results[j].AccountID
 	})
 
-	limit = normalizeMentionLimit(limit)
+	limit := normalizeMentionLimit(search.Limit)
 	if len(results) > limit {
 		results = results[:limit]
 	}

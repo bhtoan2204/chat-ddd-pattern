@@ -849,7 +849,7 @@ func (s *cassandraProjectionStore) UpsertMessageReceipt(
 	}))
 }
 
-func (s *cassandraProjectionStore) GetMessageReceipt(ctx context.Context, messageID, accountID string) (string, *time.Time, *time.Time, error) {
+func (s *cassandraProjectionStore) GetMessageReceipt(ctx context.Context, lookup roomprojection.MessageReceiptLookup) (*roomprojection.MessageReceiptStatus, error) {
 	statement := fmt.Sprintf(`
 		SELECT status, delivered_at, seen_at
 		FROM %s
@@ -861,17 +861,21 @@ func (s *cassandraProjectionStore) GetMessageReceipt(ctx context.Context, messag
 		deliveredAt *time.Time
 		seenAt      *time.Time
 	)
-	if err := s.session.Query(statement, strings.TrimSpace(messageID), strings.TrimSpace(accountID)).WithContext(ctx).Scan(
+	if err := s.session.Query(statement, strings.TrimSpace(lookup.MessageID), strings.TrimSpace(lookup.AccountID)).WithContext(ctx).Scan(
 		&status,
 		&deliveredAt,
 		&seenAt,
 	); err != nil {
 		if errors.Is(err, gocql.ErrNotFound) {
-			return "", nil, nil, nil
+			return nil, nil
 		}
-		return "", nil, nil, stackErr.Error(err)
+		return nil, stackErr.Error(err)
 	}
-	return status, cloneTime(deliveredAt), cloneTime(seenAt), nil
+	return &roomprojection.MessageReceiptStatus{
+		Status:      status,
+		DeliveredAt: cloneTime(deliveredAt),
+		SeenAt:      cloneTime(seenAt),
+	}, nil
 }
 
 func (s *cassandraProjectionStore) CountMessageReceiptsByStatus(ctx context.Context, messageID, status string) (int64, error) {
@@ -1074,7 +1078,7 @@ func (s *cassandraProjectionStore) GetRoomMemberByAccount(ctx context.Context, r
 	return roomMemberRowToEntity(row), nil
 }
 
-func (s *cassandraProjectionStore) SearchMentionCandidates(ctx context.Context, roomID, keyword, excludeAccountID string, limit int) ([]*views.MentionCandidateView, error) {
+func (s *cassandraProjectionStore) SearchMentionCandidates(ctx context.Context, search roomprojection.MentionCandidateSearch) ([]*views.MentionCandidateView, error) {
 	return nil, nil
 }
 

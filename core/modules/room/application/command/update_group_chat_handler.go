@@ -7,6 +7,7 @@ import (
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
 	roomsupport "go-socket/core/modules/room/application/support"
+	"go-socket/core/modules/room/domain/aggregate"
 	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
@@ -30,7 +31,13 @@ func (h *updateGroupChatHandler) Handle(ctx context.Context, req *in.UpdateGroup
 		return nil, stackErr.Error(err)
 	}
 
-	updated, err := agg.UpdateGroupDetails(accountID, req.Name, req.Description, time.Now().UTC(), accountID)
+	updated, err := agg.UpdateGroupDetails(aggregate.UpdateGroupDetailsParams{
+		ActorID:       accountID,
+		Name:          req.Name,
+		Description:   req.Description,
+		Now:           time.Now().UTC(),
+		SystemActorID: accountID,
+	})
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}

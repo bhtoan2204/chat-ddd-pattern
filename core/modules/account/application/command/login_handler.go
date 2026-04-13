@@ -3,79 +3,52 @@ package command
 import (
 	"context"
 	"errors"
-	"fmt"
+
 	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/dto/in"
 	"go-socket/core/modules/account/application/dto/out"
 	"go-socket/core/modules/account/application/service"
 	repos "go-socket/core/modules/account/domain/repos"
-	valueobject "go-socket/core/modules/account/domain/value_object"
-	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/hasher"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
-	"gorm.io/gorm"
 )
 
 type loginHandler struct {
-	accountRepo repos.AccountRepository
-	hasher      hasher.Hasher
-	paseto      xpaseto.PasetoService
+	authenticationService service.AuthenticationService
 }
 
-func NewLoginHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.LoginRequest, *out.LoginResponse] {
+func NewLoginHandler(_ *appCtx.AppContext, _ repos.Repos, services service.Services) cqrs.Handler[*in.LoginRequest, *out.LoginResponse] {
 	return &loginHandler{
-		accountRepo: baseRepo.AccountRepository(),
-		hasher:      appCtx.GetHasher(),
-		paseto:      appCtx.GetPaseto(),
+		authenticationService: services.AuthenticationService(),
 	}
 }
 
 func (u *loginHandler) Handle(ctx context.Context, req *in.LoginRequest) (*out.LoginResponse, error) {
 	log := logging.FromContext(ctx).Named("Login")
-	email, err := valueobject.NewEmail(req.Email)
-	if err != nil {
-		log.Errorw("Invalid email", zap.Error(err))
-		return nil, stackErr.Error(err)
-	}
 
-	password, err := valueobject.NewPlainPassword(req.Password)
+	result, err := u.authenticationService.Authenticate(ctx, service.AuthenticateAccountCommand{
+		Email:    req.Email,
+		Password: req.Password,
+	})
 	if err != nil {
-		log.Errorw("Invalid password", zap.Error(err))
-		return nil, stackErr.Error(err)
-	}
-
-	account, err := u.accountRepo.GetAccountByEmail(ctx, email.Value())
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			log.Errorw("Account not found", zap.String("email", email.Value()))
+		switch {
+		case errors.Is(err, service.ErrAuthenticationAccountNotFound):
+			log.Errorw("Account not found", zap.String("email", req.Email))
 			return nil, stackErr.Error(ErrAccountNotFound)
+		case errors.Is(err, service.ErrAuthenticationInvalidPassword):
+			log.Errorw("Invalid credentials", zap.String("email", req.Email))
+			return nil, stackErr.Error(ErrInvalidCredentials)
+		default:
+			log.Errorw("Login failed", zap.Error(err), zap.String("email", req.Email))
+			return nil, stackErr.Error(err)
 		}
-		log.Errorw("Failed to get account", zap.Error(err))
-		return nil, stackErr.Error(fmt.Errorf("get account failed: %v", err))
-	}
-
-	valid, err := u.hasher.Verify(ctx, password.Value(), account.PasswordHash.Value())
-	if err != nil {
-		log.Errorw("Failed to verify password", zap.Error(err))
-		return nil, stackErr.Error(err)
-	}
-	if !valid {
-		log.Errorw("Invalid credentials", zap.String("email", email.Value()))
-		return nil, stackErr.Error(ErrInvalidCredentials)
-	}
-
-	token, expiresAt, err := u.paseto.GenerateToken(ctx, account)
-	if err != nil {
-		log.Errorw("Failed to generate token", zap.Error(err))
-		return nil, stackErr.Error(err)
 	}
 
 	return &out.LoginResponse{
-		Token:     token,
-		ExpiresAt: expiresAt.UnixMilli(),
+		Token:     result.Token,
+		ExpiresAt: result.ExpiresAt.UnixMilli(),
 	}, nil
 }

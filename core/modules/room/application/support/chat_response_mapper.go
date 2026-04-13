@@ -3,6 +3,8 @@ package support
 import (
 	"go-socket/core/modules/room/application/dto/out"
 	apptypes "go-socket/core/modules/room/application/types"
+
+	"github.com/samber/lo"
 )
 
 func ToConversationResponse(res *apptypes.ConversationResult) *out.ChatConversationResponse {
@@ -10,15 +12,14 @@ func ToConversationResponse(res *apptypes.ConversationResult) *out.ChatConversat
 		return nil
 	}
 
-	members := make([]out.ChatRoomMemberResponse, 0, len(res.Members))
-	for _, member := range res.Members {
-		members = append(members, out.ChatRoomMemberResponse{
+	members := lo.Map(res.Members, func(member apptypes.ConversationMemberResult, _ int) out.ChatRoomMemberResponse {
+		return out.ChatRoomMemberResponse{
 			AccountID:       member.AccountID,
 			Role:            member.Role,
 			DisplayName:     member.DisplayName,
 			AvatarObjectKey: member.AvatarObjectKey,
-		})
-	}
+		}
+	})
 
 	return &out.ChatConversationResponse{
 		RoomID:          res.RoomID,
@@ -41,14 +42,13 @@ func ToMessageResponse(res *apptypes.MessageResult) *out.ChatMessageResponse {
 		return nil
 	}
 
-	mentions := make([]out.ChatMessageMentionResponse, 0, len(res.Mentions))
-	for _, mention := range res.Mentions {
-		mentions = append(mentions, out.ChatMessageMentionResponse{
+	mentions := lo.Map(res.Mentions, func(mention apptypes.MessageMentionResult, _ int) out.ChatMessageMentionResponse {
+		return out.ChatMessageMentionResponse{
 			AccountID:   mention.AccountID,
 			DisplayName: mention.DisplayName,
 			Username:    mention.Username,
-		})
-	}
+		}
+	})
 
 	return &out.ChatMessageResponse{
 		ID:                     res.ID,

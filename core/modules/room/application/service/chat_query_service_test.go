@@ -154,7 +154,7 @@ type stubMessageReadRepository struct {
 	getMessageByID               func(ctx context.Context, id string) (*views.MessageView, error)
 	getLastMessage               func(ctx context.Context, roomID string) (*views.MessageView, error)
 	listMessages                 func(ctx context.Context, accountID, roomID string, options projection.MessageListOptions) ([]*views.MessageView, error)
-	getMessageReceipt            func(ctx context.Context, messageID, accountID string) (string, *time.Time, *time.Time, error)
+	getMessageReceipt            func(ctx context.Context, lookup projection.MessageReceiptLookup) (*projection.MessageReceiptStatus, error)
 	countMessageReceiptsByStatus func(ctx context.Context, messageID, status string) (int64, error)
 	countUnreadMessages          func(ctx context.Context, roomID, accountID string, lastReadAt *time.Time) (int64, error)
 }
@@ -185,11 +185,11 @@ func (s *stubMessageReadRepository) ListMessages(
 	return s.listMessages(ctx, accountID, roomID, options)
 }
 
-func (s *stubMessageReadRepository) GetMessageReceipt(ctx context.Context, messageID, accountID string) (string, *time.Time, *time.Time, error) {
+func (s *stubMessageReadRepository) GetMessageReceipt(ctx context.Context, lookup projection.MessageReceiptLookup) (*projection.MessageReceiptStatus, error) {
 	if s.getMessageReceipt == nil {
-		return "", nil, nil, nil
+		return nil, nil
 	}
-	return s.getMessageReceipt(ctx, messageID, accountID)
+	return s.getMessageReceipt(ctx, lookup)
 }
 
 func (s *stubMessageReadRepository) CountMessageReceiptsByStatus(ctx context.Context, messageID, status string) (int64, error) {
@@ -209,7 +209,7 @@ func (s *stubMessageReadRepository) CountUnreadMessages(ctx context.Context, roo
 type stubRoomMemberReadRepository struct {
 	listRoomMembers         func(ctx context.Context, roomID string) ([]*views.RoomMemberView, error)
 	getRoomMemberByAccount  func(ctx context.Context, roomID, accountID string) (*views.RoomMemberView, error)
-	searchMentionCandidates func(ctx context.Context, roomID, keyword, excludeAccountID string, limit int) ([]*views.MentionCandidateView, error)
+	searchMentionCandidates func(ctx context.Context, search projection.MentionCandidateSearch) ([]*views.MentionCandidateView, error)
 }
 
 func (s *stubRoomMemberReadRepository) ListRoomMembers(ctx context.Context, roomID string) ([]*views.RoomMemberView, error) {
@@ -228,13 +228,10 @@ func (s *stubRoomMemberReadRepository) GetRoomMemberByAccount(ctx context.Contex
 
 func (s *stubRoomMemberReadRepository) SearchMentionCandidates(
 	ctx context.Context,
-	roomID,
-	keyword,
-	excludeAccountID string,
-	limit int,
+	search projection.MentionCandidateSearch,
 ) ([]*views.MentionCandidateView, error) {
 	if s.searchMentionCandidates == nil {
 		return nil, nil
 	}
-	return s.searchMentionCandidates(ctx, roomID, keyword, excludeAccountID, limit)
+	return s.searchMentionCandidates(ctx, search)
 }

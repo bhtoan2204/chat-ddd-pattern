@@ -55,6 +55,19 @@ func NewAccountAggregateRepoImpl(
 }
 
 func (r *accountAggregateRepoImpl) Load(ctx context.Context, accountID string) (*aggregate.AccountAggregate, error) {
+	return r.load(ctx, accountID, nil)
+}
+
+func (r *accountAggregateRepoImpl) LoadByEmail(ctx context.Context, email string) (*aggregate.AccountAggregate, error) {
+	accountProjection, err := r.loadProjectionByEmail(ctx, email)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	return r.load(ctx, accountProjection.ID, accountProjection)
+}
+
+func (r *accountAggregateRepoImpl) load(ctx context.Context, accountID string, accountProjection *entity.Account) (*aggregate.AccountAggregate, error) {
 	agg, err := aggregate.NewAccountAggregate(accountID)
 	if err != nil {
 		return nil, stackErr.Error(err)
@@ -82,7 +95,10 @@ func (r *accountAggregateRepoImpl) Load(ctx context.Context, accountID string) (
 		}
 	}
 
-	accountProjection, projectionErr := r.loadProjection(ctx, accountID)
+	var projectionErr error
+	if accountProjection == nil {
+		accountProjection, projectionErr = r.loadProjection(ctx, accountID)
+	}
 	if projectionErr == nil {
 		if len(eventModels) == 0 {
 			if err := agg.RestoreFromProjection(accountProjection, 0); err != nil {
@@ -140,6 +156,18 @@ func (r *accountAggregateRepoImpl) loadProjection(ctx context.Context, accountID
 	var model models.AccountModel
 	if err := r.db.WithContext(ctx).
 		Where("id = ?", accountID).
+		First(&model).Error; err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	mapper := &accountRepoImpl{}
+	return mapper.toEntity(&model)
+}
+
+func (r *accountAggregateRepoImpl) loadProjectionByEmail(ctx context.Context, email string) (*entity.Account, error) {
+	var model models.AccountModel
+	if err := r.db.WithContext(ctx).
+		Where("email = ?", email).
 		First(&model).Error; err != nil {
 		return nil, stackErr.Error(err)
 	}

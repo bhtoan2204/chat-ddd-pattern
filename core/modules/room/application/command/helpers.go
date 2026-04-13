@@ -17,6 +17,7 @@ import (
 	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
+	"github.com/samber/lo"
 )
 
 var mentionAllPattern = regexp.MustCompile(`(^|[[:space:][:punct:]])@all($|[[:space:][:punct:]])`)
@@ -79,10 +80,12 @@ func resolveMessageMentions(
 		return nil, stackErr.Error(err)
 	}
 
-	accountMap := make(map[string]*entity.AccountEntity, len(accountProjections))
-	for _, projection := range accountProjections {
-		accountMap[projection.AccountID] = projection
-	}
+	accountMap := lo.SliceToMap(accountProjections, func(projection *entity.AccountEntity) (string, *entity.AccountEntity) {
+		if projection == nil {
+			return "", nil
+		}
+		return projection.AccountID, projection
+	})
 
 	mentions := make([]entity.MessageMention, 0, len(filteredExplicitIDs))
 	outboxMentions := make([]sharedevents.RoomMessageMention, 0, len(filteredExplicitIDs))
@@ -139,19 +142,10 @@ func normalizeMentionSelection(mentions []apptypes.SendMessageMentionCommand) []
 		return nil
 	}
 
-	normalized := make([]string, 0, len(mentions))
-	seen := make(map[string]struct{}, len(mentions))
-	for _, mention := range mentions {
+	normalized := lo.Uniq(lo.FilterMap(mentions, func(mention apptypes.SendMessageMentionCommand, _ int) (string, bool) {
 		accountID := strings.TrimSpace(mention.AccountID)
-		if accountID == "" {
-			continue
-		}
-		if _, exists := seen[accountID]; exists {
-			continue
-		}
-		seen[accountID] = struct{}{}
-		normalized = append(normalized, accountID)
-	}
+		return accountID, accountID != ""
+	}))
 	return normalized
 }
 
@@ -201,14 +195,10 @@ func lastPendingMessage(messages []*entity.MessageEntity) *entity.MessageEntity 
 }
 
 func ensureProjectedAccountsExist(ctx context.Context, baseRepo repos.Repos, accountIDs ...string) error {
-	normalizedIDs := make([]string, 0, len(accountIDs))
-	for _, accountID := range accountIDs {
+	normalizedIDs := lo.Uniq(lo.FilterMap(accountIDs, func(accountID string, _ int) (string, bool) {
 		accountID = strings.TrimSpace(accountID)
-		if accountID == "" {
-			continue
-		}
-		normalizedIDs = appendUniqueString(normalizedIDs, accountID)
-	}
+		return accountID, accountID != ""
+	}))
 	if len(normalizedIDs) == 0 {
 		return nil
 	}
@@ -218,13 +208,11 @@ func ensureProjectedAccountsExist(ctx context.Context, baseRepo repos.Repos, acc
 		return stackErr.Error(err)
 	}
 
-	projected := make(map[string]struct{}, len(accountProjections))
-	for _, projection := range accountProjections {
-		if projection == nil {
-			continue
-		}
-		projected[strings.TrimSpace(projection.AccountID)] = struct{}{}
-	}
+	projected := lo.SliceToMap(lo.Filter(accountProjections, func(projection *entity.AccountEntity, _ int) bool {
+		return projection != nil
+	}), func(projection *entity.AccountEntity) (string, struct{}) {
+		return strings.TrimSpace(projection.AccountID), struct{}{}
+	})
 
 	for _, accountID := range normalizedIDs {
 		if _, ok := projected[accountID]; ok {
