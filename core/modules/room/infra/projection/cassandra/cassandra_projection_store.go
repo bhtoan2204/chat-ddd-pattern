@@ -36,10 +36,8 @@ type cassandraProjectionStore struct {
 	session              *gocql.Session
 	roomTable            string
 	roomsByAccountTable  string
-	roomsGlobalTable     string
 	roomMembersTable     string
 	roomTimelineTable    string
-	roomMessagesByID     string
 	messageReceiptsTable string
 	messageDeletesTable  string
 }
@@ -104,10 +102,8 @@ func NewCassandraProjectionStore(cfg config.CassandraConfig, session *gocql.Sess
 		session:              session,
 		roomTable:            normalizeProjectionTable(defaultRoomProjectionTable),
 		roomsByAccountTable:  normalizeProjectionTable(defaultRoomProjectionByAccount),
-		roomsGlobalTable:     normalizeProjectionTable(defaultRoomProjectionGlobal),
 		roomMembersTable:     normalizeProjectionTable(defaultRoomMemberProjectionTable),
 		roomTimelineTable:    normalizeTimelineTable(cfg.RoomTimelineTable),
-		roomMessagesByID:     normalizeProjectionTable(defaultRoomMessageByIDTable),
 		messageReceiptsTable: normalizeProjectionTable(defaultRoomMessageReceiptTable),
 		messageDeletesTable:  normalizeProjectionTable(defaultRoomMessageDeletionTable),
 	}
@@ -159,25 +155,6 @@ func (s *cassandraProjectionStore) ensureSchema(ctx context.Context) error {
 		`, s.roomsByAccountTable),
 		fmt.Sprintf(`
 			CREATE TABLE IF NOT EXISTS %s (
-				bucket text,
-				room_updated_at timestamp,
-				room_id text,
-				name text,
-				description text,
-				room_type text,
-				owner_id text,
-				pinned_message_id text,
-				member_count int,
-				last_message_id text,
-				last_message_at timestamp,
-				last_message_content text,
-				last_message_sender_id text,
-				created_at timestamp,
-				PRIMARY KEY ((bucket), room_updated_at, room_id)
-			) WITH CLUSTERING ORDER BY (room_updated_at DESC, room_id DESC)
-		`, s.roomsGlobalTable),
-		fmt.Sprintf(`
-			CREATE TABLE IF NOT EXISTS %s (
 				room_id text,
 				account_id text,
 				member_id text,
@@ -215,31 +192,6 @@ func (s *cassandraProjectionStore) ensureSchema(ctx context.Context) error {
 				PRIMARY KEY ((room_id), message_sent_at, message_id)
 			) WITH CLUSTERING ORDER BY (message_sent_at DESC, message_id DESC)
 		`, s.roomTimelineTable),
-		fmt.Sprintf(`
-			CREATE TABLE IF NOT EXISTS %s (
-				message_id text PRIMARY KEY,
-				room_id text,
-				room_name text,
-				room_type text,
-				message_sent_at timestamp,
-				message_content text,
-				message_type text,
-				reply_to_message_id text,
-				forwarded_from_message_id text,
-				file_name text,
-				file_size bigint,
-				mime_type text,
-				object_key text,
-				message_sender_id text,
-				message_sender_name text,
-				message_sender_email text,
-				mentions_json text,
-				mention_all boolean,
-				mentioned_account_ids list<text>,
-				edited_at timestamp,
-				deleted_for_everyone_at timestamp
-			)
-		`, s.roomMessagesByID),
 		fmt.Sprintf(`
 			CREATE TABLE IF NOT EXISTS %s (
 				message_id text,
@@ -292,43 +244,6 @@ func (s *cassandraProjectionStore) ProjectRoom(ctx context.Context, projection *
 }
 
 func (s *cassandraProjectionStore) DeleteProjectedRoom(ctx context.Context, roomID string) error {
-	if s == nil || s.session == nil || strings.TrimSpace(roomID) == "" {
-		return nil
-	}
-
-	existing, err := s.getRoomRow(ctx, roomID)
-	if err != nil {
-		return stackErr.Error(err)
-	}
-	members, err := s.listRoomMemberRows(ctx, roomID)
-	if err != nil {
-		return stackErr.Error(err)
-	}
-
-	if err := s.session.Query(
-		fmt.Sprintf(`DELETE FROM %s WHERE room_id = ?`, s.roomTable),
-		roomID,
-	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("delete cassandra room projection failed: %v", err))
-	}
-
-	if existing != nil {
-		if err := s.deleteGlobalRoomIndex(ctx, existing); err != nil {
-			return stackErr.Error(err)
-		}
-		for _, member := range members {
-			if err := s.deleteAccountRoomIndex(ctx, strings.TrimSpace(member.AccountID), existing); err != nil {
-				return stackErr.Error(err)
-			}
-		}
-	}
-
-	for _, member := range members {
-		if err := s.deleteRoomMemberRow(ctx, roomID, member.AccountID); err != nil {
-			return stackErr.Error(err)
-		}
-	}
-
 	return nil
 }
 
@@ -374,36 +289,7 @@ func (s *cassandraProjectionStore) ProjectMessage(ctx context.Context, projectio
 		return nil
 	}
 
-	if err := s.upsertTimelineMessageRow(ctx, projection); err != nil {
-		return stackErr.Error(err)
-	}
-	if err := s.upsertMessageByIDRow(ctx, projection); err != nil {
-		return stackErr.Error(err)
-	}
-
-	roomRow, err := s.getRoomRow(ctx, projection.RoomID)
-	if err != nil {
-		return stackErr.Error(err)
-	}
-	if roomRow == nil {
-		return nil
-	}
-
-	if !shouldPromoteLastMessage(roomRow, projection) {
-		return nil
-	}
-
-	updated := cloneRoomRow(roomRow)
-	updated.LastMessageID = projection.MessageID
-	messageSentAt := projection.MessageSentAt.UTC()
-	updated.LastMessageAt = &messageSentAt
-	updated.LastMessageContent = projection.MessageContent
-	updated.LastMessageSenderID = projection.MessageSenderID
-
-	if err := s.upsertRoomRow(ctx, updated); err != nil {
-		return stackErr.Error(err)
-	}
-	return stackErr.Error(s.syncRoomIndexes(ctx, roomRow, updated))
+	return stackErr.Error(s.upsertTimelineMessageRow(ctx, projection))
 }
 
 func (s *cassandraProjectionStore) ProjectMessageReceipt(ctx context.Context, projection *events.MessageReceiptProjection) error {
@@ -496,91 +382,7 @@ func (s *cassandraProjectionStore) DeleteRoom(ctx context.Context, id string) er
 }
 
 func (s *cassandraProjectionStore) ListRooms(ctx context.Context, options utils.QueryOptions) ([]*views.RoomView, error) {
-	limit, offset := normalizeOffsetLimit(options.Limit, options.Offset, 20, 100)
-	queryLimit := limitWithOffset(limit, offset)
-
-	statement := fmt.Sprintf(`
-		SELECT
-			room_id,
-			name,
-			description,
-			room_type,
-			owner_id,
-			pinned_message_id,
-			member_count,
-			last_message_id,
-			last_message_at,
-			last_message_content,
-			last_message_sender_id,
-			created_at,
-			room_updated_at
-		FROM %s
-		WHERE bucket = ?
-		LIMIT ?
-	`, s.roomsGlobalTable)
-
-	rows := make([]*roomProjectionRow, 0, queryLimit)
-	iter := s.session.Query(statement, globalRoomProjectionPartition, queryLimit).WithContext(ctx).Iter()
-	defer iter.Close()
-
-	var (
-		roomID              string
-		name                string
-		description         string
-		roomType            string
-		ownerID             string
-		pinnedMessageID     string
-		memberCount         int
-		lastMessageID       string
-		lastMessageAt       *time.Time
-		lastMessageContent  string
-		lastMessageSenderID string
-		createdAt           time.Time
-		updatedAt           time.Time
-	)
-	scanner := iter.Scanner()
-	for scanner.Next() {
-		if err := scanner.Scan(
-			&roomID,
-			&name,
-			&description,
-			&roomType,
-			&ownerID,
-			&pinnedMessageID,
-			&memberCount,
-			&lastMessageID,
-			&lastMessageAt,
-			&lastMessageContent,
-			&lastMessageSenderID,
-			&createdAt,
-			&updatedAt,
-		); err != nil {
-			return nil, stackErr.Error(fmt.Errorf("scan cassandra global room projection failed: %v", err))
-		}
-		rows = append(rows, &roomProjectionRow{
-			RoomID:              roomID,
-			Name:                name,
-			Description:         description,
-			RoomType:            roomType,
-			OwnerID:             ownerID,
-			PinnedMessageID:     pinnedMessageID,
-			MemberCount:         memberCount,
-			LastMessageID:       lastMessageID,
-			LastMessageAt:       cloneTime(lastMessageAt),
-			LastMessageContent:  lastMessageContent,
-			LastMessageSenderID: lastMessageSenderID,
-			CreatedAt:           createdAt.UTC(),
-			UpdatedAt:           updatedAt.UTC(),
-		})
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("iterate cassandra global room projections failed: %v", err))
-	}
-	if err := iter.Close(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("close cassandra global room projection iterator failed: %v", err))
-	}
-
-	return sliceRoomEntities(rows, offset, limit), nil
+	return nil, nil
 }
 
 func (s *cassandraProjectionStore) ListRoomsByAccount(ctx context.Context, accountID string, options utils.QueryOptions) ([]*views.RoomView, error) {
@@ -738,18 +540,7 @@ func (s *cassandraProjectionStore) UpsertMessage(ctx context.Context, message *v
 }
 
 func (s *cassandraProjectionStore) GetMessageByID(ctx context.Context, id string) (*views.MessageView, error) {
-	row, err := s.getMessageRowByID(ctx, id)
-	if err != nil {
-		return nil, stackErr.Error(err)
-	}
-	if row == nil {
-		return nil, stackErr.Error(gocql.ErrNotFound)
-	}
-	entityMessage, err := messageRowToEntity(row)
-	if err != nil {
-		return nil, stackErr.Error(err)
-	}
-	return entityMessage, nil
+	return nil, nil
 }
 
 func (s *cassandraProjectionStore) GetLastMessage(ctx context.Context, roomID string) (*views.MessageView, error) {
@@ -823,10 +614,7 @@ func (s *cassandraProjectionStore) ListMessages(ctx context.Context, accountID, 
 	}
 
 	limit := boundedLimit(options.Limit, 50, 200)
-	beforeAt, err := s.resolveMessageCursor(ctx, strings.TrimSpace(options.BeforeID), options.BeforeAt)
-	if err != nil {
-		return nil, stackErr.Error(err)
-	}
+	beforeAt := cloneTime(options.BeforeAt)
 
 	pageSize := boundedLimit(limit*defaultRoomListPageExpansionFactor, 100, 400)
 	collected := make([]*views.MessageView, 0, limit)
@@ -887,25 +675,7 @@ func (s *cassandraProjectionStore) UpsertMessageReceipt(
 	createdAt,
 	updatedAt time.Time,
 ) error {
-	messageRow, err := s.getMessageRowByID(ctx, messageID)
-	if err != nil && !errors.Is(err, gocql.ErrNotFound) {
-		return stackErr.Error(err)
-	}
-
-	roomID := ""
-	if messageRow != nil {
-		roomID = messageRow.RoomID
-	}
-	return stackErr.Error(s.ProjectMessageReceipt(ctx, &events.MessageReceiptProjection{
-		RoomID:      roomID,
-		MessageID:   strings.TrimSpace(messageID),
-		AccountID:   strings.TrimSpace(accountID),
-		Status:      strings.TrimSpace(status),
-		DeliveredAt: cloneTime(deliveredAt),
-		SeenAt:      cloneTime(seenAt),
-		CreatedAt:   createdAt.UTC(),
-		UpdatedAt:   updatedAt.UTC(),
-	}))
+	return nil
 }
 
 func (s *cassandraProjectionStore) GetMessageReceipt(ctx context.Context, messageID, accountID string) (string, *time.Time, *time.Time, error) {
@@ -963,21 +733,7 @@ func (s *cassandraProjectionStore) CountMessageReceiptsByStatus(ctx context.Cont
 }
 
 func (s *cassandraProjectionStore) UpsertMessageDeletion(ctx context.Context, messageID, accountID string, createdAt time.Time) error {
-	messageRow, err := s.getMessageRowByID(ctx, messageID)
-	if err != nil {
-		return stackErr.Error(err)
-	}
-	if messageRow == nil {
-		return nil
-	}
-
-	return stackErr.Error(s.ProjectMessageDeletion(ctx, &events.MessageDeletionProjection{
-		RoomID:        messageRow.RoomID,
-		MessageID:     messageID,
-		AccountID:     accountID,
-		MessageSentAt: messageRow.MessageSentAt,
-		CreatedAt:     createdAt,
-	}))
+	return nil
 }
 
 func (s *cassandraProjectionStore) CountUnreadMessages(ctx context.Context, roomID, accountID string, lastReadAt *time.Time) (int64, error) {
@@ -1304,9 +1060,6 @@ func (s *cassandraProjectionStore) syncRoomIndexes(ctx context.Context, previous
 	}
 
 	if previous != nil && !previous.UpdatedAt.Equal(current.UpdatedAt) {
-		if err := s.deleteGlobalRoomIndex(ctx, previous); err != nil {
-			return stackErr.Error(err)
-		}
 		for _, member := range members {
 			if err := s.deleteAccountRoomIndex(ctx, strings.TrimSpace(member.AccountID), previous); err != nil {
 				return stackErr.Error(err)
@@ -1314,9 +1067,6 @@ func (s *cassandraProjectionStore) syncRoomIndexes(ctx context.Context, previous
 		}
 	}
 
-	if err := s.upsertGlobalRoomIndex(ctx, current); err != nil {
-		return stackErr.Error(err)
-	}
 	for _, member := range members {
 		if err := s.upsertAccountRoomIndex(ctx, strings.TrimSpace(member.AccountID), current); err != nil {
 			return stackErr.Error(err)
@@ -1382,63 +1132,6 @@ func (s *cassandraProjectionStore) deleteAccountRoomIndex(ctx context.Context, a
 	return nil
 }
 
-func (s *cassandraProjectionStore) upsertGlobalRoomIndex(ctx context.Context, room *roomProjectionRow) error {
-	statement := fmt.Sprintf(`
-		INSERT INTO %s (
-			bucket,
-			room_updated_at,
-			room_id,
-			name,
-			description,
-			room_type,
-			owner_id,
-			pinned_message_id,
-			member_count,
-			last_message_id,
-			last_message_at,
-			last_message_content,
-			last_message_sender_id,
-			created_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, s.roomsGlobalTable)
-
-	if err := s.session.Query(
-		statement,
-		globalRoomProjectionPartition,
-		room.UpdatedAt.UTC(),
-		room.RoomID,
-		room.Name,
-		room.Description,
-		room.RoomType,
-		room.OwnerID,
-		nullableProjectionString(room.PinnedMessageID),
-		room.MemberCount,
-		nullableProjectionString(room.LastMessageID),
-		room.LastMessageAt,
-		nullableProjectionString(room.LastMessageContent),
-		nullableProjectionString(room.LastMessageSenderID),
-		room.CreatedAt.UTC(),
-	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("upsert cassandra global room projection failed: %v", err))
-	}
-	return nil
-}
-
-func (s *cassandraProjectionStore) deleteGlobalRoomIndex(ctx context.Context, room *roomProjectionRow) error {
-	if room == nil {
-		return nil
-	}
-	if err := s.session.Query(
-		fmt.Sprintf(`DELETE FROM %s WHERE bucket = ? AND room_updated_at = ? AND room_id = ?`, s.roomsGlobalTable),
-		globalRoomProjectionPartition,
-		room.UpdatedAt.UTC(),
-		room.RoomID,
-	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("delete cassandra global room projection failed: %v", err))
-	}
-	return nil
-}
-
 func (s *cassandraProjectionStore) upsertTimelineMessageRow(ctx context.Context, projection *events.TimelineMessageProjection) error {
 	mentionsJSON, err := json.Marshal(projection.Mentions)
 	if err != nil {
@@ -1498,130 +1191,6 @@ func (s *cassandraProjectionStore) upsertTimelineMessageRow(ctx context.Context,
 		return stackErr.Error(fmt.Errorf("upsert cassandra room timeline projection failed: %v", err))
 	}
 	return nil
-}
-
-func (s *cassandraProjectionStore) upsertMessageByIDRow(ctx context.Context, projection *events.TimelineMessageProjection) error {
-	mentionsJSON, err := json.Marshal(projection.Mentions)
-	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal cassandra message-by-id mentions failed: %v", err))
-	}
-
-	statement := fmt.Sprintf(`
-		INSERT INTO %s (
-			message_id,
-			room_id,
-			room_name,
-			room_type,
-			message_sent_at,
-			message_content,
-			message_type,
-			reply_to_message_id,
-			forwarded_from_message_id,
-			file_name,
-			file_size,
-			mime_type,
-			object_key,
-			message_sender_id,
-			message_sender_name,
-			message_sender_email,
-			mentions_json,
-			mention_all,
-			mentioned_account_ids,
-			edited_at,
-			deleted_for_everyone_at
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, s.roomMessagesByID)
-
-	if err := s.session.Query(
-		statement,
-		projection.MessageID,
-		projection.RoomID,
-		projection.RoomName,
-		projection.RoomType,
-		projection.MessageSentAt.UTC(),
-		projection.MessageContent,
-		projection.MessageType,
-		nullableProjectionString(projection.ReplyToMessageID),
-		nullableProjectionString(projection.ForwardedFromMessageID),
-		nullableProjectionString(projection.FileName),
-		projection.FileSize,
-		nullableProjectionString(projection.MimeType),
-		nullableProjectionString(projection.ObjectKey),
-		projection.MessageSenderID,
-		nullableProjectionString(projection.MessageSenderName),
-		nullableProjectionString(projection.MessageSenderEmail),
-		string(mentionsJSON),
-		projection.MentionAll,
-		projection.MentionedAccountIDs,
-		projection.EditedAt,
-		projection.DeletedForEveryoneAt,
-	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("upsert cassandra message-by-id projection failed: %v", err))
-	}
-	return nil
-}
-
-func (s *cassandraProjectionStore) getMessageRowByID(ctx context.Context, messageID string) (*messageProjectionRow, error) {
-	statement := fmt.Sprintf(`
-		SELECT
-			room_id,
-			room_name,
-			room_type,
-			message_id,
-			message_content,
-			message_type,
-			reply_to_message_id,
-			forwarded_from_message_id,
-			file_name,
-			file_size,
-			mime_type,
-			object_key,
-			message_sender_id,
-			message_sender_name,
-			message_sender_email,
-			message_sent_at,
-			mentions_json,
-			mention_all,
-			mentioned_account_ids,
-			edited_at,
-			deleted_for_everyone_at
-		FROM %s
-		WHERE message_id = ?
-	`, s.roomMessagesByID)
-
-	row := &messageProjectionRow{}
-	if err := s.session.Query(statement, strings.TrimSpace(messageID)).WithContext(ctx).Scan(
-		&row.RoomID,
-		&row.RoomName,
-		&row.RoomType,
-		&row.MessageID,
-		&row.MessageContent,
-		&row.MessageType,
-		&row.ReplyToMessageID,
-		&row.ForwardedFromMessageID,
-		&row.FileName,
-		&row.FileSize,
-		&row.MimeType,
-		&row.ObjectKey,
-		&row.MessageSenderID,
-		&row.MessageSenderName,
-		&row.MessageSenderEmail,
-		&row.MessageSentAt,
-		&row.MentionsJSON,
-		&row.MentionAll,
-		&row.MentionedAccountIDs,
-		&row.EditedAt,
-		&row.DeletedForEveryoneAt,
-	); err != nil {
-		if errors.Is(err, gocql.ErrNotFound) {
-			return nil, nil
-		}
-		return nil, stackErr.Error(fmt.Errorf("get cassandra message-by-id projection failed: %v", err))
-	}
-	row.MessageSentAt = row.MessageSentAt.UTC()
-	row.EditedAt = cloneTime(row.EditedAt)
-	row.DeletedForEveryoneAt = cloneTime(row.DeletedForEveryoneAt)
-	return row, nil
 }
 
 func (s *cassandraProjectionStore) listTimelineBatch(ctx context.Context, roomID string, beforeAt *time.Time, limit int, ascending bool) ([]*messageProjectionRow, error) {
@@ -1997,6 +1566,98 @@ func sliceRoomEntities(rows []*roomProjectionRow, offset, limit int) []*views.Ro
 	return results
 }
 
+func (s *cassandraProjectionStore) listRoomsFromBaseProjection(ctx context.Context, options utils.QueryOptions) ([]*views.RoomView, error) {
+	limit, offset := normalizeOffsetLimit(options.Limit, options.Offset, 20, 100)
+
+	statement := fmt.Sprintf(`
+		SELECT
+			room_id,
+			name,
+			description,
+			room_type,
+			owner_id,
+			pinned_message_id,
+			member_count,
+			last_message_id,
+			last_message_at,
+			last_message_content,
+			last_message_sender_id,
+			created_at,
+			updated_at
+		FROM %s
+	`, s.roomTable)
+
+	rows := make([]*roomProjectionRow, 0)
+	iter := s.session.Query(statement).WithContext(ctx).Iter()
+	defer iter.Close()
+
+	var (
+		roomID              string
+		name                string
+		description         string
+		roomType            string
+		ownerID             string
+		pinnedMessageID     string
+		memberCount         int
+		lastMessageID       string
+		lastMessageAt       *time.Time
+		lastMessageContent  string
+		lastMessageSenderID string
+		createdAt           time.Time
+		updatedAt           time.Time
+	)
+	scanner := iter.Scanner()
+	for scanner.Next() {
+		if err := scanner.Scan(
+			&roomID,
+			&name,
+			&description,
+			&roomType,
+			&ownerID,
+			&pinnedMessageID,
+			&memberCount,
+			&lastMessageID,
+			&lastMessageAt,
+			&lastMessageContent,
+			&lastMessageSenderID,
+			&createdAt,
+			&updatedAt,
+		); err != nil {
+			return nil, stackErr.Error(fmt.Errorf("scan cassandra room projection failed: %v", err))
+		}
+		rows = append(rows, &roomProjectionRow{
+			RoomID:              roomID,
+			Name:                name,
+			Description:         description,
+			RoomType:            roomType,
+			OwnerID:             ownerID,
+			PinnedMessageID:     pinnedMessageID,
+			MemberCount:         memberCount,
+			LastMessageID:       lastMessageID,
+			LastMessageAt:       cloneTime(lastMessageAt),
+			LastMessageContent:  lastMessageContent,
+			LastMessageSenderID: lastMessageSenderID,
+			CreatedAt:           createdAt.UTC(),
+			UpdatedAt:           updatedAt.UTC(),
+		})
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, stackErr.Error(fmt.Errorf("iterate cassandra room projections failed: %v", err))
+	}
+	if err := iter.Close(); err != nil {
+		return nil, stackErr.Error(fmt.Errorf("close cassandra room projection iterator failed: %v", err))
+	}
+
+	sort.Slice(rows, func(i, j int) bool {
+		if !rows[i].UpdatedAt.Equal(rows[j].UpdatedAt) {
+			return rows[i].UpdatedAt.After(rows[j].UpdatedAt)
+		}
+		return rows[i].RoomID > rows[j].RoomID
+	})
+
+	return sliceRoomEntities(rows, offset, limit), nil
+}
+
 func normalizeOffsetLimit(limit *int, offset *int, defaultLimit, maxLimit int) (int, int) {
 	valueLimit := defaultLimit
 	if limit != nil && *limit > 0 {
@@ -2037,27 +1698,6 @@ func normalizeProjectionTable(value string) string {
 		return "room_projection_default"
 	}
 	return value
-}
-
-func (s *cassandraProjectionStore) resolveMessageCursor(ctx context.Context, beforeID string, beforeAt *time.Time) (*time.Time, error) {
-	cursor := cloneTime(beforeAt)
-	if strings.TrimSpace(beforeID) == "" {
-		return cursor, nil
-	}
-
-	messageRow, err := s.getMessageRowByID(ctx, beforeID)
-	if err != nil {
-		return nil, stackErr.Error(err)
-	}
-	if messageRow == nil {
-		return cursor, nil
-	}
-
-	messageTime := messageRow.MessageSentAt.UTC()
-	if cursor == nil || messageTime.Before(*cursor) {
-		return &messageTime, nil
-	}
-	return cursor, nil
 }
 
 func marshalProjectionMentions(mentions []events.ProjectionMention) (string, error) {
