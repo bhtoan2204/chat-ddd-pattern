@@ -2,41 +2,35 @@ package command
 
 import (
 	"context"
-	"errors"
+
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
+	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
-
-	"go.uber.org/zap"
 )
 
 type createMessageHandler struct {
-	messageService *roomservice.MessageCommandService
+	baseRepo roomrepos.Repos
 }
 
-func NewCreateMessageHandler(messageService *roomservice.MessageCommandService) cqrs.Handler[*in.CreateMessageRequest, *out.CreateMessageResponse] {
-	return &createMessageHandler{messageService: messageService}
+func NewCreateMessageHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.CreateMessageRequest, *out.CreateMessageResponse] {
+	return &createMessageHandler{baseRepo: baseRepo}
 }
 
 func (h *createMessageHandler) Handle(ctx context.Context, req *in.CreateMessageRequest) (*out.CreateMessageResponse, error) {
-	log := logging.FromContext(ctx).Named("CreateMessage")
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		log.Errorw("Account not found", zap.Error(err))
-		return nil, stackErr.Error(errors.New("account not found"))
+		return nil, stackErr.Error(err)
 	}
 
-	res, err := h.messageService.CreateMessage(ctx, accountID, apptypes.SendMessageCommand{
+	res, err := executeSendMessage(ctx, h.baseRepo, accountID, apptypes.SendMessageCommand{
 		RoomID:  req.RoomID,
 		Message: req.Message,
 	})
 	if err != nil {
-		log.Errorw("Failed to create message", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
 

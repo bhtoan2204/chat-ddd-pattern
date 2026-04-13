@@ -2,30 +2,48 @@ package command
 
 import (
 	"context"
+
+	"time"
+
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
+	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type removeChatMemberHandler struct {
-	roomService *roomservice.RoomCommandService
+	baseRepo roomrepos.Repos
 }
 
-func NewRemoveChatMemberHandler(roomService *roomservice.RoomCommandService) cqrs.Handler[*in.RemoveChatMemberRequest, *out.ChatConversationResponse] {
-	return &removeChatMemberHandler{roomService: roomService}
+func NewRemoveChatMemberHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.RemoveChatMemberRequest, *out.ChatConversationResponse] {
+	return &removeChatMemberHandler{baseRepo: baseRepo}
 }
 func (h *removeChatMemberHandler) Handle(ctx context.Context, req *in.RemoveChatMemberRequest) (*out.ChatConversationResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	res, err := h.roomService.RemoveMember(ctx, accountID, req.RoomID, apptypes.RemoveMemberCommand{
-		AccountID: req.AccountID,
-	})
+
+	agg, err := h.baseRepo.RoomAggregateRepository().Load(ctx, req.RoomID)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	removed, err := agg.RemoveMember(accountID, req.AccountID, time.Now().UTC(), accountID)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if removed {
+		if err := h.baseRepo.WithTransaction(ctx, func(txRepos roomrepos.Repos) error {
+			return stackErr.Error(txRepos.RoomAggregateRepository().Save(ctx, agg))
+		}); err != nil {
+			return nil, stackErr.Error(err)
+		}
+	}
+
+	res, err := roomsupport.BuildConversationResult(ctx, h.baseRepo, accountID, agg.Room(), true)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
@@ -46,7 +47,7 @@ func (s *ChatQueryService) ListConversations(ctx context.Context, accountID stri
 
 	out := make([]apptypes.ConversationResult, 0, len(rooms))
 	for _, room := range rooms {
-		item, err := buildConversationResult(ctx, s.repos, accountID, room, true)
+		item, err := roomsupport.BuildConversationResult(ctx, s.repos, accountID, room, true)
 		if err != nil {
 			return nil, stackErr.Error(err)
 		}
@@ -60,7 +61,7 @@ func (s *ChatQueryService) GetConversation(ctx context.Context, accountID string
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	return buildConversationResult(ctx, s.repos, accountID, room, true)
+	return roomsupport.BuildConversationResult(ctx, s.repos, accountID, room, true)
 }
 
 func (s *ChatQueryService) ListMessages(ctx context.Context, accountID string, query apptypes.ListMessagesQuery) ([]apptypes.MessageResult, error) {
@@ -88,7 +89,7 @@ func (s *ChatQueryService) ListMessages(ctx context.Context, accountID string, q
 
 	out := make([]apptypes.MessageResult, 0, len(messages))
 	for _, message := range messages {
-		item, err := buildMessageResult(ctx, s.repos, accountID, message)
+		item, err := roomsupport.BuildMessageResult(ctx, s.repos, accountID, message)
 		if err != nil {
 			return nil, stackErr.Error(err)
 		}
@@ -151,7 +152,7 @@ func (s *ChatQueryService) GetPresence(ctx context.Context, query apptypes.GetPr
 	if s.redis == nil {
 		return &apptypes.PresenceResult{AccountID: accountID, Status: "offline"}, nil
 	}
-	exists, err := s.redis.Exists(ctx, presenceKey(accountID)).Result()
+	exists, err := s.redis.Exists(ctx, chatPresenceKey(accountID)).Result()
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
@@ -160,6 +161,10 @@ func (s *ChatQueryService) GetPresence(ctx context.Context, query apptypes.GetPr
 		status = "online"
 	}
 	return &apptypes.PresenceResult{AccountID: accountID, Status: status}, nil
+}
+
+func chatPresenceKey(accountID string) string {
+	return "chat:presence:" + strings.TrimSpace(accountID)
 }
 
 func resolveMentionCandidateDisplayName(candidate *entity.MentionCandidate) string {

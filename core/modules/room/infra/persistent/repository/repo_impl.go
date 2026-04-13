@@ -15,6 +15,9 @@ type repoImpl struct {
 	db     *gorm.DB
 	appCtx *appCtx.AppContext
 
+	roomAggregateRepo repos.RoomAggregateRepository
+	messageAggRepo    repos.MessageAggregateRepository
+
 	roomRepo        repos.RoomRepository
 	messageRepo     repos.MessageRepository
 	roomMemberRepo  repos.RoomMemberRepository
@@ -38,19 +41,31 @@ func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
 	messageReadRepo := NewMessageReadRepoImpl(db)
 	memberReadRepo := NewRoomMemberReadRepoImpl(db)
 	accountRepo := NewRoomAccountProjectionImpl(db)
+	roomAggregateRepo := newRoomAggregateRepoImpl(db, roomRepo, roomMemberRepo, roomReadRepo, memberReadRepo, messageRepo, messageReadRepo, roomOutboxRepo)
+	messageAggregateRepo := newMessageAggregateRepoImpl(db, messageRepo, messageReadRepo, roomMemberRepo, memberReadRepo)
 
 	return &repoImpl{
-		db:              db,
-		appCtx:          appCtx,
-		roomRepo:        roomRepo,
-		messageRepo:     messageRepo,
-		roomMemberRepo:  roomMemberRepo,
-		roomOutboxRepo:  roomOutboxRepo,
-		roomReadRepo:    roomReadRepo,
-		messageReadRepo: messageReadRepo,
-		memberReadRepo:  memberReadRepo,
-		accountRepo:     accountRepo,
+		roomAggregateRepo: roomAggregateRepo,
+		messageAggRepo:    messageAggregateRepo,
+		db:                db,
+		appCtx:            appCtx,
+		roomRepo:          roomRepo,
+		messageRepo:       messageRepo,
+		roomMemberRepo:    roomMemberRepo,
+		roomOutboxRepo:    roomOutboxRepo,
+		roomReadRepo:      roomReadRepo,
+		messageReadRepo:   messageReadRepo,
+		memberReadRepo:    memberReadRepo,
+		accountRepo:       accountRepo,
 	}
+}
+
+func (r *repoImpl) RoomAggregateRepository() repos.RoomAggregateRepository {
+	return r.roomAggregateRepo
+}
+
+func (r *repoImpl) MessageAggregateRepository() repos.MessageAggregateRepository {
+	return r.messageAggRepo
 }
 
 func (r *repoImpl) RoomRepository() repos.RoomRepository {

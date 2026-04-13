@@ -18,8 +18,15 @@ type LedgerEntryRequest struct {
 	Amount    int64  `json:"amount" form:"amount" binding:"required"`
 }
 
+func (r *LedgerEntryRequest) Normalize() {
+	r.AccountID = strings.TrimSpace(r.AccountID)
+}
+
 func (r *CreateTransactionRequest) Normalize() {
 	r.TransactionID = strings.TrimSpace(r.TransactionID)
+	for idx := range r.Entries {
+		r.Entries[idx].Normalize()
+	}
 }
 
 func (r *CreateTransactionRequest) Validate() error {

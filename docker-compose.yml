@@ -124,8 +124,7 @@ services:
       - ./script/start-kafka-kraft.sh:/usr/local/bin/start-kafka-kraft.sh:ro
     entrypoint: ["/bin/bash", "/usr/local/bin/start-kafka-kraft.sh"]
     healthcheck:
-      test:
-        ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9092' || exit 1"]
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/9092' || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 20

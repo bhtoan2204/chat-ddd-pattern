@@ -1,15 +1,22 @@
-package service
+package command
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
+	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
+	"go-socket/core/modules/room/domain/aggregate"
 	"go-socket/core/modules/room/domain/entity"
 	"go-socket/core/modules/room/domain/repos"
 	sharedevents "go-socket/core/shared/contracts/events"
+	"go-socket/core/shared/pkg/actorctx"
 	"go-socket/core/shared/pkg/stackErr"
+
+	"github.com/google/uuid"
 )
 
 var mentionAllPattern = regexp.MustCompile(`(^|[[:space:][:punct:]])@all($|[[:space:][:punct:]])`)
@@ -21,9 +28,13 @@ type resolvedMessageMentions struct {
 	MentionedAccountIDs []string
 }
 
+func newID() string {
+	return uuid.NewString()
+}
+
 func resolveMessageMentions(
 	ctx context.Context,
-	txRepos repos.Repos,
+	baseRepo repos.Repos,
 	room *entity.Room,
 	senderID string,
 	command apptypes.SendMessageCommand,
@@ -67,7 +78,7 @@ func resolveMessageMentions(
 		}, nil
 	}
 
-	accountProjections, err := txRepos.RoomAccountProjectionRepository().ListByAccountIDs(ctx, filteredExplicitIDs)
+	accountProjections, err := baseRepo.RoomAccountProjectionRepository().ListByAccountIDs(ctx, filteredExplicitIDs)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
@@ -104,25 +115,27 @@ func resolveMessageMentions(
 	}, nil
 }
 
-func buildSenderIdentity(ctx context.Context, txRepos repos.Repos, senderID string) (string, string) {
-	actor, _ := currentActor(ctx)
+func buildSenderIdentity(ctx context.Context, baseRepo repos.Repos, senderID string) aggregate.MessageSenderIdentity {
+	actor, _ := actorctx.FromContext(ctx)
 
-	senderName := senderID
-	senderEmail := ""
+	identity := aggregate.MessageSenderIdentity{
+		Name:  senderID,
+		Email: "",
+	}
 	if actor != nil && actor.Email != "" {
-		senderName = actor.Email
-		senderEmail = actor.Email
+		identity.Name = actor.Email
+		identity.Email = actor.Email
 	}
 
-	accountProjections, err := txRepos.RoomAccountProjectionRepository().ListByAccountIDs(ctx, []string{senderID})
+	accountProjections, err := baseRepo.RoomAccountProjectionRepository().ListByAccountIDs(ctx, []string{senderID})
 	if err != nil || len(accountProjections) == 0 || accountProjections[0] == nil {
-		return senderName, senderEmail
+		return identity
 	}
 
 	if displayName := resolveMentionDisplayName(accountProjections[0], senderID); displayName != "" {
-		senderName = displayName
+		identity.Name = displayName
 	}
-	return senderName, senderEmail
+	return identity
 }
 
 func normalizeMentionSelection(mentions []apptypes.SendMessageMentionCommand) []string {
@@ -182,4 +195,87 @@ func appendUniqueString(values []string, value string) []string {
 		}
 	}
 	return append(values, value)
+}
+
+func ensureProjectedAccountsExist(ctx context.Context, baseRepo repos.Repos, accountIDs ...string) error {
+	normalizedIDs := make([]string, 0, len(accountIDs))
+	for _, accountID := range accountIDs {
+		accountID = strings.TrimSpace(accountID)
+		if accountID == "" {
+			continue
+		}
+		normalizedIDs = appendUniqueString(normalizedIDs, accountID)
+	}
+	if len(normalizedIDs) == 0 {
+		return nil
+	}
+
+	accountProjections, err := baseRepo.RoomAccountProjectionRepository().ListByAccountIDs(ctx, normalizedIDs)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+
+	projected := make(map[string]struct{}, len(accountProjections))
+	for _, projection := range accountProjections {
+		if projection == nil {
+			continue
+		}
+		projected[strings.TrimSpace(projection.AccountID)] = struct{}{}
+	}
+
+	for _, accountID := range normalizedIDs {
+		if _, ok := projected[accountID]; ok {
+			continue
+		}
+		return stackErr.Error(fmt.Errorf("%w: %s", ErrRoomAccountNotFound, accountID))
+	}
+	return nil
+}
+
+func executeSendMessage(ctx context.Context, baseRepo repos.Repos, accountID string, command apptypes.SendMessageCommand) (*apptypes.MessageResult, error) {
+	roomAgg, err := baseRepo.RoomAggregateRepository().Load(ctx, strings.TrimSpace(command.RoomID))
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	mentions, err := resolveMessageMentions(ctx, baseRepo, roomAgg.Room(), accountID, command, roomAgg.Members())
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	now := time.Now().UTC()
+	message, err := roomAgg.SendMessage(
+		newID(),
+		accountID,
+		entity.MessageParams{
+			Message:                command.Message,
+			MessageType:            command.MessageType,
+			Mentions:               mentions.Mentions,
+			MentionAll:             mentions.MentionAll,
+			ReplyToMessageID:       command.ReplyToMessageID,
+			ForwardedFromMessageID: command.ForwardedFromMessageID,
+			FileName:               command.FileName,
+			FileSize:               command.FileSize,
+			MimeType:               command.MimeType,
+			ObjectKey:              command.ObjectKey,
+		},
+		buildSenderIdentity(ctx, baseRepo, accountID),
+		aggregate.MessageOutboxPayload{
+			Mentions:            mentions.OutboxMentions,
+			MentionAll:          mentions.MentionAll,
+			MentionedAccountIDs: mentions.MentionedAccountIDs,
+		},
+		now,
+	)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	if err := baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
+		return stackErr.Error(txRepos.RoomAggregateRepository().Save(ctx, roomAgg))
+	}); err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	return roomsupport.BuildMessageResult(ctx, baseRepo, accountID, message)
 }

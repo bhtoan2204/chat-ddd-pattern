@@ -2,44 +2,50 @@ package command
 
 import (
 	"context"
-	"errors"
+	"time"
+
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
+	"go-socket/core/modules/room/domain/aggregate"
+	"go-socket/core/modules/room/domain/entity"
+	roomrepos "go-socket/core/modules/room/domain/repos"
 	roomtypes "go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
-
-	"go.uber.org/zap"
 )
 
 type createRoomHandler struct {
-	roomService *roomservice.RoomCommandService
+	baseRepo roomrepos.Repos
 }
 
-func NewCreateRoomHandler(roomService *roomservice.RoomCommandService) cqrs.Handler[*in.CreateRoomRequest, *out.CreateRoomResponse] {
+func NewCreateRoomHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.CreateRoomRequest, *out.CreateRoomResponse] {
 	return &createRoomHandler{
-		roomService: roomService,
+		baseRepo: baseRepo,
 	}
 }
 
 func (h *createRoomHandler) Handle(ctx context.Context, req *in.CreateRoomRequest) (*out.CreateRoomResponse, error) {
-	log := logging.FromContext(ctx).Named("CreateRoom")
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
-		log.Errorw("Account not found", zap.Error(err))
-		return nil, stackErr.Error(errors.New("account not found"))
+		return nil, stackErr.Error(err)
 	}
-	room, err := h.roomService.CreateRoom(ctx, accountID, apptypes.CreateRoomCommand{
-		Name:        req.Name,
-		Description: req.Description,
-		RoomType:    roomtypes.RoomType(req.RoomType),
-	})
+
+	now := time.Now().UTC()
+	room, err := entity.NewRoom(newID(), req.Name, req.Description, accountID, roomtypes.RoomType(req.RoomType), "", now)
 	if err != nil {
-		log.Errorw("Failed to create room", zap.Error(err), zap.Any("room", room))
+		return nil, stackErr.Error(err)
+	}
+
+	agg, err := aggregate.NewRoomStateAggregate(room, 0)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	agg.RecordCreated(1, now)
+
+	if err := h.baseRepo.WithTransaction(ctx, func(txRepos roomrepos.Repos) error {
+		return stackErr.Error(txRepos.RoomAggregateRepository().Save(ctx, agg))
+	}); err != nil {
 		return nil, stackErr.Error(err)
 	}
 

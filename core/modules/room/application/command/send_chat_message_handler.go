@@ -5,19 +5,19 @@ import (
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
+	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type sendChatMessageHandler struct {
-	messageService *roomservice.MessageCommandService
+	baseRepo roomrepos.Repos
 }
 
-func NewSendChatMessageHandler(messageService *roomservice.MessageCommandService) cqrs.Handler[*in.SendChatMessageRequest, *out.ChatMessageResponse] {
-	return &sendChatMessageHandler{messageService: messageService}
+func NewSendChatMessageHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.SendChatMessageRequest, *out.ChatMessageResponse] {
+	return &sendChatMessageHandler{baseRepo: baseRepo}
 }
 
 func (h *sendChatMessageHandler) Handle(ctx context.Context, req *in.SendChatMessageRequest) (*out.ChatMessageResponse, error) {
@@ -26,7 +26,7 @@ func (h *sendChatMessageHandler) Handle(ctx context.Context, req *in.SendChatMes
 		return nil, stackErr.Error(err)
 	}
 
-	res, err := h.messageService.SendMessage(ctx, accountID, apptypes.SendMessageCommand{
+	res, err := executeSendMessage(ctx, h.baseRepo, accountID, apptypes.SendMessageCommand{
 		RoomID:                 req.RoomID,
 		Message:                req.Message,
 		MessageType:            req.MessageType,

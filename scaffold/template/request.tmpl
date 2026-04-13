@@ -26,6 +26,17 @@ type {{.StructName}} struct {
 	{{.GoName}} {{.Type}} `json:"{{.JSONName}}" form:"{{.JSONName}}"{{if .BindingTag}} binding:"{{.BindingTag}}"{{end}}`
 {{- end}}
 }
+
+{{- if .HasNormalize}}
+
+func (r *{{.StructName}}) Normalize() {
+{{- range .Fields}}
+{{- range .NormalizeLines}}
+	{{.}}
+{{- end}}
+{{- end}}
+}
+{{- end}}
 {{- end}}
 
 {{- if .HasNormalize}}

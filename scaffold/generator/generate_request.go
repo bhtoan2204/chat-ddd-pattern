@@ -67,9 +67,10 @@ func GenerateRequest(endpoints []models.Endpoint) (string, error) {
 			Fields:            fields,
 			AdditionalStructs: mapRequestNestedStructs(filepath.Dir(dst), dst, ep.Request.Fields),
 			NeedsErrors:       requestNeedsErrors(fields),
-			NeedsStrings:      requestNeedsStrings(fields),
+			NeedsStrings:      false,
 			HasNormalize:      requestHasNormalize(fields),
 		}
+		data.NeedsStrings = requestNeedsStrings(fields, data.AdditionalStructs)
 
 		var buf bytes.Buffer
 		if err := tmpl.Execute(&buf, data); err != nil {
@@ -109,8 +110,9 @@ type requestField struct {
 }
 
 type requestNestedStruct struct {
-	StructName string
-	Fields     []requestField
+	StructName   string
+	Fields       []requestField
+	HasNormalize bool
 }
 
 func mapRequestFields(fields []models.FieldSpec) []requestField {
@@ -135,7 +137,7 @@ func mapRequestFields(fields []models.FieldSpec) []requestField {
 			BindingTag:     binding,
 			Required:       f.Required,
 			ZeroCheck:      utils.ZeroCheck(goType, goName),
-			NormalizeLines: requestNormalizeLines(goType, goName),
+			NormalizeLines: requestNormalizeLines(f, goType, goName),
 		})
 	}
 	return result
@@ -155,9 +157,11 @@ func mapRequestNestedStructs(dir, dst string, fields []models.FieldSpec) []reque
 			continue
 		}
 		seen[f.Items.Struct] = true
+		fields := mapRequestFields(f.Items.Fields)
 		result = append(result, requestNestedStruct{
-			StructName: f.Items.Struct,
-			Fields:     mapRequestFields(f.Items.Fields),
+			StructName:   f.Items.Struct,
+			Fields:       fields,
+			HasNormalize: requestHasNormalize(fields),
 		})
 	}
 	return result
@@ -172,9 +176,14 @@ func requestNeedsErrors(fields []requestField) bool {
 	return false
 }
 
-func requestNeedsStrings(fields []requestField) bool {
+func requestNeedsStrings(fields []requestField, additional []requestNestedStruct) bool {
 	for _, field := range fields {
 		if len(field.NormalizeLines) > 0 {
+			return true
+		}
+	}
+	for _, nested := range additional {
+		if nested.HasNormalize {
 			return true
 		}
 	}
@@ -182,7 +191,12 @@ func requestNeedsStrings(fields []requestField) bool {
 }
 
 func requestHasNormalize(fields []requestField) bool {
-	return requestNeedsStrings(fields)
+	for _, field := range fields {
+		if len(field.NormalizeLines) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func requestFieldType(field models.FieldSpec) string {
@@ -206,7 +220,7 @@ func requestFieldType(field models.FieldSpec) string {
 	}
 }
 
-func requestNormalizeLines(goType, goName string) []string {
+func requestNormalizeLines(field models.FieldSpec, goType, goName string) []string {
 	switch goType {
 	case "string":
 		return []string{fmt.Sprintf("r.%s = strings.TrimSpace(r.%s)", goName, goName)}
@@ -229,6 +243,16 @@ func requestNormalizeLines(goType, goName string) []string {
 			"}",
 		}
 	default:
+		if strings.EqualFold(strings.TrimSpace(field.Type), "array") && field.Items != nil && field.Items.Struct != "" && len(field.Items.Fields) > 0 {
+			return []string{
+				fmt.Sprintf("for idx := range r.%s {", goName),
+				fmt.Sprintf("\tr.%s[idx].Normalize()", goName),
+				"}",
+			}
+		}
+		if strings.EqualFold(strings.TrimSpace(field.Type), "object") && field.Items != nil && field.Struct != "" && len(field.Items.Fields) > 0 {
+			return []string{fmt.Sprintf("r.%s.Normalize()", goName)}
+		}
 		return nil
 	}
 }

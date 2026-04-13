@@ -2,30 +2,28 @@ package command
 
 import (
 	"context"
+
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
+	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
-
-	"go.uber.org/zap"
 )
 
 type deleteRoomHandler struct {
-	roomService *roomservice.RoomCommandService
+	baseRepo roomrepos.Repos
 }
 
-func NewDeleteRoomHandler(roomService *roomservice.RoomCommandService) cqrs.Handler[*in.DeleteRoomRequest, *out.DeleteRoomResponse] {
+func NewDeleteRoomHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.DeleteRoomRequest, *out.DeleteRoomResponse] {
 	return &deleteRoomHandler{
-		roomService: roomService,
+		baseRepo: baseRepo,
 	}
 }
 
 func (h *deleteRoomHandler) Handle(ctx context.Context, req *in.DeleteRoomRequest) (*out.DeleteRoomResponse, error) {
-	log := logging.FromContext(ctx).Named("DeleteRoom")
-	if err := h.roomService.DeleteRoom(ctx, req.ID); err != nil {
-		log.Errorw("Failed to delete room", zap.Error(err))
+	if err := h.baseRepo.WithTransaction(ctx, func(txRepos roomrepos.Repos) error {
+		return stackErr.Error(txRepos.RoomAggregateRepository().Delete(ctx, req.ID))
+	}); err != nil {
 		return nil, stackErr.Error(err)
 	}
 	return &out.DeleteRoomResponse{

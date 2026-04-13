@@ -7,6 +7,7 @@ import (
 	"go-socket/core/modules/room/infra/persistent/models"
 	"go-socket/core/shared/pkg/stackErr"
 
+	"github.com/samber/lo"
 	"gorm.io/gorm"
 )
 
@@ -36,6 +37,29 @@ func (r *roomMemberImpl) GetRoomMemberByAccount(ctx context.Context, roomID, acc
 		return nil, stackErr.Error(err)
 	}
 	return r.toEntity(&m), nil
+}
+
+func (r *roomMemberImpl) ListRoomMembers(ctx context.Context, roomID string) ([]*entity.RoomMemberEntity, error) {
+	var members []*models.RoomMemberModel
+	if err := r.db.WithContext(ctx).Where("room_id = ?", roomID).Order("created_at ASC").Find(&members).Error; err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	return lo.Map(members, func(member *models.RoomMemberModel, _ int) *entity.RoomMemberEntity {
+		return r.toEntity(member)
+	}), nil
+}
+
+func (r *roomMemberImpl) UpdateRoomMember(ctx context.Context, roomMember *entity.RoomMemberEntity) error {
+	return stackErr.Error(r.db.WithContext(ctx).
+		Model(&models.RoomMemberModel{}).
+		Where("id = ?", roomMember.ID).
+		Updates(map[string]interface{}{
+			"role":              roomMember.Role,
+			"last_delivered_at": roomMember.LastDeliveredAt,
+			"last_read_at":      roomMember.LastReadAt,
+			"updated_at":        roomMember.UpdatedAt,
+		}).Error)
 }
 
 func (r *roomMemberImpl) toModel(e *entity.RoomMemberEntity) *models.RoomMemberModel {

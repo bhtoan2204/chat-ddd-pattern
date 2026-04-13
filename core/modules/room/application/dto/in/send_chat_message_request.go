@@ -22,18 +22,26 @@ type SendChatMessageRequest struct {
 	ObjectKey              string                          `json:"object_key" form:"object_key"`
 }
 
+type SendChatMessageMentionRequest struct {
+	AccountID string `json:"account_id" form:"account_id"`
+}
+
+func (r *SendChatMessageMentionRequest) Normalize() {
+	r.AccountID = strings.TrimSpace(r.AccountID)
+}
+
 func (r *SendChatMessageRequest) Normalize() {
 	r.RoomID = strings.TrimSpace(r.RoomID)
 	r.Message = strings.TrimSpace(r.Message)
 	r.MessageType = strings.TrimSpace(r.MessageType)
+	for idx := range r.Mentions {
+		r.Mentions[idx].Normalize()
+	}
 	r.ReplyToMessageID = strings.TrimSpace(r.ReplyToMessageID)
 	r.ForwardedFromMessageID = strings.TrimSpace(r.ForwardedFromMessageID)
 	r.FileName = strings.TrimSpace(r.FileName)
 	r.MimeType = strings.TrimSpace(r.MimeType)
 	r.ObjectKey = strings.TrimSpace(r.ObjectKey)
-	for idx := range r.Mentions {
-		r.Mentions[idx].Normalize()
-	}
 }
 
 func (r *SendChatMessageRequest) Validate() error {
@@ -42,12 +50,4 @@ func (r *SendChatMessageRequest) Validate() error {
 		return stackErr.Error(errors.New("room_id is required"))
 	}
 	return nil
-}
-
-type SendChatMessageMentionRequest struct {
-	AccountID string `json:"account_id" form:"account_id"`
-}
-
-func (r *SendChatMessageMentionRequest) Normalize() {
-	r.AccountID = strings.TrimSpace(r.AccountID)
 }

@@ -2,31 +2,47 @@ package command
 
 import (
 	"context"
+	"time"
+
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
+	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type updateGroupChatHandler struct {
-	roomService *roomservice.RoomCommandService
+	baseRepo roomrepos.Repos
 }
 
-func NewUpdateGroupChatHandler(roomService *roomservice.RoomCommandService) cqrs.Handler[*in.UpdateGroupChatRequest, *out.ChatConversationResponse] {
-	return &updateGroupChatHandler{roomService: roomService}
+func NewUpdateGroupChatHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.UpdateGroupChatRequest, *out.ChatConversationResponse] {
+	return &updateGroupChatHandler{baseRepo: baseRepo}
 }
 func (h *updateGroupChatHandler) Handle(ctx context.Context, req *in.UpdateGroupChatRequest) (*out.ChatConversationResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	res, err := h.roomService.UpdateGroup(ctx, accountID, req.RoomID, apptypes.UpdateGroupCommand{
-		Name:        req.Name,
-		Description: req.Description,
-	})
+
+	agg, err := h.baseRepo.RoomAggregateRepository().Load(ctx, req.RoomID)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	updated, err := agg.UpdateGroupDetails(accountID, req.Name, req.Description, time.Now().UTC(), accountID)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if updated {
+		if err := h.baseRepo.WithTransaction(ctx, func(txRepos roomrepos.Repos) error {
+			return stackErr.Error(txRepos.RoomAggregateRepository().Save(ctx, agg))
+		}); err != nil {
+			return nil, stackErr.Error(err)
+		}
+	}
+
+	res, err := roomsupport.BuildConversationResult(ctx, h.baseRepo, accountID, agg.Room(), true)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}

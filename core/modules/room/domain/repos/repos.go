@@ -9,6 +9,9 @@ import (
 )
 
 type Repos interface {
+	RoomAggregateRepository() RoomAggregateRepository
+	MessageAggregateRepository() MessageAggregateRepository
+
 	RoomRepository() RoomRepository
 	MessageRepository() MessageRepository
 	RoomMemberRepository() RoomMemberRepository

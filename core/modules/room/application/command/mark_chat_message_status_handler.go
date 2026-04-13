@@ -2,22 +2,26 @@ package command
 
 import (
 	"context"
+	"errors"
+	"time"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
+	"go-socket/core/modules/room/domain/entity"
+	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
+
+	"gorm.io/gorm"
 )
 
 type markChatMessageStatusHandler struct {
-	messageService *roomservice.MessageCommandService
+	baseRepo roomrepos.Repos
 }
 
-func NewMarkChatMessageStatusHandler(messageService *roomservice.MessageCommandService) cqrs.Handler[*in.MarkChatMessageStatusRequest, *out.MarkChatMessageStatusResponse] {
-	return &markChatMessageStatusHandler{messageService: messageService}
+func NewMarkChatMessageStatusHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.MarkChatMessageStatusRequest, *out.MarkChatMessageStatusResponse] {
+	return &markChatMessageStatusHandler{baseRepo: baseRepo}
 }
 
 func (h *markChatMessageStatusHandler) Handle(ctx context.Context, req *in.MarkChatMessageStatusRequest) (*out.MarkChatMessageStatusResponse, error) {
@@ -26,10 +30,28 @@ func (h *markChatMessageStatusHandler) Handle(ctx context.Context, req *in.MarkC
 		return nil, stackErr.Error(err)
 	}
 
-	if err := h.messageService.MarkMessageStatus(ctx, accountID, req.MessageID, apptypes.MarkMessageStatusCommand{
-		Status: req.Status,
-	}); err != nil {
+	agg, err := h.baseRepo.MessageAggregateRepository().Load(ctx, req.MessageID)
+	if err != nil {
 		return nil, stackErr.Error(err)
+	}
+
+	var member = (*entity.RoomMemberEntity)(nil)
+	if roomMember, memberErr := h.baseRepo.RoomMemberRepository().GetRoomMemberByAccount(ctx, agg.Message().RoomID, accountID); memberErr == nil {
+		member = roomMember
+	} else if !errors.Is(memberErr, gorm.ErrRecordNotFound) {
+		return nil, stackErr.Error(memberErr)
+	}
+
+	changed, err := agg.MarkStatus(accountID, req.Status, member, time.Now().UTC())
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if changed {
+		if err := h.baseRepo.WithTransaction(ctx, func(txRepos roomrepos.Repos) error {
+			return stackErr.Error(txRepos.MessageAggregateRepository().Save(ctx, agg))
+		}); err != nil {
+			return nil, stackErr.Error(err)
+		}
 	}
 
 	return &out.MarkChatMessageStatusResponse{Ok: true}, nil

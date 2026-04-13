@@ -120,6 +120,24 @@ func (r *Room) UpdateDetails(name, description string, roomType roomtypes.RoomTy
 	return updated, nil
 }
 
+func (r *Room) ChangeOwner(ownerID string, updatedAt time.Time) (bool, error) {
+	if r == nil {
+		return false, ErrRoomIDRequired
+	}
+
+	ownerID = strings.TrimSpace(ownerID)
+	if ownerID == "" {
+		return false, ErrRoomOwnerRequired
+	}
+	if ownerID == r.OwnerID {
+		return false, nil
+	}
+
+	r.OwnerID = ownerID
+	r.UpdatedAt = normalizeRoomTime(updatedAt)
+	return true, nil
+}
+
 func (r *Room) RequireGroup() error {
 	if !r.IsGroup() {
 		return ErrRoomNotGroup

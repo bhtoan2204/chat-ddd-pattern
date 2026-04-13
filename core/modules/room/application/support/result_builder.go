@@ -1,4 +1,4 @@
-package service
+package support
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func buildRoomResult(room *entity.Room) *apptypes.RoomResult {
+func BuildRoomResult(room *entity.Room) *apptypes.RoomResult {
 	if room == nil {
 		return nil
 	}
@@ -30,7 +30,7 @@ func buildRoomResult(room *entity.Room) *apptypes.RoomResult {
 	}
 }
 
-func buildConversationResult(
+func BuildConversationResult(
 	ctx context.Context,
 	readRepos repos.QueryRepos,
 	viewerID string,
@@ -65,33 +65,33 @@ func buildConversationResult(
 	eg, egCtx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
-		var err error
-		accountProjections, err = readRepos.RoomAccountProjectionRepository().ListByAccountIDs(egCtx, accountIDs)
-		if err != nil {
-			return stackErr.Error(err)
+		var runErr error
+		accountProjections, runErr = readRepos.RoomAccountProjectionRepository().ListByAccountIDs(egCtx, accountIDs)
+		if runErr != nil {
+			return stackErr.Error(runErr)
 		}
 		return nil
 	})
 
 	eg.Go(func() error {
-		var err error
-		unreadCount, err = readRepos.MessageReadRepository().CountUnreadMessages(
+		var runErr error
+		unreadCount, runErr = readRepos.MessageReadRepository().CountUnreadMessages(
 			egCtx,
 			room.ID,
 			viewerID,
 			viewerMember.LastReadAt,
 		)
-		if err != nil {
-			return stackErr.Error(err)
+		if runErr != nil {
+			return stackErr.Error(runErr)
 		}
 		return nil
 	})
 
 	eg.Go(func() error {
-		var err error
-		lastMessage, err = readRepos.MessageReadRepository().GetLastMessage(egCtx, room.ID)
-		if err != nil {
-			return stackErr.Error(err)
+		var runErr error
+		lastMessage, runErr = readRepos.MessageReadRepository().GetLastMessage(egCtx, room.ID)
+		if runErr != nil {
+			return stackErr.Error(runErr)
 		}
 		return nil
 	})
@@ -155,7 +155,7 @@ func buildConversationResult(
 	}
 
 	if lastMessage != nil {
-		result.LastMessage, err = buildMessageResult(ctx, readRepos, viewerID, lastMessage)
+		result.LastMessage, err = BuildMessageResult(ctx, readRepos, viewerID, lastMessage)
 		if err != nil {
 			return nil, stackErr.Error(err)
 		}
@@ -164,7 +164,7 @@ func buildConversationResult(
 	return result, nil
 }
 
-func buildMessageResult(ctx context.Context, readRepos repos.QueryRepos, viewerID string, message *entity.MessageEntity) (*apptypes.MessageResult, error) {
+func BuildMessageResult(ctx context.Context, readRepos repos.QueryRepos, viewerID string, message *entity.MessageEntity) (*apptypes.MessageResult, error) {
 	status := "sent"
 	if message.SenderID == viewerID {
 		seenCount, err := readRepos.MessageReadRepository().CountMessageReceiptsByStatus(ctx, message.ID, "seen")

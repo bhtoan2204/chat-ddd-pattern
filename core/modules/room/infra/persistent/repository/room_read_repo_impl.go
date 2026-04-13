@@ -39,7 +39,6 @@ func (r *roomReadRepoImpl) UpdateRoom(ctx context.Context, room *entity.Room) er
 		"room_type":   room.RoomType,
 		"owner_id":    room.OwnerID,
 		"direct_key":  roomNullableString(room.DirectKey),
-		"updated_at":  room.UpdatedAt,
 	}
 	if room.PinnedMessageID != "" {
 		updates["pinned_message_id"] = room.PinnedMessageID

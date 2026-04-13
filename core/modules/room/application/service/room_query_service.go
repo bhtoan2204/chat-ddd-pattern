@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/stackErr"
@@ -22,7 +23,7 @@ func (s *RoomQueryService) GetRoom(ctx context.Context, query apptypes.GetRoomQu
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	return buildRoomResult(room), nil
+	return roomsupport.BuildRoomResult(room), nil
 }
 
 func (s *RoomQueryService) ListRooms(ctx context.Context, query apptypes.ListRoomsQuery) (*apptypes.ListRoomsResult, error) {
@@ -51,7 +52,7 @@ func (s *RoomQueryService) ListRooms(ctx context.Context, query apptypes.ListRoo
 		Rooms: make([]apptypes.RoomResult, 0, len(rooms)),
 	}
 	for _, room := range rooms {
-		roomResult := buildRoomResult(room)
+		roomResult := roomsupport.BuildRoomResult(room)
 		if roomResult != nil {
 			result.Rooms = append(result.Rooms, *roomResult)
 		}

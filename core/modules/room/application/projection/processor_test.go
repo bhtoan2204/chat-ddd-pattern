@@ -2,6 +2,8 @@ package projection
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -85,5 +87,47 @@ func TestHandleRoomOutboxEventProjectsTimelineAndSearch(t *testing.T) {
 	}
 	if search.document.ReplyToMessageID != "msg-0" {
 		t.Fatalf("expected reply_to_message_id msg-0, got %q", search.document.ReplyToMessageID)
+	}
+}
+
+func TestSearchMessageDocumentJSONUsesSnakeCaseFields(t *testing.T) {
+	document := &SearchMessageDocument{
+		RoomID:            "room-1",
+		MessageID:         "msg-1",
+		MessageSenderID:   "acc-1",
+		MessageSenderName: "Alice",
+		Mentions: []ProjectionMention{
+			{
+				AccountID:   "acc-2",
+				DisplayName: "Bob",
+				Username:    "bob",
+			},
+		},
+	}
+
+	payload, err := json.Marshal(document)
+	if err != nil {
+		t.Fatalf("expected marshal success, got %v", err)
+	}
+
+	jsonText := string(payload)
+	for _, expected := range []string{
+		`"room_id":"room-1"`,
+		`"message_id":"msg-1"`,
+		`"message_sender_id":"acc-1"`,
+		`"message_sender_name":"Alice"`,
+		`"account_id":"acc-2"`,
+		`"display_name":"Bob"`,
+		`"username":"bob"`,
+	} {
+		if !strings.Contains(jsonText, expected) {
+			t.Fatalf("expected json payload to contain %s, got %s", expected, jsonText)
+		}
+	}
+
+	for _, unexpected := range []string{`"RoomID"`, `"MessageID"`, `"MessageSenderID"`, `"AccountID"`} {
+		if strings.Contains(jsonText, unexpected) {
+			t.Fatalf("expected json payload to avoid Go field name %s, got %s", unexpected, jsonText)
+		}
 	}
 }

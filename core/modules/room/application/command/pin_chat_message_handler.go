@@ -2,22 +2,22 @@ package command
 
 import (
 	"context"
+	"time"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
+	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type pinChatMessageHandler struct {
-	roomService *roomservice.RoomCommandService
+	baseRepo roomrepos.Repos
 }
 
-func NewPinChatMessageHandler(roomService *roomservice.RoomCommandService) cqrs.Handler[*in.PinChatMessageRequest, *out.ChatConversationResponse] {
-	return &pinChatMessageHandler{roomService: roomService}
+func NewPinChatMessageHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.PinChatMessageRequest, *out.ChatConversationResponse] {
+	return &pinChatMessageHandler{baseRepo: baseRepo}
 }
 
 func (h *pinChatMessageHandler) Handle(ctx context.Context, req *in.PinChatMessageRequest) (*out.ChatConversationResponse, error) {
@@ -26,12 +26,23 @@ func (h *pinChatMessageHandler) Handle(ctx context.Context, req *in.PinChatMessa
 		return nil, stackErr.Error(err)
 	}
 
-	res, err := h.roomService.PinMessage(ctx, accountID, req.RoomID, apptypes.PinMessageCommand{
-		MessageID: req.MessageID,
-	})
+	agg, err := h.baseRepo.RoomAggregateRepository().Load(ctx, req.RoomID)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
 
+	if err := agg.PinMessage(accountID, req.MessageID, time.Now().UTC(), accountID); err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if err := h.baseRepo.WithTransaction(ctx, func(txRepos roomrepos.Repos) error {
+		return stackErr.Error(txRepos.RoomAggregateRepository().Save(ctx, agg))
+	}); err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	res, err := roomsupport.BuildConversationResult(ctx, h.baseRepo, accountID, agg.Room(), true)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
 	return roomsupport.ToConversationResponse(res), nil
 }

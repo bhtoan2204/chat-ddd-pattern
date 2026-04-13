@@ -28,7 +28,7 @@ func (h *searchChatMentionsHandler) Handle(ctx context.Context, req *in.SearchCh
 
 	results, err := h.chatService.SearchMentionCandidates(ctx, accountID, apptypes.SearchMentionCandidatesQuery{
 		RoomID: req.RoomID,
-		Query:  req.Query,
+		Query:  req.Q,
 		Limit:  req.Limit,
 	})
 	if err != nil {
