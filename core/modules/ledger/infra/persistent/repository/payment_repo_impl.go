@@ -131,13 +131,6 @@ func toPaymentIntentEntity(modelIntent *model.PaymentIntentModel) *entity.Paymen
 	}
 }
 
-func toNullableString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
-}
-
 func toStoredExternalRef(provider, transactionID, externalRef string) *string {
 	externalRef = strings.TrimSpace(externalRef)
 	if externalRef != "" {

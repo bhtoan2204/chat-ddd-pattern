@@ -103,7 +103,9 @@ func (a *MessageStateAggregate) MarkStatus(accountID, status string, member *ent
 	if a == nil || a.message == nil {
 		return false, stackErr.Error(ErrMessageAggregateNil)
 	}
-	if !a.message.CanBeMarkedBy(accountID) {
+
+	accountID = strings.TrimSpace(accountID)
+	if accountID == "" || accountID == strings.TrimSpace(a.message.SenderID) {
 		return false, nil
 	}
 
@@ -112,10 +114,8 @@ func (a *MessageStateAggregate) MarkStatus(accountID, status string, member *ent
 		return false, stackErr.Error(err)
 	}
 
-	deliveredAt := func() *time.Time {
-		value := now.UTC()
-		return &value
-	}()
+	deliveredValue := now.UTC()
+	deliveredAt := &deliveredValue
 	var seenAt *time.Time
 
 	a.recipientMember = member

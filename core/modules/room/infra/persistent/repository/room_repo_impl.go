@@ -115,8 +115,8 @@ func (r *roomRepoImpl) toEntity(m *models.RoomModel) *entity.Room {
 		Description:     m.Description,
 		RoomType:        m.RoomType,
 		OwnerID:         m.OwnerID,
-		DirectKey:       roomDerefString(m.DirectKey),
-		PinnedMessageID: roomDerefString(m.PinnedMessageID),
+		DirectKey:       utils.StringValue(m.DirectKey),
+		PinnedMessageID: utils.StringValue(m.PinnedMessageID),
 		CreatedAt:       m.CreatedAt,
 		UpdatedAt:       m.UpdatedAt,
 	}
@@ -129,23 +129,9 @@ func (r *roomRepoImpl) toModel(e *entity.Room) *models.RoomModel {
 		Description:     e.Description,
 		RoomType:        e.RoomType,
 		OwnerID:         e.OwnerID,
-		DirectKey:       roomNullableString(e.DirectKey),
-		PinnedMessageID: roomNullableString(e.PinnedMessageID),
+		DirectKey:       utils.NullableString(e.DirectKey),
+		PinnedMessageID: utils.NullableString(e.PinnedMessageID),
 		CreatedAt:       e.CreatedAt,
 		UpdatedAt:       e.UpdatedAt,
 	}
-}
-
-func roomNullableString(value string) *string {
-	if value == "" {
-		return nil
-	}
-	return &value
-}
-
-func roomDerefString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }

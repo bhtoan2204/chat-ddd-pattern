@@ -10,6 +10,7 @@ import (
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/infra/projection/cassandra/views"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
@@ -108,7 +109,7 @@ func (b *conversationQueryBuilder) Build(ctx context.Context, input Conversation
 		Description:     input.Room.Description,
 		RoomType:        strings.TrimSpace(input.Room.RoomType),
 		OwnerID:         input.Room.OwnerID,
-		PinnedMessageID: derefString(input.Room.PinnedMessageID),
+		PinnedMessageID: utils.DerefString(input.Room.PinnedMessageID),
 		MemberCount:     len(members),
 		UnreadCount:     unreadCount,
 		CreatedAt:       input.Room.CreatedAt.UTC().Format(time.RFC3339),
@@ -317,13 +318,6 @@ func (b *messageQueryBuilder) buildMessagePreview(ctx context.Context, messageID
 		Message:     message.Message,
 		MessageType: message.MessageType,
 	}
-}
-
-func derefString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return strings.TrimSpace(*value)
 }
 
 func firstNonEmpty(values ...string) string {

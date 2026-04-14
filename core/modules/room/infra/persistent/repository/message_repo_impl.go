@@ -118,6 +118,11 @@ func (r *messageRepoImpl) toEntity(m *models.MessageModel) (*entity.MessageEntit
 		return nil, stackErr.Error(err)
 	}
 
+	var fileSize int64
+	if m.FileSize != nil {
+		fileSize = *m.FileSize
+	}
+
 	return &entity.MessageEntity{
 		ID:                     m.ID,
 		RoomID:                 m.RoomID,
@@ -126,28 +131,14 @@ func (r *messageRepoImpl) toEntity(m *models.MessageModel) (*entity.MessageEntit
 		MessageType:            m.MessageType,
 		Mentions:               mentions,
 		MentionAll:             m.MentionAll,
-		ReplyToMessageID:       derefString(m.ReplyToMessageID),
-		ForwardedFromMessageID: derefString(m.ForwardedFromMessageID),
-		FileName:               derefString(m.FileName),
-		FileSize:               derefInt64(m.FileSize),
-		MimeType:               derefString(m.MimeType),
-		ObjectKey:              derefString(m.ObjectKey),
+		ReplyToMessageID:       utils.StringValue(m.ReplyToMessageID),
+		ForwardedFromMessageID: utils.StringValue(m.ForwardedFromMessageID),
+		FileName:               utils.StringValue(m.FileName),
+		FileSize:               fileSize,
+		MimeType:               utils.StringValue(m.MimeType),
+		ObjectKey:              utils.StringValue(m.ObjectKey),
 		EditedAt:               m.EditedAt,
 		DeletedForEveryoneAt:   m.DeletedForEveryoneAt,
 		CreatedAt:              m.CreatedAt,
 	}, nil
-}
-
-func derefString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
-}
-
-func derefInt64(value *int64) int64 {
-	if value == nil {
-		return 0
-	}
-	return *value
 }

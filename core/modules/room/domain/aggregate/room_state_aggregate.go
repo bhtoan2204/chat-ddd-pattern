@@ -391,7 +391,10 @@ func (a *RoomStateAggregate) SendMessage(
 }
 
 func (a *RoomStateAggregate) appendSystemMessage(actorID, body string, now time.Time) (*entity.MessageEntity, error) {
-	message, err := entity.NewSystemMessage(newUUID(), a.room.ID, actorID, body, now)
+	message, err := entity.NewMessage(newUUID(), a.room.ID, actorID, entity.MessageParams{
+		Message:     body,
+		MessageType: entity.MessageTypeSystem,
+	}, now)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}

@@ -92,7 +92,10 @@ func resolveMessageMentions(
 	for _, accountID := range filteredExplicitIDs {
 		projection := accountMap[accountID]
 		displayName := resolveMentionDisplayName(projection, accountID)
-		username := resolveMentionUsername(projection)
+		username := ""
+		if projection != nil {
+			username = strings.TrimSpace(projection.Username)
+		}
 
 		mentions = append(mentions, entity.MessageMention{
 			AccountID:   accountID,
@@ -165,13 +168,6 @@ func resolveMentionDisplayName(account *entity.AccountEntity, fallback string) s
 	default:
 		return strings.TrimSpace(fallback)
 	}
-}
-
-func resolveMentionUsername(account *entity.AccountEntity) string {
-	if account == nil {
-		return ""
-	}
-	return strings.TrimSpace(account.Username)
 }
 
 func appendUniqueString(values []string, value string) []string {

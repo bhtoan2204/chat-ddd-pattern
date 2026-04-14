@@ -9,6 +9,7 @@ import (
 	"go-socket/core/modules/room/domain/entity"
 	sharedevents "go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 )
 
 func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json.RawMessage) error {
@@ -49,20 +50,13 @@ func (h *messageHandler) handleAccountUpdatedEvent(ctx context.Context, raw json
 		AccountID:       payload.AccountID,
 		DisplayName:     payload.DisplayName,
 		UpdatedAt:       payload.UpdatedAt,
-		AvatarObjectKey: optionalStringValue(payload.AvatarObjectKey),
-		Username:        optionalStringValue(payload.Username),
+		AvatarObjectKey: utils.StringValue(payload.AvatarObjectKey),
+		Username:        utils.StringValue(payload.Username),
 	}); err != nil {
 		return stackErr.Error(err)
 	}
 
 	return nil
-}
-
-func optionalStringValue(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return *value
 }
 
 func resolveAccountCreatedDisplayName(payload *sharedevents.AccountCreatedEvent) string {

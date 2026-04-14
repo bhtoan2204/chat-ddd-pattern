@@ -85,13 +85,6 @@ func NewMessage(id, roomID, senderID string, params MessageParams, now time.Time
 	}, nil
 }
 
-func NewSystemMessage(id, roomID, senderID, body string, now time.Time) (*MessageEntity, error) {
-	return NewMessage(id, roomID, senderID, MessageParams{
-		Message:     body,
-		MessageType: MessageTypeSystem,
-	}, now)
-}
-
 func NormalizeMessageType(value string) string {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "", MessageTypeText:
@@ -133,8 +126,4 @@ func (m *MessageEntity) DeleteForEveryone(actorID string, deletedAt time.Time) e
 	m.Message = ""
 	m.DeletedForEveryoneAt = &now
 	return nil
-}
-
-func (m *MessageEntity) CanBeMarkedBy(accountID string) bool {
-	return strings.TrimSpace(accountID) != "" && strings.TrimSpace(accountID) != strings.TrimSpace(m.SenderID)
 }
