@@ -4,21 +4,48 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
-	ledgerin "go-socket/core/modules/ledger/application/dto/in"
+	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
 	"go-socket/core/modules/ledger/domain/entity"
 	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
+
+	"go.uber.org/mock/gomock"
 )
 
 func TestLedgerServiceCreateTransaction(t *testing.T) {
 	t.Run("valid transaction", func(t *testing.T) {
-		repos := newFakeRepos()
-		service := NewLedgerService(repos)
+		ctrl := gomock.NewController(t)
+		baseRepo := ledgerrepos.NewMockRepos(ctrl)
+		txRepos := ledgerrepos.NewMockRepos(ctrl)
+		aggregateRepo := ledgerrepos.NewMockLedgerTransactionAggregateRepository(ctrl)
 
-		response, err := service.CreateTransaction(context.Background(), &ledgerin.CreateTransactionRequest{
+		baseRepo.EXPECT().
+			WithTransaction(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(ledgerrepos.Repos) error) error {
+				return fn(txRepos)
+			})
+		txRepos.EXPECT().LedgerTransactionAggregateRepository().Return(aggregateRepo)
+		aggregateRepo.EXPECT().
+			Save(gomock.Any(), gomock.AssignableToTypeOf(&ledgeraggregate.LedgerTransactionAggregate{})).
+			DoAndReturn(func(_ context.Context, aggregate *ledgeraggregate.LedgerTransactionAggregate) error {
+				transaction, err := aggregate.Snapshot()
+				if err != nil {
+					t.Fatalf("Snapshot() error = %v", err)
+				}
+				if transaction.TransactionID != "ledger-tx-valid" {
+					t.Fatalf("expected transaction id ledger-tx-valid, got %s", transaction.TransactionID)
+				}
+				if len(transaction.Entries) != 2 {
+					t.Fatalf("expected 2 entries, got %d", len(transaction.Entries))
+				}
+				return aggregate.AssignEntryIDs([]int64{1, 2})
+			})
+
+		service := NewLedgerService(baseRepo)
+
+		transaction, err := service.CreateTransaction(context.Background(), CreateTransactionCommand{
 			TransactionID: "ledger-tx-valid",
-			Entries: []ledgerin.LedgerEntryRequest{
+			Entries: []CreateTransactionEntryCommand{
 				{AccountID: "acc-a", Amount: -100},
 				{AccountID: "acc-b", Amount: 100},
 			},
@@ -26,21 +53,25 @@ func TestLedgerServiceCreateTransaction(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expected no error, got %v", err)
 		}
-		if response.TransactionID != "ledger-tx-valid" {
-			t.Fatalf("expected transaction id ledger-tx-valid, got %s", response.TransactionID)
+		if transaction.TransactionID != "ledger-tx-valid" {
+			t.Fatalf("expected transaction id ledger-tx-valid, got %s", transaction.TransactionID)
 		}
-		if len(response.Entries) != 2 {
-			t.Fatalf("expected 2 entries, got %d", len(response.Entries))
+		if len(transaction.Entries) != 2 {
+			t.Fatalf("expected 2 entries, got %d", len(transaction.Entries))
+		}
+		if transaction.Entries[0].ID != 1 || transaction.Entries[1].ID != 2 {
+			t.Fatalf("expected persisted entry ids [1 2], got [%d %d]", transaction.Entries[0].ID, transaction.Entries[1].ID)
 		}
 	})
 
 	t.Run("invalid transaction", func(t *testing.T) {
-		repos := newFakeRepos()
-		service := NewLedgerService(repos)
+		ctrl := gomock.NewController(t)
+		baseRepo := ledgerrepos.NewMockRepos(ctrl)
+		service := NewLedgerService(baseRepo)
 
-		_, err := service.CreateTransaction(context.Background(), &ledgerin.CreateTransactionRequest{
+		_, err := service.CreateTransaction(context.Background(), CreateTransactionCommand{
 			TransactionID: "ledger-tx-invalid",
-			Entries: []ledgerin.LedgerEntryRequest{
+			Entries: []CreateTransactionEntryCommand{
 				{AccountID: "acc-a", Amount: -100},
 				{AccountID: "acc-b", Amount: 50},
 			},
@@ -51,16 +82,26 @@ func TestLedgerServiceCreateTransaction(t *testing.T) {
 	})
 
 	t.Run("duplicate transaction", func(t *testing.T) {
-		repos := newFakeRepos()
-		repos.ledgerRepo.transactions["ledger-tx-dup"] = &entity.LedgerTransaction{
-			TransactionID: "ledger-tx-dup",
-			CreatedAt:     time.Now().UTC(),
-		}
-		service := NewLedgerService(repos)
+		ctrl := gomock.NewController(t)
+		baseRepo := ledgerrepos.NewMockRepos(ctrl)
+		txRepos := ledgerrepos.NewMockRepos(ctrl)
+		aggregateRepo := ledgerrepos.NewMockLedgerTransactionAggregateRepository(ctrl)
 
-		_, err := service.CreateTransaction(context.Background(), &ledgerin.CreateTransactionRequest{
+		baseRepo.EXPECT().
+			WithTransaction(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(ledgerrepos.Repos) error) error {
+				return fn(txRepos)
+			})
+		txRepos.EXPECT().LedgerTransactionAggregateRepository().Return(aggregateRepo)
+		aggregateRepo.EXPECT().
+			Save(gomock.Any(), gomock.AssignableToTypeOf(&ledgeraggregate.LedgerTransactionAggregate{})).
+			Return(ledgerrepos.ErrDuplicate)
+
+		service := NewLedgerService(baseRepo)
+
+		_, err := service.CreateTransaction(context.Background(), CreateTransactionCommand{
 			TransactionID: "ledger-tx-dup",
-			Entries: []ledgerin.LedgerEntryRequest{
+			Entries: []CreateTransactionEntryCommand{
 				{AccountID: "acc-a", Amount: -100},
 				{AccountID: "acc-b", Amount: 100},
 			},
@@ -71,74 +112,60 @@ func TestLedgerServiceCreateTransaction(t *testing.T) {
 	})
 }
 
-type fakeRepos struct {
-	ledgerRepo *fakeLedgerRepo
-}
+func TestLedgerServiceRecordPaymentSucceeded(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	baseRepo := ledgerrepos.NewMockRepos(ctrl)
+	txRepos := ledgerrepos.NewMockRepos(ctrl)
+	aggregateRepo := ledgerrepos.NewMockLedgerTransactionAggregateRepository(ctrl)
+	paymentRepo := ledgerrepos.NewMockPaymentRepository(ctrl)
 
-func newFakeRepos() *fakeRepos {
-	return &fakeRepos{
-		ledgerRepo: &fakeLedgerRepo{
-			nextEntryID:  1,
-			transactions: make(map[string]*entity.LedgerTransaction),
-		},
-	}
-}
-
-func (r *fakeRepos) LedgerRepository() ledgerrepos.LedgerRepository {
-	return r.ledgerRepo
-}
-
-func (r *fakeRepos) PaymentRepository() ledgerrepos.PaymentRepository {
-	return nil
-}
-
-func (r *fakeRepos) WithTransaction(_ context.Context, fn func(ledgerrepos.Repos) error) error {
-	return fn(r)
-}
-
-type fakeLedgerRepo struct {
-	nextEntryID  int64
-	transactions map[string]*entity.LedgerTransaction
-}
-
-func (r *fakeLedgerRepo) CreateTransaction(_ context.Context, transaction *entity.LedgerTransaction) error {
-	if _, exists := r.transactions[transaction.TransactionID]; exists {
-		return ledgerrepos.ErrDuplicate
-	}
-	r.transactions[transaction.TransactionID] = &entity.LedgerTransaction{
-		TransactionID: transaction.TransactionID,
-		CreatedAt:     transaction.CreatedAt,
-	}
-	return nil
-}
-
-func (r *fakeLedgerRepo) InsertEntries(_ context.Context, entries []*entity.LedgerEntry) error {
-	for _, entry := range entries {
-		stored := *entry
-		stored.ID = r.nextEntryID
-		entry.ID = r.nextEntryID
-		r.nextEntryID++
-		r.transactions[stored.TransactionID].Entries = append(r.transactions[stored.TransactionID].Entries, &stored)
-	}
-	return nil
-}
-
-func (r *fakeLedgerRepo) GetBalance(_ context.Context, accountID string) (int64, error) {
-	var balance int64
-	for _, transaction := range r.transactions {
-		for _, entry := range transaction.Entries {
-			if entry.AccountID == accountID {
-				balance += entry.Amount
+	baseRepo.EXPECT().
+		WithTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, fn func(ledgerrepos.Repos) error) error {
+			return fn(txRepos)
+		})
+	txRepos.EXPECT().PaymentRepository().Return(paymentRepo).Times(2)
+	paymentRepo.EXPECT().IsProcessed(gomock.Any(), paymentSucceededSource, "payment.succeeded:pay-1").Return(false, nil)
+	txRepos.EXPECT().LedgerTransactionAggregateRepository().Return(aggregateRepo)
+	aggregateRepo.EXPECT().
+		Save(gomock.Any(), gomock.AssignableToTypeOf(&ledgeraggregate.LedgerTransactionAggregate{})).
+		DoAndReturn(func(_ context.Context, aggregate *ledgeraggregate.LedgerTransactionAggregate) error {
+			transaction, err := aggregate.Snapshot()
+			if err != nil {
+				t.Fatalf("Snapshot() error = %v", err)
 			}
-		}
-	}
-	return balance, nil
-}
+			if transaction.TransactionID != "payment:pay-1:succeeded" {
+				t.Fatalf("expected payment booking transaction id, got %s", transaction.TransactionID)
+			}
+			if len(transaction.Entries) != 2 {
+				t.Fatalf("expected 2 ledger entries, got %d", len(transaction.Entries))
+			}
+			return aggregate.AssignEntryIDs([]int64{10, 11})
+		})
+	paymentRepo.EXPECT().
+		MarkProcessed(gomock.Any(), gomock.AssignableToTypeOf(&entity.ProcessedPaymentEvent{})).
+		DoAndReturn(func(_ context.Context, event *entity.ProcessedPaymentEvent) error {
+			if event.Provider != paymentSucceededSource {
+				t.Fatalf("expected provider %s, got %s", paymentSucceededSource, event.Provider)
+			}
+			if event.TransactionID != "pay-1" {
+				t.Fatalf("expected processed payment id pay-1, got %s", event.TransactionID)
+			}
+			if event.IdempotencyKey != "payment.succeeded:pay-1" {
+				t.Fatalf("expected idempotency key payment.succeeded:pay-1, got %s", event.IdempotencyKey)
+			}
+			return nil
+		})
 
-func (r *fakeLedgerRepo) GetTransaction(_ context.Context, transactionID string) (*entity.LedgerTransaction, error) {
-	transaction, exists := r.transactions[transactionID]
-	if !exists {
-		return nil, ledgerrepos.ErrNotFound
+	service := NewLedgerService(baseRepo)
+
+	err := service.RecordPaymentSucceeded(context.Background(), RecordPaymentSucceededCommand{
+		PaymentID:       "pay-1",
+		DebitAccountID:  "wallet:pending",
+		CreditAccountID: "wallet:available",
+		Amount:          100,
+	})
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
 	}
-	return transaction, nil
 }

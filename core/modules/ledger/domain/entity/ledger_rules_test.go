@@ -4,8 +4,6 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	sharedevents "go-socket/core/shared/contracts/events"
 )
 
 func TestNewLedgerTransactionBuildsEntries(t *testing.T) {
@@ -41,7 +39,7 @@ func TestNewLedgerTransactionRejectsUnbalancedEntries(t *testing.T) {
 }
 
 func TestNewPaymentSucceededBookingBuildsDomainBooking(t *testing.T) {
-	booking, err := NewPaymentSucceededBooking(&sharedevents.PaymentSucceededEvent{
+	booking, err := NewPaymentSucceededBooking(PaymentSucceededBookingInput{
 		TransactionID:   "txn-1",
 		DebitAccountID:  "debit",
 		CreditAccountID: "credit",

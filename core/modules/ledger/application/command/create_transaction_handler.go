@@ -18,5 +18,36 @@ func NewCreateTransactionHandler(service *ledgerservice.LedgerService) cqrs.Hand
 }
 
 func (h *createTransactionHandler) Handle(ctx context.Context, req *ledgerin.CreateTransactionRequest) (*ledgerout.TransactionResponse, error) {
-	return h.service.CreateTransaction(ctx, req)
+	command := ledgerservice.CreateTransactionCommand{
+		TransactionID: req.TransactionID,
+		Entries:       make([]ledgerservice.CreateTransactionEntryCommand, 0, len(req.Entries)),
+	}
+	for _, entry := range req.Entries {
+		command.Entries = append(command.Entries, ledgerservice.CreateTransactionEntryCommand{
+			AccountID: entry.AccountID,
+			Amount:    entry.Amount,
+		})
+	}
+
+	transaction, err := h.service.CreateTransaction(ctx, command)
+	if err != nil {
+		return nil, err
+	}
+
+	responseEntries := make([]ledgerout.LedgerEntryResponse, 0, len(transaction.Entries))
+	for _, entry := range transaction.Entries {
+		responseEntries = append(responseEntries, ledgerout.LedgerEntryResponse{
+			ID:            entry.ID,
+			TransactionID: entry.TransactionID,
+			AccountID:     entry.AccountID,
+			Amount:        entry.Amount,
+			CreatedAt:     entry.CreatedAt,
+		})
+	}
+
+	return &ledgerout.TransactionResponse{
+		TransactionID: transaction.TransactionID,
+		CreatedAt:     transaction.CreatedAt,
+		Entries:       responseEntries,
+	}, nil
 }

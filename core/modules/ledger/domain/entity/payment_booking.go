@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	sharedevents "go-socket/core/shared/contracts/events"
 )
 
 var (
@@ -27,29 +25,34 @@ type PaymentSucceededBooking struct {
 	IdempotencyKey  string
 }
 
-func NewPaymentSucceededBooking(evt *sharedevents.PaymentSucceededEvent) (*PaymentSucceededBooking, error) {
-	if evt == nil {
-		return nil, ErrPaymentSucceededEventRequired
-	}
+type PaymentSucceededBookingInput struct {
+	PaymentID       string
+	TransactionID   string
+	DebitAccountID  string
+	CreditAccountID string
+	Amount          int64
+	IdempotencyKey  string
+}
 
-	paymentID := strings.TrimSpace(evt.PaymentID)
+func NewPaymentSucceededBooking(input PaymentSucceededBookingInput) (*PaymentSucceededBooking, error) {
+	paymentID := strings.TrimSpace(input.PaymentID)
 	if paymentID == "" {
-		paymentID = strings.TrimSpace(evt.TransactionID)
+		paymentID = strings.TrimSpace(input.TransactionID)
 	}
 	if paymentID == "" {
 		return nil, ErrPaymentBookingIDRequired
 	}
 
-	debitAccountID := strings.TrimSpace(evt.DebitAccountID)
-	creditAccountID := strings.TrimSpace(evt.CreditAccountID)
+	debitAccountID := strings.TrimSpace(input.DebitAccountID)
+	creditAccountID := strings.TrimSpace(input.CreditAccountID)
 	if debitAccountID == "" || creditAccountID == "" {
 		return nil, ErrPaymentBookingAccountsRequired
 	}
-	if evt.Amount <= 0 {
+	if input.Amount <= 0 {
 		return nil, ErrPaymentBookingAmountInvalid
 	}
 
-	idempotencyKey := strings.TrimSpace(evt.IdempotencyKey)
+	idempotencyKey := strings.TrimSpace(input.IdempotencyKey)
 	if idempotencyKey == "" {
 		idempotencyKey = fmt.Sprintf("payment.succeeded:%s", paymentID)
 	}
@@ -58,7 +61,7 @@ func NewPaymentSucceededBooking(evt *sharedevents.PaymentSucceededEvent) (*Payme
 		PaymentID:       paymentID,
 		DebitAccountID:  debitAccountID,
 		CreditAccountID: creditAccountID,
-		Amount:          evt.Amount,
+		Amount:          input.Amount,
 		IdempotencyKey:  idempotencyKey,
 	}, nil
 }

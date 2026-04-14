@@ -5,6 +5,7 @@ import "context"
 //go:generate mockgen -package=repos -destination=repos_mock.go -source=repos.go
 type Repos interface {
 	LedgerRepository() LedgerRepository
+	LedgerTransactionAggregateRepository() LedgerTransactionAggregateRepository
 	PaymentRepository() PaymentRepository
 
 	WithTransaction(ctx context.Context, fn func(Repos) error) error
