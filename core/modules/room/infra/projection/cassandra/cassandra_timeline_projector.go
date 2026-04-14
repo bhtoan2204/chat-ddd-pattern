@@ -1,8 +1,6 @@
 package projection
 
 import (
-	"strings"
-
 	roomprojection "go-socket/core/modules/room/application/projection"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/stackErr"
@@ -16,11 +14,4 @@ func NewCassandraTimelineProjector(cfg config.CassandraConfig, session *gocql.Se
 		return nil, stackErr.Error(err)
 	}
 	return store, nil
-}
-
-func normalizeTimelineTable(value string) string {
-	if trimmed := strings.TrimSpace(value); trimmed != "" {
-		return trimmed
-	}
-	return "room_message_timelines"
 }

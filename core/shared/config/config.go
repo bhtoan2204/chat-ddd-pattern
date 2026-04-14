@@ -70,9 +70,10 @@ type KafkaPaymentConsumer struct {
 }
 
 type KafkaRoomConsumer struct {
-	RoomGroup       string `env:"KAFKA_ROOM_CONSUMER_GROUP"`
-	AccountTopic    string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
-	RoomOutboxTopic string `env:"KAFKA_CONSUMER_ROOM_OUTBOX_TOPIC"`
+	RoomMessagingGroup  string `env:"KAFKA_ROOM_CONSUMER_MESSAGING_GROUP"`
+	RoomProjectionGroup string `env:"KAFKA_ROOM_CONSUMER_PROJECTION_GROUP"`
+	AccountTopic        string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
+	RoomOutboxTopic     string `env:"KAFKA_CONSUMER_ROOM_OUTBOX_TOPIC"`
 }
 
 type KafkaLedgerConsumer struct {
@@ -132,7 +133,6 @@ type CassandraConfig struct {
 	ReplicationFactor     int    `env:"CASSANDRA_REPLICATION_FACTOR,default=1"`
 	ConnectTimeoutSeconds int    `env:"CASSANDRA_CONNECT_TIMEOUT_SECONDS,default=10"`
 	TimeoutSeconds        int    `env:"CASSANDRA_TIMEOUT_SECONDS,default=10"`
-	RoomTimelineTable     string `env:"CASSANDRA_ROOM_TIMELINE_TABLE,default=room_message_timelines"`
 }
 
 type ElasticsearchConfig struct {

@@ -38,3 +38,18 @@ func NullableString(value string) *string {
 	}
 	return &value
 }
+
+func DerefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(*value)
+}
+
+func StringPtr(value string) *string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	return &value
+}

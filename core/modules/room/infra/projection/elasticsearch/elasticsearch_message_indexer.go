@@ -29,7 +29,7 @@ func NewElasticsearchMessageIndexer(cfg config.ElasticsearchConfig, client *es8.
 
 	indexer := &elasticsearchMessageIndexer{
 		client: client,
-		index:  normalizeIndexName(cfg.RoomMessageIndex),
+		index:  strings.TrimSpace(cfg.RoomMessageIndex),
 	}
 
 	if err := indexer.ensureIndex(context.Background()); err != nil {
@@ -44,7 +44,38 @@ func (i *elasticsearchMessageIndexer) SyncMessage(ctx context.Context, message *
 		return nil
 	}
 
-	document := toSearchDocument(message)
+	messageContent := message.MessageContent
+	if message.DeletedForEveryoneAt != nil {
+		messageContent = ""
+	}
+
+	document := map[string]interface{}{
+		"room_id":                   message.RoomID,
+		"room_name":                 message.RoomName,
+		"room_type":                 message.RoomType,
+		"message_id":                message.MessageID,
+		"message_content":           messageContent,
+		"message_type":              message.MessageType,
+		"reply_to_message_id":       message.ReplyToMessageID,
+		"forwarded_from_message_id": message.ForwardedFromMessageID,
+		"file_name":                 message.FileName,
+		"file_size":                 message.FileSize,
+		"mime_type":                 message.MimeType,
+		"object_key":                message.ObjectKey,
+		"message_sender_id":         message.MessageSenderID,
+		"message_sender_name":       message.MessageSenderName,
+		"message_sender_email":      message.MessageSenderEmail,
+		"message_sent_at":           message.MessageSentAt,
+		"mention_all":               message.MentionAll,
+		"mentioned_account_ids":     message.MentionedAccountIDs,
+		"mentions":                  message.Mentions,
+		"edited_at":                 message.EditedAt,
+	}
+
+	if message.DeletedForEveryoneAt != nil {
+		document["deleted_for_everyone_at"] = message.DeletedForEveryoneAt
+	}
+
 	body, err := json.Marshal(document)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("marshal elasticsearch room message failed: %v", err))
@@ -105,37 +136,6 @@ func (i *elasticsearchMessageIndexer) DeleteRoom(ctx context.Context, roomID str
 	return nil
 }
 
-func toSearchDocument(message *roomprojection.MessageProjection) map[string]interface{} {
-	messageContent := message.MessageContent
-	if message.DeletedForEveryoneAt != nil {
-		messageContent = ""
-	}
-
-	return map[string]interface{}{
-		"room_id":                   message.RoomID,
-		"room_name":                 message.RoomName,
-		"room_type":                 message.RoomType,
-		"message_id":                message.MessageID,
-		"message_content":           messageContent,
-		"message_type":              message.MessageType,
-		"reply_to_message_id":       message.ReplyToMessageID,
-		"forwarded_from_message_id": message.ForwardedFromMessageID,
-		"file_name":                 message.FileName,
-		"file_size":                 message.FileSize,
-		"mime_type":                 message.MimeType,
-		"object_key":                message.ObjectKey,
-		"message_sender_id":         message.MessageSenderID,
-		"message_sender_name":       message.MessageSenderName,
-		"message_sender_email":      message.MessageSenderEmail,
-		"message_sent_at":           message.MessageSentAt,
-		"mention_all":               message.MentionAll,
-		"mentioned_account_ids":     message.MentionedAccountIDs,
-		"mentions":                  message.Mentions,
-		"edited_at":                 message.EditedAt,
-		"deleted_for_everyone_at":   message.DeletedForEveryoneAt,
-	}
-}
-
 func (i *elasticsearchMessageIndexer) ensureIndex(ctx context.Context) error {
 	existsReq := esapi.IndicesExistsRequest{Index: []string{i.index}}
 	existsRes, err := existsReq.Do(ctx, i.client)
@@ -191,7 +191,7 @@ func roomMessageIndexDefinition() map[string]interface{} {
 			},
 		},
 		"mappings": map[string]interface{}{
-			"dynamic": "strict",
+			"dynamic": "true", // use strict in the future
 			"properties": map[string]interface{}{
 				"room_id": map[string]interface{}{"type": "keyword"},
 				"room_name": map[string]interface{}{
@@ -254,14 +254,6 @@ func roomMessageIndexDefinition() map[string]interface{} {
 			},
 		},
 	}
-}
-
-func normalizeIndexName(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "room_messages_v1"
-	}
-	return value
 }
 
 func readBody(body io.Reader) string {

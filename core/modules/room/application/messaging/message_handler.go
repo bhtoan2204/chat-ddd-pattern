@@ -89,7 +89,7 @@ func NewMessageHandler(cfg *config.Config, accountRepo repos.RoomAccountProjecti
 	for _, topic := range consumeTopics {
 		consumer, err := infraMessaging.NewConsumer(&infraMessaging.Config{
 			Servers:      cfg.KafkaConfig.KafkaServers,
-			Group:        cfg.KafkaConfig.KafkaRoomConsumer.RoomGroup,
+			Group:        cfg.KafkaConfig.KafkaRoomConsumer.RoomMessagingGroup,
 			OffsetReset:  cfg.KafkaConfig.KafkaOffsetReset,
 			ConsumeTopic: []string{topic},
 			HandlerName:  fmt.Sprintf("room-%s-handler", strings.ToLower(topic)),

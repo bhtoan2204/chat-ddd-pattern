@@ -42,7 +42,7 @@ func NewProcessor(cfg *config.Config, servingProjector roomprojection.ServingPro
 	handlerName := fmt.Sprintf("room-projection-%s-handler", strings.ToLower(topic))
 	consumer, err := infraMessaging.NewConsumer(&infraMessaging.Config{
 		Servers:      cfg.KafkaConfig.KafkaServers,
-		Group:        cfg.KafkaConfig.KafkaRoomConsumer.RoomGroup,
+		Group:        cfg.KafkaConfig.KafkaRoomConsumer.RoomProjectionGroup,
 		OffsetReset:  cfg.KafkaConfig.KafkaOffsetReset,
 		ConsumeTopic: []string{topic},
 		HandlerName:  handlerName,

@@ -19,13 +19,14 @@ import (
 )
 
 const (
-	defaultRoomProjectionTable         = "room_projections_by_id"
-	defaultRoomProjectionByAccount     = "room_projections_by_account"
-	defaultRoomProjectionGlobal        = "room_projections_global"
-	defaultRoomMemberProjectionTable   = "room_member_projections_by_room"
-	defaultRoomMessageByIDTable        = "room_messages_by_id"
-	defaultRoomMessageReceiptTable     = "room_message_receipts_by_message"
-	defaultRoomMessageDeletionTable    = "room_message_deletions_by_account_room"
+	roomProjectionTable                = "room_projections_by_id"
+	roomProjectionByAccount            = "room_projections_by_account"
+	roomProjectionGlobal               = "room_projections_global"
+	roomMemberProjectionTable          = "room_member_projections_by_room"
+	roomMessageByIDTable               = "room_messages_by_id"
+	roomMessageReceiptTable            = "room_message_receipts_by_message"
+	roomMessageDeletionTable           = "room_message_deletions_by_account_room"
+	roomMessageTimelines               = "room_message_timelines"
 	globalRoomProjectionPartition      = "all"
 	defaultRoomListPageExpansionFactor = 3
 )
@@ -102,13 +103,13 @@ func NewCassandraProjectionStore(cfg config.CassandraConfig, session *gocql.Sess
 
 	store := &cassandraProjectionStore{
 		session:              session,
-		roomTable:            normalizeProjectionTable(defaultRoomProjectionTable),
-		roomsByAccountTable:  normalizeProjectionTable(defaultRoomProjectionByAccount),
-		roomMembersTable:     normalizeProjectionTable(defaultRoomMemberProjectionTable),
-		roomTimelineTable:    normalizeTimelineTable(cfg.RoomTimelineTable),
-		messageByIDTable:     normalizeProjectionTable(defaultRoomMessageByIDTable),
-		messageReceiptsTable: normalizeProjectionTable(defaultRoomMessageReceiptTable),
-		messageDeletesTable:  normalizeProjectionTable(defaultRoomMessageDeletionTable),
+		roomTable:            roomProjectionTable,
+		roomsByAccountTable:  roomProjectionByAccount,
+		roomMembersTable:     roomMemberProjectionTable,
+		roomTimelineTable:    roomMessageTimelines,
+		messageByIDTable:     roomMessageByIDTable,
+		messageReceiptsTable: roomMessageReceiptTable,
+		messageDeletesTable:  roomMessageDeletionTable,
 	}
 
 	if err := store.ensureSchema(context.Background()); err != nil {
@@ -453,7 +454,7 @@ func (s *cassandraProjectionStore) UpsertRoom(ctx context.Context, room *views.R
 			Description:     room.Description,
 			RoomType:        string(room.RoomType),
 			OwnerID:         room.OwnerID,
-			PinnedMessageID: derefProjectionString(room.PinnedMessageID),
+			PinnedMessageID: utils.DerefString(room.PinnedMessageID),
 			MemberCount:     room.MemberCount,
 			LastMessage:     roomLastMessageFromView(room),
 			CreatedAt:       room.CreatedAt,
@@ -838,7 +839,7 @@ func (s *cassandraProjectionStore) UpsertMessageReceipt(
 		return nil
 	}
 	return stackErr.Error(s.upsertMessageReceiptRow(ctx, &roomprojection.MessageReceiptProjection{
-		RoomID:      roomIDFromMessageView(message),
+		RoomID:      message.RoomID,
 		MessageID:   messageID,
 		AccountID:   accountID,
 		Status:      status,
@@ -1745,10 +1746,10 @@ func roomRowToEntity(row *roomProjectionRow) *views.RoomView {
 		return nil
 	}
 
-	pinnedMessageID := stringPtr(row.PinnedMessageID)
-	lastMessageID := stringPtr(row.LastMessageID)
-	lastMessageContent := stringPtr(row.LastMessageContent)
-	lastMessageSenderID := stringPtr(row.LastMessageSenderID)
+	pinnedMessageID := utils.StringPtr(row.PinnedMessageID)
+	lastMessageID := utils.StringPtr(row.LastMessageID)
+	lastMessageContent := utils.StringPtr(row.LastMessageContent)
+	lastMessageSenderID := utils.StringPtr(row.LastMessageSenderID)
 
 	return &views.RoomView{
 		ID:                  row.RoomID,
@@ -1905,8 +1906,8 @@ func roomLastMessageFromView(room *views.RoomView) *roomprojection.RoomLastMessa
 	return &roomprojection.RoomLastMessageProjection{
 		MessageID:       strings.TrimSpace(*room.LastMessageID),
 		MessageSentAt:   cloneTime(room.LastMessageAt),
-		MessageContent:  derefProjectionString(room.LastMessageContent),
-		MessageSenderID: derefProjectionString(room.LastMessageSenderID),
+		MessageContent:  utils.DerefString(room.LastMessageContent),
+		MessageSenderID: utils.DerefString(room.LastMessageSenderID),
 	}
 }
 
@@ -1927,28 +1928,6 @@ func projectionRoomID(projection *roomprojection.MessageAggregateSync) string {
 		return strings.TrimSpace(projection.Deletions[0].RoomID)
 	}
 	return ""
-}
-
-func roomIDFromMessageView(message *views.MessageView) string {
-	if message == nil {
-		return ""
-	}
-	return strings.TrimSpace(message.RoomID)
-}
-
-func derefProjectionString(value *string) string {
-	if value == nil {
-		return ""
-	}
-	return strings.TrimSpace(*value)
-}
-
-func stringPtr(value string) *string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return nil
-	}
-	return &value
 }
 
 func cloneRoomRow(row *roomProjectionRow) *roomProjectionRow {
@@ -2142,25 +2121,6 @@ func boundedLimit(value, defaultValue, maxValue int) int {
 		value = maxValue
 	}
 	return value
-}
-
-func normalizeProjectionTable(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "room_projection_default"
-	}
-	return value
-}
-
-func marshalProjectionMentions(mentions []roomprojection.ProjectionMention) (string, error) {
-	if len(mentions) == 0 {
-		return "[]", nil
-	}
-	data, err := json.Marshal(mentions)
-	if err != nil {
-		return "", stackErr.Error(err)
-	}
-	return string(data), nil
 }
 
 func unmarshalProjectionMentions(raw string) ([]views.MessageMentionView, error) {
