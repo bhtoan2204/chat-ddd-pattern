@@ -84,7 +84,7 @@ endpoints:
     method: POST
     path: /auth/refresh
     handler: RefreshHandler
-    auth: true
+    auth: false
     usecase:
       name: AuthUsecase
       method: Refresh

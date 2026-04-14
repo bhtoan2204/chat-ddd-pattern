@@ -159,20 +159,15 @@ func (s *registrationService) persistRegisteredAggregate(ctx context.Context, ac
 }
 
 func (s *registrationService) issueRegistrationSession(ctx context.Context, accountSnapshot *entity.Account) (*RegistrationResult, error) {
-	accessToken, accessExpiresAt, err := s.paseto.GenerateAccessToken(ctx, accountSnapshot)
+	accessToken, accessExpiresAt, refreshToken, refreshExpiresAt, err := issueTokenPair(ctx, s.paseto, accountSnapshot)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("generate token failed: %v", err))
-	}
-
-	refreshToken, refrestExpiresAt, err := s.paseto.GenerateAccessToken(ctx, accountSnapshot)
-	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("generate token failed: %v", err))
+		return nil, stackErr.Error(err)
 	}
 
 	return &RegistrationResult{
 		AccessToken:      accessToken,
 		AccessExpiresAt:  accessExpiresAt,
 		RefreshToken:     refreshToken,
-		RefreshExpiresAt: refrestExpiresAt,
+		RefreshExpiresAt: refreshExpiresAt,
 	}, nil
 }

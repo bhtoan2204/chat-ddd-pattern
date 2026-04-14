@@ -59,11 +59,11 @@ func NewHTTPServer(
 }
 
 func (s *accountHTTPServer) RegisterPublicRoutes(routes *gin.RouterGroup) {
-	accounthttp.RegisterPublicRoutes(routes, s.login, s.register, s.confirmVerifyEmail)
+	accounthttp.RegisterPublicRoutes(routes, s.login, s.register, s.refresh, s.confirmVerifyEmail)
 }
 
 func (s *accountHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {
-	accounthttp.RegisterPrivateRoutes(routes, s.logout, s.refresh, s.getProfile, s.updateProfile, s.verifyEmail, s.changePassword, s.getAvatar, s.createPresignedUrl, s.searchUsers)
+	accounthttp.RegisterPrivateRoutes(routes, s.logout, s.getProfile, s.updateProfile, s.verifyEmail, s.changePassword, s.getAvatar, s.createPresignedUrl, s.searchUsers)
 }
 
 func (s *accountHTTPServer) Stop(_ context.Context) error {

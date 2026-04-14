@@ -15,16 +15,17 @@ func RegisterPublicRoutes(
 	routes *gin.RouterGroup,
 	login cqrs.Dispatcher[*in.LoginRequest, *out.LoginResponse],
 	register cqrs.Dispatcher[*in.RegisterRequest, *out.RegisterResponse],
+	refresh cqrs.Dispatcher[*in.RefreshRequest, *out.RefreshResponse],
 	confirmVerifyEmail cqrs.Dispatcher[*in.ConfirmVerifyEmailRequest, *out.ConfirmVerifyEmailResponse],
 ) {
 	routes.POST("/auth/login", httpx.Wrap(handler.NewLoginHandler(login)))
 	routes.POST("/auth/register", httpx.Wrap(handler.NewRegisterHandler(register)))
+	routes.POST("/auth/refresh", httpx.Wrap(handler.NewRefreshHandler(refresh)))
 	routes.POST("/account/verify-email/confirm", httpx.Wrap(handler.NewConfirmVerifyEmailHandler(confirmVerifyEmail)))
 }
 func RegisterPrivateRoutes(
 	routes *gin.RouterGroup,
 	logout cqrs.Dispatcher[*in.LogoutRequest, *out.LogoutResponse],
-	refresh cqrs.Dispatcher[*in.RefreshRequest, *out.RefreshResponse],
 	getProfile cqrs.Dispatcher[*in.GetProfileRequest, *out.GetProfileResponse],
 	updateProfile cqrs.Dispatcher[*in.UpdateProfileRequest, *out.UpdateProfileResponse],
 	verifyEmail cqrs.Dispatcher[*in.VerifyEmailRequest, *out.VerifyEmailResponse],
@@ -34,7 +35,6 @@ func RegisterPrivateRoutes(
 	searchUsers cqrs.Dispatcher[*in.SearchUsersRequest, *out.SearchUsersResponse],
 ) {
 	routes.POST("/auth/logout", httpx.Wrap(handler.NewLogoutHandler(logout)))
-	routes.POST("/auth/refresh", httpx.Wrap(handler.NewRefreshHandler(refresh)))
 	routes.GET("/account/profile", httpx.Wrap(handler.NewGetProfileHandler(getProfile)))
 	routes.PUT("/account/profile", httpx.Wrap(handler.NewUpdateProfileHandler(updateProfile)))
 	routes.POST("/account/verify-email", httpx.Wrap(handler.NewVerifyEmailHandler(verifyEmail)))
