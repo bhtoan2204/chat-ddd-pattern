@@ -182,7 +182,7 @@ func (a *AccountAggregate) UpdateProfile(displayName string, username, avatarObj
 	return true, nil
 }
 
-func (a *AccountAggregate) RequestEmailVerification(token string, requestedAt time.Time) error {
+func (a *AccountAggregate) RequestEmailVerification(token string) error {
 	if err := a.EnsureEmailVerificationAllowed(); err != nil {
 		return stackErr.Error(err)
 	}
@@ -191,7 +191,7 @@ func (a *AccountAggregate) RequestEmailVerification(token string, requestedAt ti
 		AccountID:         a.AggregateID(),
 		Email:             a.Email,
 		VerificationToken: token,
-		RequestedAt:       rules.NormalizeAccountTime(requestedAt),
+		RequestedAt:       utils.NowUTC(),
 	})
 }
 

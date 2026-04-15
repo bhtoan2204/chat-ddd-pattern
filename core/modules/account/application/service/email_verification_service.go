@@ -12,6 +12,7 @@ import (
 	"go-socket/core/modules/account/domain/entity"
 	sharedcache "go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 
 	"github.com/google/uuid"
 )
@@ -33,7 +34,7 @@ type Mailer interface {
 
 //go:generate mockgen -package=service -destination=email_verification_service_mock.go -source=email_verification_service.go
 type EmailVerificationService interface {
-	SendVerificationEmail(ctx context.Context, account *entity.Account, now time.Time) (string, time.Time, error)
+	SendVerificationEmail(ctx context.Context, account *entity.Account) (string, time.Time, error)
 	ConsumeVerificationToken(ctx context.Context, token string) (*EmailVerificationTokenPayload, error)
 }
 
@@ -49,12 +50,12 @@ func NewEmailVerificationService(appCtx *appCtx.AppContext) EmailVerificationSer
 	}
 }
 
-func (s *emailVerificationService) SendVerificationEmail(ctx context.Context, account *entity.Account, now time.Time) (string, time.Time, error) {
+func (s *emailVerificationService) SendVerificationEmail(ctx context.Context, account *entity.Account) (string, time.Time, error) {
 	if account == nil {
 		return "", time.Time{}, stackErr.Error(errors.New("account is nil"))
 	}
 
-	requestedAt := normalizeVerificationTime(now)
+	requestedAt := utils.NowUTC()
 	token := uuid.NewString()
 	expiresAt := requestedAt.Add(emailVerificationTTL)
 
@@ -111,11 +112,4 @@ func (s *emailVerificationService) ConsumeVerificationToken(ctx context.Context,
 
 func emailVerificationCacheKey(token string) string {
 	return "account:verify_email:" + token
-}
-
-func normalizeVerificationTime(value time.Time) time.Time {
-	if value.IsZero() {
-		return time.Now().UTC()
-	}
-	return value.UTC()
 }

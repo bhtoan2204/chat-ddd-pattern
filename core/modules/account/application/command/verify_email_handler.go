@@ -14,7 +14,6 @@ import (
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -62,13 +61,12 @@ func (u *verifyEmailHandler) Handle(ctx context.Context, req *in.VerifyEmailRequ
 		return nil, stackErr.Error(err)
 	}
 
-	requestedAt := utils.NowUTC()
-	token, _, err := u.verificationService.SendVerificationEmail(ctx, accountEntity, requestedAt)
+	token, _, err := u.verificationService.SendVerificationEmail(ctx, accountEntity)
 	if err != nil {
 		log.Errorw("Failed to send verification email", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
-	if err := accountAggregate.RequestEmailVerification(token, requestedAt); err != nil {
+	if err := accountAggregate.RequestEmailVerification(token); err != nil {
 		log.Errorw("Failed to record verification request", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}

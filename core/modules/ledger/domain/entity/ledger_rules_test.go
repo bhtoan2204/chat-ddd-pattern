@@ -3,16 +3,13 @@ package entity
 import (
 	"errors"
 	"testing"
-	"time"
 )
 
 func TestNewLedgerTransactionBuildsEntries(t *testing.T) {
-	now := time.Date(2026, 4, 5, 10, 0, 0, 0, time.UTC)
-
 	transaction, err := NewLedgerTransaction(" txn-1 ", []LedgerEntryInput{
 		{AccountID: " debit ", Currency: " usd ", Amount: -100},
 		{AccountID: " credit ", Currency: "USD", Amount: 100},
-	}, now)
+	})
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -38,7 +35,7 @@ func TestNewLedgerTransactionRejectsUnbalancedEntries(t *testing.T) {
 	_, err := NewLedgerTransaction("txn-1", []LedgerEntryInput{
 		{AccountID: "debit", Currency: "VND", Amount: -100},
 		{AccountID: "credit", Currency: "VND", Amount: 90},
-	}, time.Now().UTC())
+	})
 	if !errors.Is(err, ErrLedgerEntriesUnbalanced) {
 		t.Fatalf("expected unbalanced error, got %v", err)
 	}

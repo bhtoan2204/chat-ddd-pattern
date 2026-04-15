@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 )
 
 type DeviceType string
@@ -120,10 +121,10 @@ func (d *Device) Touch(userAgent, ipAddress string, now time.Time) {
 		return
 	}
 
-	if next := normalizeOptionalString(userAgent); next != nil {
+	if next := utils.NullableString(userAgent); next != nil {
 		d.UserAgent = next
 	}
-	if next := normalizeOptionalString(ipAddress); next != nil {
+	if next := utils.NullableString(ipAddress); next != nil {
 		d.LastIPAddress = next
 	}
 
@@ -160,17 +161,8 @@ func currentOrIncomingDeviceType(current DeviceType, incoming string) (DeviceTyp
 }
 
 func mergeOptionalString(current *string, incoming string) *string {
-	if next := normalizeOptionalString(incoming); next != nil {
+	if next := utils.NullableString(incoming); next != nil {
 		return next
 	}
 	return current
-}
-
-func normalizeOptionalString(value string) *string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return nil
-	}
-	cloned := value
-	return &cloned
 }

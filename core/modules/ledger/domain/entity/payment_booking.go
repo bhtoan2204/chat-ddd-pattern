@@ -50,7 +50,7 @@ func NewPaymentSucceededBooking(input PaymentSucceededBookingInput) (*PaymentSuc
 	if creditAccountID == "" {
 		return nil, ErrPaymentBookingCreditAccountRequired
 	}
-	currency := normalizeLedgerCurrency(input.Currency)
+	currency := strings.ToUpper(strings.TrimSpace((input.Currency)))
 	if currency == "" {
 		return nil, ErrPaymentBookingCurrencyRequired
 	}

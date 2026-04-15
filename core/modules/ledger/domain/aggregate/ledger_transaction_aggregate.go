@@ -48,7 +48,7 @@ func (a *LedgerTransactionAggregate) Transition(evt event.Event) error {
 	}
 }
 
-func (a *LedgerTransactionAggregate) Create(entries []entity.LedgerEntryInput, now time.Time) error {
+func (a *LedgerTransactionAggregate) Create(entries []entity.LedgerEntryInput) error {
 	if a == nil {
 		return stackErr.Error(ErrLedgerTransactionAggregateRequired)
 	}
@@ -56,7 +56,7 @@ func (a *LedgerTransactionAggregate) Create(entries []entity.LedgerEntryInput, n
 		return stackErr.Error(ErrLedgerTransactionAlreadyCreated)
 	}
 
-	transaction, err := entity.NewLedgerTransaction(a.AggregateID(), entries, now)
+	transaction, err := entity.NewLedgerTransaction(a.AggregateID(), entries)
 	if err != nil {
 		return stackErr.Error(err)
 	}
@@ -131,7 +131,7 @@ func (a *LedgerTransactionAggregate) onLedgerTransactionCreated(
 	}
 
 	a.TransactionID = transactionID
-	a.Currency = entityNormalizeLedgerCurrency(data.Currency)
+	a.Currency = strings.ToUpper(strings.TrimSpace((data.Currency)))
 	a.CreatedAt = data.CreatedAt
 	a.Entries = make([]*entity.LedgerEntry, 0, len(data.Entries))
 	for _, entry := range data.Entries {
@@ -145,8 +145,4 @@ func (a *LedgerTransactionAggregate) onLedgerTransactionCreated(
 	}
 
 	return nil
-}
-
-func entityNormalizeLedgerCurrency(value string) string {
-	return strings.ToUpper(strings.TrimSpace(value))
 }

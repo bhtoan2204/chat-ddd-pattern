@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
 	"go-socket/core/modules/ledger/domain/entity"
@@ -52,7 +51,7 @@ func (s *LedgerService) CreateTransaction(ctx context.Context, command CreateTra
 	if err != nil {
 		return nil, stackErr.Error(wrapValidation(err))
 	}
-	if err := aggregate.Create(toLedgerEntryInputs(command.Entries, command.Currency), time.Now().UTC()); err != nil {
+	if err := aggregate.Create(toLedgerEntryInputs(command.Entries, command.Currency)); err != nil {
 		return nil, stackErr.Error(wrapValidation(err))
 	}
 
@@ -95,14 +94,13 @@ func (s *LedgerService) RecordPaymentSucceeded(ctx context.Context, command Reco
 		return stackErr.Error(wrapValidation(err))
 	}
 
-	now := time.Now().UTC()
 	alreadyBooked := false
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
 		transactionAggregate, err := ledgeraggregate.NewLedgerTransactionAggregate(booking.LedgerTransactionID())
 		if err != nil {
 			return stackErr.Error(wrapValidation(err))
 		}
-		if err := transactionAggregate.Create(booking.LedgerEntries(), now); err != nil {
+		if err := transactionAggregate.Create(booking.LedgerEntries()); err != nil {
 			return stackErr.Error(wrapValidation(err))
 		}
 		// Duplicate payment events must reconcile against the canonical ledger

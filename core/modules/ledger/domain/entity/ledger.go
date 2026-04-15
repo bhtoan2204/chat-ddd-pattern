@@ -39,7 +39,7 @@ type LedgerTransaction struct {
 	Entries       []*LedgerEntry
 }
 
-func NewLedgerTransaction(transactionID string, entries []LedgerEntryInput, now time.Time) (*LedgerTransaction, error) {
+func NewLedgerTransaction(transactionID string, entries []LedgerEntryInput) (*LedgerTransaction, error) {
 	transactionID = strings.TrimSpace(transactionID)
 	if transactionID == "" {
 		return nil, ErrLedgerTransactionIDRequired
@@ -48,7 +48,7 @@ func NewLedgerTransaction(transactionID string, entries []LedgerEntryInput, now 
 		return nil, ErrLedgerEntriesRequired
 	}
 
-	now = normalizeLedgerTime(now)
+	now := time.Now().UTC()
 	transaction := &LedgerTransaction{
 		TransactionID: transactionID,
 		CreatedAt:     now,
@@ -59,7 +59,7 @@ func NewLedgerTransaction(transactionID string, entries []LedgerEntryInput, now 
 	transactionCurrency := ""
 	for idx, entry := range entries {
 		accountID := strings.TrimSpace(entry.AccountID)
-		currency := normalizeLedgerCurrency(entry.Currency)
+		currency := strings.ToUpper(strings.TrimSpace((entry.Currency)))
 		if accountID == "" {
 			return nil, fmt.Errorf("entries[%d].%v", idx, ErrLedgerEntryAccountRequired)
 		}
@@ -91,15 +91,4 @@ func NewLedgerTransaction(transactionID string, entries []LedgerEntryInput, now 
 	}
 
 	return transaction, nil
-}
-
-func normalizeLedgerTime(value time.Time) time.Time {
-	if value.IsZero() {
-		return time.Now().UTC()
-	}
-	return value.UTC()
-}
-
-func normalizeLedgerCurrency(value string) string {
-	return strings.ToUpper(strings.TrimSpace(value))
 }

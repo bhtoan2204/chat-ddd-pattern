@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 )
 
 type SessionStatus string
@@ -119,10 +120,10 @@ func (s *Session) Touch(ipAddress string, userAgent string, now time.Time) {
 		return
 	}
 
-	if next := normalizeOptionalString(ipAddress); next != nil {
+	if next := utils.NullableString(ipAddress); next != nil {
 		s.IPAddress = next
 	}
-	if next := normalizeOptionalString(userAgent); next != nil {
+	if next := utils.NullableString(userAgent); next != nil {
 		s.UserAgent = next
 	}
 
@@ -156,7 +157,7 @@ func (s *Session) Revoke(reason string, now time.Time) bool {
 	normalizedNow := now.UTC()
 	s.Status = SessionStatusRevoked
 	s.RevokedAt = &normalizedNow
-	s.RevokedReason = normalizeOptionalString(reason)
+	s.RevokedReason = utils.NullableString(reason)
 	s.UpdatedAt = normalizedNow
 	return true
 }
