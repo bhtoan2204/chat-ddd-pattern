@@ -18,6 +18,8 @@ import (
 	"github.com/gocql/gocql"
 )
 
+var _ roomprojection.ServingProjector = (*cassandraProjectionStore)(nil)
+
 const (
 	globalRoomProjectionPartition      = "all"
 	defaultRoomListPageExpansionFactor = 3
@@ -366,7 +368,7 @@ func (s *cassandraProjectionStore) ListMessages(ctx context.Context, accountID, 
 	}
 
 	limit := boundedLimit(options.Limit, 50, 200)
-	beforeAt := cloneTime(options.BeforeAt)
+	beforeAt := utils.ClonePtr(options.BeforeAt)
 
 	pageSize := boundedLimit(limit*defaultRoomListPageExpansionFactor, 100, 400)
 	collected := make([]*views.MessageView, 0, limit)
@@ -541,8 +543,8 @@ func (s *cassandraProjectionStore) UpsertRoomMember(ctx context.Context, roomMem
 				Username:        roomMember.Username,
 				AvatarObjectKey: roomMember.AvatarObjectKey,
 				Role:            string(roomMember.Role),
-				LastDeliveredAt: cloneTime(roomMember.LastDeliveredAt),
-				LastReadAt:      cloneTime(roomMember.LastReadAt),
+				LastDeliveredAt: utils.ClonePtr(roomMember.LastDeliveredAt),
+				LastReadAt:      utils.ClonePtr(roomMember.LastReadAt),
 				CreatedAt:       roomMember.CreatedAt,
 				UpdatedAt:       roomMember.UpdatedAt,
 			},
@@ -638,7 +640,7 @@ func roomRowToEntity(row *roomProjectionRow) *views.RoomView {
 		PinnedMessageID:     pinnedMessageID,
 		MemberCount:         row.MemberCount,
 		LastMessageID:       lastMessageID,
-		LastMessageAt:       cloneTime(row.LastMessageAt),
+		LastMessageAt:       utils.ClonePtr(row.LastMessageAt),
 		LastMessageContent:  lastMessageContent,
 		LastMessageSenderID: lastMessageSenderID,
 		CreatedAt:           row.CreatedAt.UTC(),
@@ -658,8 +660,8 @@ func roomMemberRowToEntity(row *roomMemberProjectionRow) *views.RoomMemberView {
 		Username:        strings.TrimSpace(row.Username),
 		AvatarObjectKey: strings.TrimSpace(row.AvatarObjectKey),
 		Role:            row.Role,
-		LastDeliveredAt: cloneTime(row.LastDeliveredAt),
-		LastReadAt:      cloneTime(row.LastReadAt),
+		LastDeliveredAt: utils.ClonePtr(row.LastDeliveredAt),
+		LastReadAt:      utils.ClonePtr(row.LastReadAt),
 		CreatedAt:       row.CreatedAt.UTC(),
 		UpdatedAt:       row.UpdatedAt.UTC(),
 	}
@@ -689,8 +691,8 @@ func messageRowToEntity(row *messageProjectionRow) (*views.MessageView, error) {
 		FileSize:               row.FileSize,
 		MimeType:               strings.TrimSpace(row.MimeType),
 		ObjectKey:              strings.TrimSpace(row.ObjectKey),
-		EditedAt:               cloneTime(row.EditedAt),
-		DeletedForEveryoneAt:   cloneTime(row.DeletedForEveryoneAt),
+		EditedAt:               utils.ClonePtr(row.EditedAt),
+		DeletedForEveryoneAt:   utils.ClonePtr(row.DeletedForEveryoneAt),
 		CreatedAt:              row.MessageSentAt.UTC(),
 	}, nil
 }
@@ -713,7 +715,7 @@ func roomProjectionToRow(projection *roomprojection.RoomProjection) *roomProject
 	}
 	if projection.LastMessage != nil {
 		row.LastMessageID = strings.TrimSpace(projection.LastMessage.MessageID)
-		row.LastMessageAt = cloneTime(projection.LastMessage.MessageSentAt)
+		row.LastMessageAt = utils.ClonePtr(projection.LastMessage.MessageSentAt)
 		row.LastMessageContent = projection.LastMessage.MessageContent
 		row.LastMessageSenderID = projection.LastMessage.MessageSenderID
 	}
@@ -733,8 +735,8 @@ func roomMemberProjectionToRow(projection *roomprojection.RoomMemberProjection) 
 		Username:        strings.TrimSpace(projection.Username),
 		AvatarObjectKey: strings.TrimSpace(projection.AvatarObjectKey),
 		Role:            projection.Role,
-		LastDeliveredAt: cloneTime(projection.LastDeliveredAt),
-		LastReadAt:      cloneTime(projection.LastReadAt),
+		LastDeliveredAt: utils.ClonePtr(projection.LastDeliveredAt),
+		LastReadAt:      utils.ClonePtr(projection.LastReadAt),
 		CreatedAt:       projection.CreatedAt.UTC(),
 		UpdatedAt:       projection.UpdatedAt.UTC(),
 	}
@@ -772,8 +774,8 @@ func messageViewToProjection(message *views.MessageView) *roomprojection.Message
 		Mentions:               mentions,
 		MentionAll:             message.MentionAll,
 		MentionedAccountIDs:    mentionedAccountIDs,
-		EditedAt:               cloneTime(message.EditedAt),
-		DeletedForEveryoneAt:   cloneTime(message.DeletedForEveryoneAt),
+		EditedAt:               utils.ClonePtr(message.EditedAt),
+		DeletedForEveryoneAt:   utils.ClonePtr(message.DeletedForEveryoneAt),
 	}
 }
 
@@ -783,7 +785,7 @@ func roomLastMessageFromView(room *views.RoomView) *roomprojection.RoomLastMessa
 	}
 	return &roomprojection.RoomLastMessageProjection{
 		MessageID:       strings.TrimSpace(*room.LastMessageID),
-		MessageSentAt:   cloneTime(room.LastMessageAt),
+		MessageSentAt:   utils.ClonePtr(room.LastMessageAt),
 		MessageContent:  utils.DerefString(room.LastMessageContent),
 		MessageSenderID: utils.DerefString(room.LastMessageSenderID),
 	}
@@ -813,15 +815,7 @@ func cloneRoomRow(row *roomProjectionRow) *roomProjectionRow {
 		return nil
 	}
 	copy := *row
-	copy.LastMessageAt = cloneTime(row.LastMessageAt)
-	return &copy
-}
-
-func cloneTime(value *time.Time) *time.Time {
-	if value == nil {
-		return nil
-	}
-	copy := value.UTC()
+	copy.LastMessageAt = utils.ClonePtr(row.LastMessageAt)
 	return &copy
 }
 

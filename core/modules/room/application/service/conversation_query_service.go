@@ -14,11 +14,16 @@ import (
 	"go.uber.org/zap"
 )
 
+type ConversationQueryService interface {
+	ListConversations(ctx context.Context, accountID string, query apptypes.ListConversationsQuery) ([]apptypes.ConversationResult, error)
+	GetConversation(ctx context.Context, accountID string, query apptypes.GetConversationQuery) (*apptypes.ConversationResult, error)
+}
+
 type conversationQueryService struct {
 	readRepos projection.QueryRepos
 }
 
-func newConversationQueryService(readRepos projection.QueryRepos) *conversationQueryService {
+func newConversationQueryService(readRepos projection.QueryRepos) ConversationQueryService {
 	return &conversationQueryService{readRepos: readRepos}
 }
 

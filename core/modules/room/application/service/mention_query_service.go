@@ -13,11 +13,15 @@ import (
 	"github.com/samber/lo"
 )
 
+type MentionQueryService interface {
+	SearchMentionCandidates(ctx context.Context, accountID string, query apptypes.SearchMentionCandidatesQuery) ([]apptypes.MentionCandidateResult, error)
+}
+
 type mentionQueryService struct {
 	readRepos projection.QueryRepos
 }
 
-func newMentionQueryService(readRepos projection.QueryRepos) *mentionQueryService {
+func newMentionQueryService(readRepos projection.QueryRepos) MentionQueryService {
 	return &mentionQueryService{readRepos: readRepos}
 }
 

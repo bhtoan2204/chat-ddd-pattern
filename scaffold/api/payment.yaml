@@ -225,7 +225,7 @@ endpoints:
         - name: signature
           type: string
           source: header
-          header: X-Signature
+          header: Stripe-Signature
         - name: payload
           type: string
           source: raw_body

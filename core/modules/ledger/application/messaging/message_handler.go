@@ -90,7 +90,13 @@ func (h *messageHandler) handlePaymentOutboxEvent(ctx context.Context, value []b
 	case sharedevents.EventPaymentSucceeded:
 		var payload sharedevents.PaymentSucceededEvent
 		if err := json.Unmarshal(event.EventData, &payload); err != nil {
-			return stackErr.Error(fmt.Errorf("unmarshal payment succeeded payload failed: %v", err))
+			var raw string
+			if err2 := json.Unmarshal(event.EventData, &raw); err2 != nil {
+				return stackErr.Error(fmt.Errorf("unmarshal payment succeeded payload failed: %v", err))
+			}
+			if err2 := json.Unmarshal([]byte(raw), &payload); err2 != nil {
+				return stackErr.Error(fmt.Errorf("unmarshal inner payload failed: %v", err2))
+			}
 		}
 		if payload.PaymentID == "" {
 			payload.PaymentID = event.AggregateID

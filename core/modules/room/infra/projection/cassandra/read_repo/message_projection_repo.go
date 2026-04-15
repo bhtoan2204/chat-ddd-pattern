@@ -11,6 +11,7 @@ import (
 	roomprojection "go-socket/core/modules/room/application/projection"
 	"go-socket/core/modules/room/infra/projection/cassandra/views"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 
 	"github.com/gocql/gocql"
 )
@@ -138,8 +139,8 @@ func (r *MessageProjectionRepo) scanMessageRows(ctx context.Context, statement s
 			return nil, stackErr.Error(fmt.Errorf("scan cassandra timeline projection failed: %v", err))
 		}
 		row.MessageSentAt = row.MessageSentAt.UTC()
-		row.EditedAt = cloneTime(row.EditedAt)
-		row.DeletedForEveryoneAt = cloneTime(row.DeletedForEveryoneAt)
+		row.EditedAt = utils.ClonePtr(row.EditedAt)
+		row.DeletedForEveryoneAt = utils.ClonePtr(row.DeletedForEveryoneAt)
 		rows = append(rows, row)
 	}
 	if err := scanner.Err(); err != nil {

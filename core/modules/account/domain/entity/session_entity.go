@@ -10,6 +10,10 @@ import (
 
 type SessionStatus string
 
+func (s *SessionStatus) String() string {
+	return string(*s)
+}
+
 const (
 	SessionStatusActive  SessionStatus = "active"
 	SessionStatusRevoked SessionStatus = "revoked"

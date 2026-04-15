@@ -9,15 +9,23 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type ChatQueryService struct {
-	conversations *conversationQueryService
-	messages      *messageQueryService
-	mentions      *mentionQueryService
-	presence      *presenceQueryService
+//go:generate mockgen -package=service -destination=chat_query_service_mock.go -source=chat_query_service.go
+type ChatQueryService interface {
+	ConversationQueryService
+	MessageQueryService
+	MentionQueryService
+	PresenceQueryService
 }
 
-func NewChatQueryService(readRepos projection.QueryRepos, redis *redis.Client) *ChatQueryService {
-	return &ChatQueryService{
+type chatQueryService struct {
+	conversations ConversationQueryService
+	messages      MessageQueryService
+	mentions      MentionQueryService
+	presence      PresenceQueryService
+}
+
+func NewChatQueryService(readRepos projection.QueryRepos, redis *redis.Client) ChatQueryService {
+	return &chatQueryService{
 		conversations: newConversationQueryService(readRepos),
 		messages:      newMessageQueryService(readRepos),
 		mentions:      newMentionQueryService(readRepos),
@@ -25,22 +33,22 @@ func NewChatQueryService(readRepos projection.QueryRepos, redis *redis.Client) *
 	}
 }
 
-func (s *ChatQueryService) ListConversations(ctx context.Context, accountID string, query apptypes.ListConversationsQuery) ([]apptypes.ConversationResult, error) {
+func (s *chatQueryService) ListConversations(ctx context.Context, accountID string, query apptypes.ListConversationsQuery) ([]apptypes.ConversationResult, error) {
 	return s.conversations.ListConversations(ctx, accountID, query)
 }
 
-func (s *ChatQueryService) GetConversation(ctx context.Context, accountID string, query apptypes.GetConversationQuery) (*apptypes.ConversationResult, error) {
+func (s *chatQueryService) GetConversation(ctx context.Context, accountID string, query apptypes.GetConversationQuery) (*apptypes.ConversationResult, error) {
 	return s.conversations.GetConversation(ctx, accountID, query)
 }
 
-func (s *ChatQueryService) ListMessages(ctx context.Context, accountID string, query apptypes.ListMessagesQuery) ([]apptypes.MessageResult, error) {
+func (s *chatQueryService) ListMessages(ctx context.Context, accountID string, query apptypes.ListMessagesQuery) ([]apptypes.MessageResult, error) {
 	return s.messages.ListMessages(ctx, accountID, query)
 }
 
-func (s *ChatQueryService) SearchMentionCandidates(ctx context.Context, accountID string, query apptypes.SearchMentionCandidatesQuery) ([]apptypes.MentionCandidateResult, error) {
+func (s *chatQueryService) SearchMentionCandidates(ctx context.Context, accountID string, query apptypes.SearchMentionCandidatesQuery) ([]apptypes.MentionCandidateResult, error) {
 	return s.mentions.SearchMentionCandidates(ctx, accountID, query)
 }
 
-func (s *ChatQueryService) GetPresence(ctx context.Context, query apptypes.GetPresenceQuery) (*apptypes.PresenceResult, error) {
+func (s *chatQueryService) GetPresence(ctx context.Context, query apptypes.GetPresenceQuery) (*apptypes.PresenceResult, error) {
 	return s.presence.GetPresence(ctx, query)
 }

@@ -42,6 +42,21 @@ func (m *MockNotificationRepository) EXPECT() *MockNotificationRepositoryMockRec
 	return m.recorder
 }
 
+// ListByAccountID mocks base method.
+func (m *MockNotificationRepository) ListByAccountID(ctx context.Context, accountID string) ([]*entity.NotificationEntity, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByAccountID", ctx, accountID)
+	ret0, _ := ret[0].([]*entity.NotificationEntity)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListByAccountID indicates an expected call of ListByAccountID.
+func (mr *MockNotificationRepositoryMockRecorder) ListByAccountID(ctx, accountID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByAccountID", reflect.TypeOf((*MockNotificationRepository)(nil).ListByAccountID), ctx, accountID)
+}
+
 // Load mocks base method.
 func (m *MockNotificationRepository) Load(ctx context.Context, notificationID string) (*aggregate.NotificationAggregate, error) {
 	m.ctrl.T.Helper()
@@ -69,19 +84,4 @@ func (m *MockNotificationRepository) Save(ctx context.Context, notification *agg
 func (mr *MockNotificationRepositoryMockRecorder) Save(ctx, notification any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockNotificationRepository)(nil).Save), ctx, notification)
-}
-
-// ListByAccountID mocks base method.
-func (m *MockNotificationRepository) ListByAccountID(ctx context.Context, accountID string) ([]*entity.NotificationEntity, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListByAccountID", ctx, accountID)
-	ret0, _ := ret[0].([]*entity.NotificationEntity)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListByAccountID indicates an expected call of ListByAccountID.
-func (mr *MockNotificationRepositoryMockRecorder) ListByAccountID(ctx, accountID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByAccountID", reflect.TypeOf((*MockNotificationRepository)(nil).ListByAccountID), ctx, accountID)
 }

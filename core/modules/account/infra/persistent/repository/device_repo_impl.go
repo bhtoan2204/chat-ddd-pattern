@@ -9,6 +9,7 @@ import (
 	accountrepos "go-socket/core/modules/account/domain/repos"
 	"go-socket/core/modules/account/infra/persistent/models"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 
 	"gorm.io/gorm"
 )
@@ -87,14 +88,14 @@ func (r *deviceRepoImpl) toEntity(model *models.DeviceModel) (*entity.Device, er
 		ID:            model.ID,
 		AccountID:     model.AccountID,
 		DeviceUID:     model.DeviceUID,
-		DeviceName:    cloneString(model.DeviceName),
+		DeviceName:    utils.ClonePtr(model.DeviceName),
 		DeviceType:    entity.DeviceType(model.DeviceType),
-		OSName:        cloneString(model.OSName),
-		OSVersion:     cloneString(model.OSVersion),
-		AppVersion:    cloneString(model.AppVersion),
-		UserAgent:     cloneString(model.UserAgent),
-		LastIPAddress: cloneString(model.LastIPAddress),
-		LastSeenAt:    cloneTime(model.LastSeenAt),
+		OSName:        utils.ClonePtr(model.OSName),
+		OSVersion:     utils.ClonePtr(model.OSVersion),
+		AppVersion:    utils.ClonePtr(model.AppVersion),
+		UserAgent:     utils.ClonePtr(model.UserAgent),
+		LastIPAddress: utils.ClonePtr(model.LastIPAddress),
+		LastSeenAt:    utils.ClonePtr(model.LastSeenAt),
 		IsTrusted:     model.IsTrusted == 1,
 		CreatedAt:     model.CreatedAt,
 		UpdatedAt:     model.UpdatedAt,
@@ -111,14 +112,14 @@ func (r *deviceRepoImpl) toModel(device *entity.Device) *models.DeviceModel {
 		ID:            device.ID,
 		AccountID:     device.AccountID,
 		DeviceUID:     device.DeviceUID,
-		DeviceName:    cloneString(device.DeviceName),
-		DeviceType:    string(device.DeviceType),
-		OSName:        cloneString(device.OSName),
-		OSVersion:     cloneString(device.OSVersion),
-		AppVersion:    cloneString(device.AppVersion),
-		UserAgent:     cloneString(device.UserAgent),
-		LastIPAddress: cloneString(device.LastIPAddress),
-		LastSeenAt:    cloneTime(device.LastSeenAt),
+		DeviceName:    utils.ClonePtr(device.DeviceName),
+		DeviceType:    device.DeviceType.String(),
+		OSName:        utils.ClonePtr(device.OSName),
+		OSVersion:     utils.ClonePtr(device.OSVersion),
+		AppVersion:    utils.ClonePtr(device.AppVersion),
+		UserAgent:     utils.ClonePtr(device.UserAgent),
+		LastIPAddress: utils.ClonePtr(device.LastIPAddress),
+		LastSeenAt:    utils.ClonePtr(device.LastSeenAt),
 		IsTrusted:     isTrusted,
 		CreatedAt:     device.CreatedAt,
 		UpdatedAt:     device.UpdatedAt,

@@ -13,10 +13,10 @@ import (
 )
 
 type getChatPresenceHandler struct {
-	chatService *roomservice.ChatQueryService
+	chatService roomservice.ChatQueryService
 }
 
-func NewGetChatPresenceHandler(chatService *roomservice.ChatQueryService) cqrs.Handler[*in.GetChatPresenceRequest, *out.ChatPresenceResponse] {
+func NewGetChatPresenceHandler(chatService roomservice.ChatQueryService) cqrs.Handler[*in.GetChatPresenceRequest, *out.ChatPresenceResponse] {
 	return &getChatPresenceHandler{chatService: chatService}
 }
 

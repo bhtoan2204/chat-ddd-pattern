@@ -8,6 +8,7 @@ import (
 	"go-socket/core/modules/notification/domain/entity"
 	"go-socket/core/modules/notification/types"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 
 	"github.com/google/uuid"
 )
@@ -41,7 +42,7 @@ func (a *NotificationAggregate) Restore(snapshot *entity.NotificationEntity) err
 	}
 
 	cloned := *snapshot
-	cloned.ReadAt = cloneNotificationTime(snapshot.ReadAt)
+	cloned.ReadAt = utils.ClonePtr(snapshot.ReadAt)
 	a.notification = &cloned
 	return nil
 }
@@ -127,7 +128,7 @@ func (a *NotificationAggregate) Snapshot() (*entity.NotificationEntity, error) {
 	}
 
 	cloned := *a.notification
-	cloned.ReadAt = cloneNotificationTime(a.notification.ReadAt)
+	cloned.ReadAt = utils.ClonePtr(a.notification.ReadAt)
 	return &cloned, nil
 }
 
@@ -151,13 +152,4 @@ func normalizeNotificationType(value types.NotificationType) (types.Notification
 	default:
 		return "", stackErr.Error(ErrNotificationTypeRequired)
 	}
-}
-
-func cloneNotificationTime(value *time.Time) *time.Time {
-	if value == nil {
-		return nil
-	}
-
-	cloned := value.UTC()
-	return &cloned
 }

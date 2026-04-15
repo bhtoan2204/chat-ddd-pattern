@@ -13,10 +13,10 @@ import (
 )
 
 type getChatConversationHandler struct {
-	chatService *roomservice.ChatQueryService
+	chatService roomservice.ChatQueryService
 }
 
-func NewGetChatConversationHandler(chatService *roomservice.ChatQueryService) cqrs.Handler[*in.GetChatConversationRequest, *out.ChatConversationResponse] {
+func NewGetChatConversationHandler(chatService roomservice.ChatQueryService) cqrs.Handler[*in.GetChatConversationRequest, *out.ChatConversationResponse] {
 	return &getChatConversationHandler{chatService: chatService}
 }
 

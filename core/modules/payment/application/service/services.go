@@ -1,6 +1,7 @@
 package service
 
 import (
+	appCtx "go-socket/core/context"
 	repos "go-socket/core/modules/payment/domain/repos"
 	domainservice "go-socket/core/modules/payment/domain/service"
 )
@@ -14,8 +15,8 @@ type services struct {
 	paymentCommandService PaymentCommandService
 }
 
-func NewServices(baseRepo repos.Repos, providerRegistry domainservice.PaymentProviderRegistry) Services {
-	paymentCommandService := NewPaymentCommandService(baseRepo, providerRegistry)
+func NewServices(appCtx *appCtx.AppContext, baseRepo repos.Repos, providerRegistry domainservice.PaymentProviderRegistry) Services {
+	paymentCommandService := NewPaymentCommandService(appCtx, baseRepo, providerRegistry)
 	return &services{
 		paymentCommandService: paymentCommandService,
 	}

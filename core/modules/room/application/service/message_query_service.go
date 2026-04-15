@@ -11,11 +11,15 @@ import (
 	"go-socket/core/shared/pkg/stackErr"
 )
 
+type MessageQueryService interface {
+	ListMessages(ctx context.Context, accountID string, query apptypes.ListMessagesQuery) ([]apptypes.MessageResult, error)
+}
+
 type messageQueryService struct {
 	readRepos projection.QueryRepos
 }
 
-func newMessageQueryService(readRepos projection.QueryRepos) *messageQueryService {
+func newMessageQueryService(readRepos projection.QueryRepos) MessageQueryService {
 	return &messageQueryService{readRepos: readRepos}
 }
 

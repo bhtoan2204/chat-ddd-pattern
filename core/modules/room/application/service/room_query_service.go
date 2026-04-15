@@ -13,15 +13,20 @@ import (
 	"github.com/samber/lo"
 )
 
-type RoomQueryService struct {
+type RoomQueryService interface {
+	GetRoom(ctx context.Context, query apptypes.GetRoomQuery) (*apptypes.RoomResult, error)
+	ListRooms(ctx context.Context, query apptypes.ListRoomsQuery) (*apptypes.ListRoomsResult, error)
+}
+
+type roomQueryService struct {
 	readRepos projection.QueryRepos
 }
 
-func NewRoomQueryService(readRepos projection.QueryRepos) *RoomQueryService {
-	return &RoomQueryService{readRepos: readRepos}
+func NewRoomQueryService(readRepos projection.QueryRepos) RoomQueryService {
+	return &roomQueryService{readRepos: readRepos}
 }
 
-func (s *RoomQueryService) GetRoom(ctx context.Context, query apptypes.GetRoomQuery) (*apptypes.RoomResult, error) {
+func (s *roomQueryService) GetRoom(ctx context.Context, query apptypes.GetRoomQuery) (*apptypes.RoomResult, error) {
 	room, err := s.readRepos.RoomReadRepository().GetRoomByID(ctx, query.ID)
 	if err != nil {
 		return nil, stackErr.Error(err)
@@ -29,7 +34,7 @@ func (s *RoomQueryService) GetRoom(ctx context.Context, query apptypes.GetRoomQu
 	return roomsupport.BuildRoomResult(room), nil
 }
 
-func (s *RoomQueryService) ListRooms(ctx context.Context, query apptypes.ListRoomsQuery) (*apptypes.ListRoomsResult, error) {
+func (s *roomQueryService) ListRooms(ctx context.Context, query apptypes.ListRoomsQuery) (*apptypes.ListRoomsResult, error) {
 	page := query.Page
 	if page < 0 {
 		page = 0

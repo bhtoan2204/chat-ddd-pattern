@@ -32,7 +32,7 @@ func (h *processWebhookHandler) Handle(c *gin.Context) (interface{}, error) {
 	logger := logging.FromContext(ctx)
 	var request in.ProcessWebhookRequest
 	request.Provider = c.Param("provider")
-	request.Signature = c.GetHeader("X-Signature")
+	request.Signature = c.GetHeader("Stripe-Signature")
 
 	payload, err := io.ReadAll(c.Request.Body)
 	if err != nil {

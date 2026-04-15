@@ -24,10 +24,10 @@ func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 	if stripe := stripeprovider.NewProvider(appContext.GetConfig().LedgerConfig.Stripe); stripe.Enabled() {
 		providerRegistry.Register(stripe)
 	}
-	services := paymentservice.NewServices(paymentRepos, provideradapter.NewPaymentProviderRegistry(providerRegistry))
+	services := paymentservice.NewServices(appContext, paymentRepos, provideradapter.NewPaymentProviderRegistry(providerRegistry))
 
 	createPayment := cqrs.NewDispatcher(paymentcommand.NewCreatePayment(services))
-	processWebhook := cqrs.NewDispatcher(paymentcommand.NewProcessWebhook(services))
+	processWebhook := cqrs.NewDispatcher(paymentcommand.NewProcessWebhook(appContext, services))
 	deposit := cqrs.NewDispatcher(paymentcommand.NewDepositHandler(paymentRepos))
 	rebuildProjection := cqrs.NewDispatcher(paymentcommand.NewRebuildProjectionHandler(paymentRepos))
 	transfer := cqrs.NewDispatcher(paymentcommand.NewTransferHandler(paymentRepos))

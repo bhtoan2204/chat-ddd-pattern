@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	appCtx "go-socket/core/context"
+	"go-socket/core/modules/account/infra/lock"
 	"go-socket/core/modules/payment/application/dto/in"
 	"go-socket/core/modules/payment/application/dto/out"
 	"go-socket/core/modules/payment/domain/entity"
@@ -28,16 +30,19 @@ type PaymentCommandService interface {
 
 type paymentCommandService struct {
 	baseRepo         repos.Repos
+	locker           lock.Lock
 	providerRegistry domainservice.PaymentProviderRegistry
 }
 
 func NewPaymentCommandService(
+	appCtx *appCtx.AppContext,
 	baseRepo repos.Repos,
 	providerRegistry domainservice.PaymentProviderRegistry,
 ) PaymentCommandService {
 	return &paymentCommandService{
 		baseRepo:         baseRepo,
 		providerRegistry: providerRegistry,
+		locker:           appCtx.Locker(),
 	}
 }
 
@@ -135,6 +140,13 @@ func (s *paymentCommandService) ProcessWebhook(
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
+	lockKey := fmt.Sprintf("payment:%s", webhook.Result.EventID)
+	lockValue := uuid.NewString()
+	locked, err := s.locker.AcquireLock(ctx, lockKey, lockValue, 30*time.Second, 100*time.Millisecond, 3*time.Second)
+	if err != nil || !locked {
+		return nil, stackErr.Error(err)
+	}
+	defer s.locker.ReleaseLock(ctx, lockKey, lockValue)
 
 	intent, err := s.findIntent(ctx, webhook.Provider, webhook.Result)
 	if err != nil {

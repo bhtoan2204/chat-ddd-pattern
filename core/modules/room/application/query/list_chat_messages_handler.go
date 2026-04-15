@@ -13,10 +13,10 @@ import (
 )
 
 type listChatMessagesHandler struct {
-	chatService *roomservice.ChatQueryService
+	chatService roomservice.ChatQueryService
 }
 
-func NewListChatMessagesHandler(chatService *roomservice.ChatQueryService) cqrs.Handler[*in.ListChatMessagesRequest, []*out.ChatMessageResponse] {
+func NewListChatMessagesHandler(chatService roomservice.ChatQueryService) cqrs.Handler[*in.ListChatMessagesRequest, []*out.ChatMessageResponse] {
 	return &listChatMessagesHandler{chatService: chatService}
 }
 

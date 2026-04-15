@@ -10,6 +10,10 @@ import (
 
 type DeviceType string
 
+func (d *DeviceType) String() string {
+	return string(*d)
+}
+
 const (
 	DeviceTypeWeb     DeviceType = "web"
 	DeviceTypeIOS     DeviceType = "ios"

@@ -7,6 +7,7 @@ import (
 
 	"go-socket/core/modules/account/domain/entity"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 )
 
 var ErrSessionAggregateNotInitialized = errors.New("session aggregate is not initialized")
@@ -31,11 +32,11 @@ func (a *SessionAggregate) Restore(snapshot *entity.Session) error {
 	}
 
 	cloned := *snapshot
-	cloned.IPAddress = cloneSessionString(snapshot.IPAddress)
-	cloned.UserAgent = cloneSessionString(snapshot.UserAgent)
-	cloned.LastActivityAt = cloneSessionTime(snapshot.LastActivityAt)
-	cloned.RevokedAt = cloneSessionTime(snapshot.RevokedAt)
-	cloned.RevokedReason = cloneSessionString(snapshot.RevokedReason)
+	cloned.IPAddress = utils.ClonePtr(snapshot.IPAddress)
+	cloned.UserAgent = utils.ClonePtr(snapshot.UserAgent)
+	cloned.LastActivityAt = utils.ClonePtr(snapshot.LastActivityAt)
+	cloned.RevokedAt = utils.ClonePtr(snapshot.RevokedAt)
+	cloned.RevokedReason = utils.ClonePtr(snapshot.RevokedReason)
 	a.session = &cloned
 	return nil
 }
@@ -110,11 +111,11 @@ func (a *SessionAggregate) Snapshot() (*entity.Session, error) {
 	}
 
 	cloned := *a.session
-	cloned.IPAddress = cloneSessionString(a.session.IPAddress)
-	cloned.UserAgent = cloneSessionString(a.session.UserAgent)
-	cloned.LastActivityAt = cloneSessionTime(a.session.LastActivityAt)
-	cloned.RevokedAt = cloneSessionTime(a.session.RevokedAt)
-	cloned.RevokedReason = cloneSessionString(a.session.RevokedReason)
+	cloned.IPAddress = utils.ClonePtr(a.session.IPAddress)
+	cloned.UserAgent = utils.ClonePtr(a.session.UserAgent)
+	cloned.LastActivityAt = utils.ClonePtr(a.session.LastActivityAt)
+	cloned.RevokedAt = utils.ClonePtr(a.session.RevokedAt)
+	cloned.RevokedReason = utils.ClonePtr(a.session.RevokedReason)
 	return &cloned, nil
 }
 
@@ -144,20 +145,4 @@ func (a *SessionAggregate) RefreshTokenHash() string {
 		return ""
 	}
 	return a.session.RefreshTokenHash
-}
-
-func cloneSessionString(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	cloned := *value
-	return &cloned
-}
-
-func cloneSessionTime(value *time.Time) *time.Time {
-	if value == nil {
-		return nil
-	}
-	cloned := value.UTC()
-	return &cloned
 }

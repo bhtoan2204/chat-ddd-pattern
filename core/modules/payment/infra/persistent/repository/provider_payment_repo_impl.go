@@ -52,8 +52,6 @@ func (r *providerPaymentRepoImpl) SavePaymentIntent(ctx context.Context, intent 
 			"debit_account_id":  intent.DebitAccountID,
 			"credit_account_id": intent.CreditAccountID,
 			"status":            intent.Status,
-			"created_at":        intent.CreatedAt,
-			"updated_at":        intent.UpdatedAt,
 		})
 	if result.Error != nil {
 		return mapError(result.Error)

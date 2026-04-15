@@ -41,6 +41,21 @@ func (m *MockSessionRepository) EXPECT() *MockSessionRepositoryMockRecorder {
 	return m.recorder
 }
 
+// ListByAccountID mocks base method.
+func (m *MockSessionRepository) ListByAccountID(ctx context.Context, accountID string) ([]*aggregate.SessionAggregate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByAccountID", ctx, accountID)
+	ret0, _ := ret[0].([]*aggregate.SessionAggregate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListByAccountID indicates an expected call of ListByAccountID.
+func (mr *MockSessionRepositoryMockRecorder) ListByAccountID(ctx, accountID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByAccountID", reflect.TypeOf((*MockSessionRepository)(nil).ListByAccountID), ctx, accountID)
+}
+
 // Load mocks base method.
 func (m *MockSessionRepository) Load(ctx context.Context, sessionID string) (*aggregate.SessionAggregate, error) {
 	m.ctrl.T.Helper()
@@ -68,19 +83,4 @@ func (m *MockSessionRepository) Save(ctx context.Context, session *aggregate.Ses
 func (mr *MockSessionRepositoryMockRecorder) Save(ctx, session any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockSessionRepository)(nil).Save), ctx, session)
-}
-
-// ListByAccountID mocks base method.
-func (m *MockSessionRepository) ListByAccountID(ctx context.Context, accountID string) ([]*aggregate.SessionAggregate, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListByAccountID", ctx, accountID)
-	ret0, _ := ret[0].([]*aggregate.SessionAggregate)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListByAccountID indicates an expected call of ListByAccountID.
-func (mr *MockSessionRepositoryMockRecorder) ListByAccountID(ctx, accountID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByAccountID", reflect.TypeOf((*MockSessionRepository)(nil).ListByAccountID), ctx, accountID)
 }

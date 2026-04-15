@@ -105,7 +105,7 @@ func (r *RoomProjectionRepo) GetRoomRow(ctx context.Context, roomID string) (*Ro
 
 	row.CreatedAt = row.CreatedAt.UTC()
 	row.UpdatedAt = row.UpdatedAt.UTC()
-	row.LastMessageAt = cloneTime(row.LastMessageAt)
+	row.LastMessageAt = utils.ClonePtr(row.LastMessageAt)
 	return row, nil
 }
 
@@ -228,7 +228,7 @@ func (r *RoomProjectionRepo) ListRoomsByAccount(ctx context.Context, accountID s
 			PinnedMessageID:     pinnedMessageID,
 			MemberCount:         memberCount,
 			LastMessageID:       lastMessageID,
-			LastMessageAt:       cloneTime(lastMessageAt),
+			LastMessageAt:       utils.ClonePtr(lastMessageAt),
 			LastMessageContent:  lastMessageContent,
 			LastMessageSenderID: lastMessageSenderID,
 			CreatedAt:           createdAt.UTC(),
@@ -311,7 +311,7 @@ func (r *RoomProjectionRepo) ListRoomsFromBaseProjection(ctx context.Context, li
 			PinnedMessageID:     pinnedMessageID,
 			MemberCount:         memberCount,
 			LastMessageID:       lastMessageID,
-			LastMessageAt:       cloneTime(lastMessageAt),
+			LastMessageAt:       utils.ClonePtr(lastMessageAt),
 			LastMessageContent:  lastMessageContent,
 			LastMessageSenderID: lastMessageSenderID,
 			CreatedAt:           createdAt.UTC(),
@@ -381,8 +381,8 @@ func (r *RoomProjectionRepo) ListRoomMemberRows(ctx context.Context, roomID stri
 		); err != nil {
 			return nil, stackErr.Error(fmt.Errorf("scan cassandra room member projection failed: %v", err))
 		}
-		row.LastDeliveredAt = cloneTime(lastDeliveredAt)
-		row.LastReadAt = cloneTime(lastReadAt)
+		row.LastDeliveredAt = utils.ClonePtr(lastDeliveredAt)
+		row.LastReadAt = utils.ClonePtr(lastReadAt)
 		row.CreatedAt = row.CreatedAt.UTC()
 		row.UpdatedAt = row.UpdatedAt.UTC()
 		rows = append(rows, row)
@@ -481,8 +481,8 @@ func (r *RoomProjectionRepo) GetRoomMemberByAccount(ctx context.Context, roomID,
 		return nil, stackErr.Error(err)
 	}
 
-	row.LastDeliveredAt = cloneTime(row.LastDeliveredAt)
-	row.LastReadAt = cloneTime(row.LastReadAt)
+	row.LastDeliveredAt = utils.ClonePtr(row.LastDeliveredAt)
+	row.LastReadAt = utils.ClonePtr(row.LastReadAt)
 	row.CreatedAt = row.CreatedAt.UTC()
 	row.UpdatedAt = row.UpdatedAt.UTC()
 	return row, nil
@@ -545,14 +545,6 @@ func (r *RoomProjectionRepo) DeleteAccountRoomIndex(ctx context.Context, account
 	return nil
 }
 
-func cloneTime(value *time.Time) *time.Time {
-	if value == nil {
-		return nil
-	}
-	copy := value.UTC()
-	return &copy
-}
-
 func nullableProjectionString(value string) interface{} {
 	value = strings.TrimSpace(value)
 	if value == "" {
@@ -599,7 +591,7 @@ func RoomRowToEntity(row *RoomProjectionRow) *views.RoomView {
 		PinnedMessageID:     pinnedMessageID,
 		MemberCount:         row.MemberCount,
 		LastMessageID:       lastMessageID,
-		LastMessageAt:       cloneTime(row.LastMessageAt),
+		LastMessageAt:       utils.ClonePtr(row.LastMessageAt),
 		LastMessageContent:  lastMessageContent,
 		LastMessageSenderID: lastMessageSenderID,
 		CreatedAt:           row.CreatedAt.UTC(),
@@ -619,8 +611,8 @@ func RoomMemberRowToEntity(row *RoomMemberProjectionRow) *views.RoomMemberView {
 		Username:        strings.TrimSpace(row.Username),
 		AvatarObjectKey: strings.TrimSpace(row.AvatarObjectKey),
 		Role:            row.Role,
-		LastDeliveredAt: cloneTime(row.LastDeliveredAt),
-		LastReadAt:      cloneTime(row.LastReadAt),
+		LastDeliveredAt: utils.ClonePtr(row.LastDeliveredAt),
+		LastReadAt:      utils.ClonePtr(row.LastReadAt),
 		CreatedAt:       row.CreatedAt.UTC(),
 		UpdatedAt:       row.UpdatedAt.UTC(),
 	}

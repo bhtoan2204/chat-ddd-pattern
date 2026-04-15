@@ -8,6 +8,7 @@ import (
 	accounttypes "go-socket/core/modules/account/types"
 	"go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 	"time"
 )
 
@@ -152,11 +153,11 @@ func (a *AccountAggregate) UpdateProfile(displayName string, username, avatarObj
 	if err != nil {
 		return false, stackErr.Error(err)
 	}
-	normalizedUsername := cloneOptionalString(a.Username)
+	normalizedUsername := utils.ClonePtr(a.Username)
 	if username != nil {
 		normalizedUsername = rules.NormalizeOptionalString(*username)
 	}
-	normalizedAvatarObjectKey := cloneOptionalString(a.AvatarObjectKey)
+	normalizedAvatarObjectKey := utils.ClonePtr(a.AvatarObjectKey)
 	if avatarObjectKey != nil {
 		normalizedAvatarObjectKey = rules.NormalizeOptionalString(*avatarObjectKey)
 	}
@@ -260,16 +261,16 @@ func (a *AccountAggregate) Snapshot() (*entity.Account, error) {
 		Email:             email,
 		PasswordHash:      passwordHash,
 		DisplayName:       a.DisplayName,
-		Username:          cloneOptionalString(a.Username),
-		AvatarObjectKey:   cloneOptionalString(a.AvatarObjectKey),
+		Username:          utils.ClonePtr(a.Username),
+		AvatarObjectKey:   utils.ClonePtr(a.AvatarObjectKey),
 		Status:            status,
-		EmailVerifiedAt:   cloneTime(a.EmailVerifiedAt),
-		LastLoginAt:       cloneTime(a.LastLoginAt),
-		PasswordChangedAt: cloneTime(a.PasswordChangedAt),
+		EmailVerifiedAt:   utils.ClonePtr(a.EmailVerifiedAt),
+		LastLoginAt:       utils.ClonePtr(a.LastLoginAt),
+		PasswordChangedAt: utils.ClonePtr(a.PasswordChangedAt),
 		CreatedAt:         a.CreatedAt,
 		UpdatedAt:         a.UpdatedAt,
 		BannedReason:      a.BannedReason,
-		BannedUntil:       cloneTime(a.BannedUntil),
+		BannedUntil:       utils.ClonePtr(a.BannedUntil),
 	}, nil
 }
 
@@ -282,16 +283,16 @@ func (a *AccountAggregate) RestoreFromProjection(snapshot *entity.Account, versi
 	a.Email = snapshot.Email.Value()
 	a.PasswordHash = snapshot.PasswordHash.Value()
 	a.DisplayName = snapshot.DisplayName
-	a.Username = cloneOptionalString(snapshot.Username)
-	a.AvatarObjectKey = cloneOptionalString(snapshot.AvatarObjectKey)
+	a.Username = utils.ClonePtr(snapshot.Username)
+	a.AvatarObjectKey = utils.ClonePtr(snapshot.AvatarObjectKey)
 	a.Status = snapshot.Status
-	a.EmailVerifiedAt = cloneTime(snapshot.EmailVerifiedAt)
-	a.LastLoginAt = cloneTime(snapshot.LastLoginAt)
-	a.PasswordChangedAt = cloneTime(snapshot.PasswordChangedAt)
+	a.EmailVerifiedAt = utils.ClonePtr(snapshot.EmailVerifiedAt)
+	a.LastLoginAt = utils.ClonePtr(snapshot.LastLoginAt)
+	a.PasswordChangedAt = utils.ClonePtr(snapshot.PasswordChangedAt)
 	a.CreatedAt = snapshot.CreatedAt
 	a.UpdatedAt = snapshot.UpdatedAt
 	a.BannedReason = snapshot.BannedReason
-	a.BannedUntil = cloneTime(snapshot.BannedUntil)
+	a.BannedUntil = utils.ClonePtr(snapshot.BannedUntil)
 	a.SetInternal(snapshot.ID, version, version)
 	return nil
 }
@@ -314,20 +315,20 @@ func (a *AccountAggregate) MergeProjection(snapshot *entity.Account) {
 		a.DisplayName = snapshot.DisplayName
 	}
 	if a.Username == nil {
-		a.Username = cloneOptionalString(snapshot.Username)
+		a.Username = utils.ClonePtr(snapshot.Username)
 	}
 	if a.AvatarObjectKey == nil {
-		a.AvatarObjectKey = cloneOptionalString(snapshot.AvatarObjectKey)
+		a.AvatarObjectKey = utils.ClonePtr(snapshot.AvatarObjectKey)
 	}
 	if a.Status == "" {
 		a.Status = snapshot.Status
 	}
 	if a.EmailVerifiedAt == nil {
-		a.EmailVerifiedAt = cloneTime(snapshot.EmailVerifiedAt)
+		a.EmailVerifiedAt = utils.ClonePtr(snapshot.EmailVerifiedAt)
 	}
-	a.LastLoginAt = cloneTime(snapshot.LastLoginAt)
+	a.LastLoginAt = utils.ClonePtr(snapshot.LastLoginAt)
 	if a.PasswordChangedAt == nil {
-		a.PasswordChangedAt = cloneTime(snapshot.PasswordChangedAt)
+		a.PasswordChangedAt = utils.ClonePtr(snapshot.PasswordChangedAt)
 	}
 	if a.CreatedAt.IsZero() {
 		a.CreatedAt = snapshot.CreatedAt
@@ -339,7 +340,7 @@ func (a *AccountAggregate) MergeProjection(snapshot *entity.Account) {
 		a.BannedReason = snapshot.BannedReason
 	}
 	if a.BannedUntil == nil {
-		a.BannedUntil = cloneTime(snapshot.BannedUntil)
+		a.BannedUntil = utils.ClonePtr(snapshot.BannedUntil)
 	}
 }
 
@@ -349,20 +350,4 @@ func (a *AccountAggregate) CurrentPasswordHash() (valueobject.HashedPassword, er
 
 func (a *AccountAggregate) IsRegistered() bool {
 	return a.AccountID != "" && !a.CreatedAt.IsZero()
-}
-
-func cloneOptionalString(value *string) *string {
-	if value == nil {
-		return nil
-	}
-	cloned := *value
-	return &cloned
-}
-
-func cloneTime(value *time.Time) *time.Time {
-	if value == nil {
-		return nil
-	}
-	cloned := value.UTC()
-	return &cloned
 }

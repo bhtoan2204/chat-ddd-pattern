@@ -24,5 +24,8 @@ func mapError(err error) error {
 }
 
 func isOracleUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
 	return strings.Contains(strings.ToUpper(err.Error()), "ORA-00001")
 }

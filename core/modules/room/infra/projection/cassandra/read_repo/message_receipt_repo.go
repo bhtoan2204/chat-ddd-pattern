@@ -10,6 +10,7 @@ import (
 	roomprojection "go-socket/core/modules/room/application/projection"
 	"go-socket/core/modules/room/infra/projection/cassandra/views"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 
 	"github.com/gocql/gocql"
 )
@@ -47,7 +48,7 @@ func (r *MessageReceiptRepo) GetMessageReceipt(ctx context.Context, lookup roomp
 		}
 		return nil, stackErr.Error(err)
 	}
-	return &roomprojection.MessageReceiptStatus{Status: status, DeliveredAt: cloneTime(deliveredAt), SeenAt: cloneTime(seenAt)}, nil
+	return &roomprojection.MessageReceiptStatus{Status: status, DeliveredAt: utils.ClonePtr(deliveredAt), SeenAt: utils.ClonePtr(seenAt)}, nil
 }
 
 func (r *MessageReceiptRepo) CountByStatus(ctx context.Context, messageID, status string) (int64, error) {

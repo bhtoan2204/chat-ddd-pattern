@@ -42,15 +42,15 @@ func (m *MockLedgerTransactionAggregateRepository) EXPECT() *MockLedgerTransacti
 }
 
 // Save mocks base method.
-func (m *MockLedgerTransactionAggregateRepository) Save(ctx context.Context, aggregate *aggregate.LedgerTransactionAggregate) error {
+func (m *MockLedgerTransactionAggregateRepository) Save(ctx context.Context, arg1 *aggregate.LedgerTransactionAggregate) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Save", ctx, aggregate)
+	ret := m.ctrl.Call(m, "Save", ctx, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Save indicates an expected call of Save.
-func (mr *MockLedgerTransactionAggregateRepositoryMockRecorder) Save(ctx, aggregate any) *gomock.Call {
+func (mr *MockLedgerTransactionAggregateRepositoryMockRecorder) Save(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockLedgerTransactionAggregateRepository)(nil).Save), ctx, aggregate)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockLedgerTransactionAggregateRepository)(nil).Save), ctx, arg1)
 }

@@ -10,11 +10,15 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type PresenceQueryService interface {
+	GetPresence(ctx context.Context, query apptypes.GetPresenceQuery) (*apptypes.PresenceResult, error)
+}
+
 type presenceQueryService struct {
 	redis *redis.Client
 }
 
-func newPresenceQueryService(redis *redis.Client) *presenceQueryService {
+func newPresenceQueryService(redis *redis.Client) PresenceQueryService {
 	return &presenceQueryService{redis: redis}
 }
 

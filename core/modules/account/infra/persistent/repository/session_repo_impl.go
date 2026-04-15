@@ -11,6 +11,7 @@ import (
 	"go-socket/core/modules/account/infra/persistent/models"
 	sharedcache "go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/pkg/stackErr"
+	"go-socket/core/shared/utils"
 
 	"gorm.io/gorm"
 )
@@ -120,12 +121,12 @@ func (r *sessionRepoImpl) toEntity(model *models.SessionModel) (*entity.Session,
 		DeviceID:         model.DeviceID,
 		RefreshTokenHash: model.RefreshTokenHash,
 		Status:           entity.SessionStatus(model.Status),
-		IPAddress:        cloneString(model.IPAddress),
-		UserAgent:        cloneString(model.UserAgent),
-		LastActivityAt:   cloneTime(model.LastActivityAt),
+		IPAddress:        utils.ClonePtr(model.IPAddress),
+		UserAgent:        utils.ClonePtr(model.UserAgent),
+		LastActivityAt:   utils.ClonePtr(model.LastActivityAt),
 		ExpiresAt:        model.ExpiresAt,
-		RevokedAt:        cloneTime(model.RevokedAt),
-		RevokedReason:    cloneString(model.RevokedReason),
+		RevokedAt:        utils.ClonePtr(model.RevokedAt),
+		RevokedReason:    utils.ClonePtr(model.RevokedReason),
 		CreatedAt:        model.CreatedAt,
 		UpdatedAt:        model.UpdatedAt,
 	}, nil
@@ -148,13 +149,13 @@ func (r *sessionRepoImpl) toModel(session *entity.Session) *models.SessionModel 
 		AccountID:        session.AccountID,
 		DeviceID:         session.DeviceID,
 		RefreshTokenHash: session.RefreshTokenHash,
-		Status:           string(session.Status),
-		IPAddress:        cloneString(session.IPAddress),
-		UserAgent:        cloneString(session.UserAgent),
-		LastActivityAt:   cloneTime(session.LastActivityAt),
+		Status:           session.Status.String(),
+		IPAddress:        utils.ClonePtr(session.IPAddress),
+		UserAgent:        utils.ClonePtr(session.UserAgent),
+		LastActivityAt:   utils.ClonePtr(session.LastActivityAt),
 		ExpiresAt:        session.ExpiresAt,
-		RevokedAt:        cloneTime(session.RevokedAt),
-		RevokedReason:    cloneString(session.RevokedReason),
+		RevokedAt:        utils.ClonePtr(session.RevokedAt),
+		RevokedReason:    utils.ClonePtr(session.RevokedReason),
 		CreatedAt:        session.CreatedAt,
 		UpdatedAt:        session.UpdatedAt,
 	}
@@ -166,11 +167,11 @@ func (r *sessionRepoImpl) syncCacheAfterCommit(ctx context.Context, session *ent
 	}
 
 	sessionClone := *session
-	sessionClone.IPAddress = cloneString(session.IPAddress)
-	sessionClone.UserAgent = cloneString(session.UserAgent)
-	sessionClone.LastActivityAt = cloneTime(session.LastActivityAt)
-	sessionClone.RevokedAt = cloneTime(session.RevokedAt)
-	sessionClone.RevokedReason = cloneString(session.RevokedReason)
+	sessionClone.IPAddress = utils.ClonePtr(session.IPAddress)
+	sessionClone.UserAgent = utils.ClonePtr(session.UserAgent)
+	sessionClone.LastActivityAt = utils.ClonePtr(session.LastActivityAt)
+	sessionClone.RevokedAt = utils.ClonePtr(session.RevokedAt)
+	sessionClone.RevokedReason = utils.ClonePtr(session.RevokedReason)
 
 	r.afterCommit(ctx, func(hookCtx context.Context) {
 		_ = r.sessionCache.Set(hookCtx, &sessionClone)

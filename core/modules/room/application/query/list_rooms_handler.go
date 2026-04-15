@@ -15,10 +15,10 @@ import (
 )
 
 type listRoomsHandler struct {
-	roomQueryService *roomservice.RoomQueryService
+	roomQueryService roomservice.RoomQueryService
 }
 
-func NewListRoomsHandler(roomQueryService *roomservice.RoomQueryService) cqrs.Handler[*in.ListRoomsRequest, *out.ListRoomsResponse] {
+func NewListRoomsHandler(roomQueryService roomservice.RoomQueryService) cqrs.Handler[*in.ListRoomsRequest, *out.ListRoomsResponse] {
 	return &listRoomsHandler{
 		roomQueryService: roomQueryService,
 	}
