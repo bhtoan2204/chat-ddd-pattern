@@ -222,7 +222,7 @@ func (s *authenticationService) Authenticate(ctx context.Context, command Authen
 func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command RefreshTokenCommand) (*TokenPairResult, error) {
 	claims, err := s.paseto.ParseRefreshToken(ctx, command.RefreshToken)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("%w: %v", ErrRefreshTokenInvalid, err))
+		return nil, stackErr.Error(fmt.Errorf("%v: %v", ErrRefreshTokenInvalid, err))
 	}
 
 	now := time.Now().UTC()

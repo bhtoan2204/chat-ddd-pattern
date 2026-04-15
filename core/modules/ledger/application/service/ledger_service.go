@@ -60,7 +60,7 @@ func (s *LedgerService) CreateTransaction(ctx context.Context, command CreateTra
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
 		if err := txRepos.LedgerTransactionAggregateRepository().Save(ctx, aggregate); err != nil {
 			if errors.Is(err, ledgerrepos.ErrDuplicate) {
-				return stackErr.Error(fmt.Errorf("%w: %s", ErrDuplicateTransaction, transactionID))
+				return stackErr.Error(fmt.Errorf("%v: %s", ErrDuplicateTransaction, transactionID))
 			}
 			return stackErr.Error(err)
 		}
@@ -158,5 +158,5 @@ func wrapValidation(err error) error {
 	if err == nil {
 		return nil
 	}
-	return stackErr.Error(fmt.Errorf("%w: %s", ErrValidation, err.Error()))
+	return stackErr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 }

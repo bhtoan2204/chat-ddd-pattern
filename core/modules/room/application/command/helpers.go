@@ -214,7 +214,7 @@ func ensureProjectedAccountsExist(ctx context.Context, baseRepo repos.Repos, acc
 		if _, ok := projected[accountID]; ok {
 			continue
 		}
-		return stackErr.Error(fmt.Errorf("%w: %s", ErrRoomAccountNotFound, accountID))
+		return stackErr.Error(fmt.Errorf("%v: %s", ErrRoomAccountNotFound, accountID))
 	}
 	return nil
 }

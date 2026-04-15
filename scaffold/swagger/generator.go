@@ -31,16 +31,16 @@ func Generate(specDir, outputDir string) (*GeneratedSpec, error) {
 
 	payload, err := json.MarshalIndent(document, "", "  ")
 	if err != nil {
-		return nil, fmt.Errorf("marshal openapi json failed: %w", err)
+		return nil, fmt.Errorf("marshal openapi json failed: %v", err)
 	}
 
 	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return nil, fmt.Errorf("create swagger output dir failed: %w", err)
+		return nil, fmt.Errorf("create swagger output dir failed: %v", err)
 	}
 
 	outputPath := filepath.Join(outputDir, DefaultOutputFile)
 	if err := os.WriteFile(outputPath, payload, 0o644); err != nil {
-		return nil, fmt.Errorf("write swagger json failed: %w", err)
+		return nil, fmt.Errorf("write swagger json failed: %v", err)
 	}
 
 	absOutputPath, err := filepath.Abs(outputPath)
