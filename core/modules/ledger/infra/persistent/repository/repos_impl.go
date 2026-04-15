@@ -18,6 +18,7 @@ type repoImpl struct {
 
 	ledgerRepo                     ledgerrepos.LedgerRepository
 	ledgerTransactionAggregateRepo ledgerrepos.LedgerTransactionAggregateRepository
+	ledgerAccountAggregateRepo     ledgerrepos.LedgerAccountAggregateRepository
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) ledgerrepos.Repos {
@@ -30,6 +31,7 @@ func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) ledgerrepos.Repos
 		db:                             db,
 		ledgerRepo:                     NewLedgerRepoImpl(db),
 		ledgerTransactionAggregateRepo: NewLedgerTransactionAggregateRepoImpl(db),
+		ledgerAccountAggregateRepo:     NewLedgerAccountAggregateRepoImpl(db),
 	}
 }
 
@@ -39,6 +41,10 @@ func (r *repoImpl) LedgerRepository() ledgerrepos.LedgerRepository {
 
 func (r *repoImpl) LedgerTransactionAggregateRepository() ledgerrepos.LedgerTransactionAggregateRepository {
 	return r.ledgerTransactionAggregateRepo
+}
+
+func (r *repoImpl) LedgerAccountAggregateRepository() ledgerrepos.LedgerAccountAggregateRepository {
+	return r.ledgerAccountAggregateRepo
 }
 
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(ledgerrepos.Repos) error) (err error) {

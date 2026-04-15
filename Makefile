@@ -21,7 +21,7 @@ build:
 .PHONY: build
 
 generate:
-	go run scaffold/main.go && go generate ./...
+	go run scaffold/main.go
 .PHONY: generate
 
 connector:

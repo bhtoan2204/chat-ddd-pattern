@@ -42,7 +42,7 @@ func NewPaymentSucceededBooking(input PaymentSucceededBookingInput) (*PaymentSuc
 		return nil, ErrPaymentBookingIDRequired
 	}
 
-	clearingAccountKey := normalizePaymentClearingAccountKey(input.ClearingAccountKey)
+	clearingAccountKey := strings.ToLower(strings.TrimSpace((input.ClearingAccountKey)))
 	if clearingAccountKey == "" {
 		return nil, ErrPaymentBookingClearingKeyRequired
 	}
@@ -83,10 +83,6 @@ func (b *PaymentSucceededBooking) LedgerEntries() []LedgerEntryInput {
 	}
 }
 
-func normalizePaymentClearingAccountKey(value string) string {
-	return strings.ToLower(strings.TrimSpace(value))
-}
-
 func ledgerClearingAccountID(clearingAccountKey string) string {
-	return fmt.Sprintf("ledger:clearing:%s", normalizePaymentClearingAccountKey(clearingAccountKey))
+	return fmt.Sprintf("ledger:clearing:%s", strings.ToLower(strings.TrimSpace((clearingAccountKey))))
 }

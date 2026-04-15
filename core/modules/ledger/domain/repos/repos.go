@@ -6,6 +6,7 @@ import "context"
 type Repos interface {
 	LedgerRepository() LedgerRepository
 	LedgerTransactionAggregateRepository() LedgerTransactionAggregateRepository
+	LedgerAccountAggregateRepository() LedgerAccountAggregateRepository
 
 	WithTransaction(ctx context.Context, fn func(Repos) error) error
 }

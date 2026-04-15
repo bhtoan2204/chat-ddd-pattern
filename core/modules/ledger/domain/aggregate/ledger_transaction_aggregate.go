@@ -27,7 +27,7 @@ type LedgerTransactionAggregate struct {
 
 func NewLedgerTransactionAggregate(transactionID string) (*LedgerTransactionAggregate, error) {
 	agg := &LedgerTransactionAggregate{}
-	agg.SetAggregateType(reflect.TypeOf(agg).Elem().Name())
+	agg.Root().SetAggregateType(reflect.TypeOf(agg).Elem().Name())
 	if err := agg.SetID(strings.TrimSpace(transactionID)); err != nil {
 		return nil, stackErr.Error(err)
 	}

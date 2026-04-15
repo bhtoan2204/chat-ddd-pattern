@@ -16,7 +16,6 @@ modules:
   - name: payment
     kinds:
       - http
-      - projection
 
   - name: room
     kinds:

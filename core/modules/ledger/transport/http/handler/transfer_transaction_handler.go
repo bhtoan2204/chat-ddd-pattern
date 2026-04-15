@@ -14,24 +14,23 @@ import (
 	"go.uber.org/zap"
 )
 
-type getAccountBalanceHandler struct {
-	getAccountBalance cqrs.Dispatcher[*in.GetAccountBalanceRequest, *out.AccountBalanceResponse]
+type transferTransactionHandler struct {
+	transferTransaction cqrs.Dispatcher[*in.TransferTransactionRequest, *out.TransactionTransactionResponse]
 }
 
-func NewGetAccountBalanceHandler(
-	getAccountBalance cqrs.Dispatcher[*in.GetAccountBalanceRequest, *out.AccountBalanceResponse],
-) *getAccountBalanceHandler {
-	return &getAccountBalanceHandler{
-		getAccountBalance: getAccountBalance,
+func NewTransferTransactionHandler(
+	transferTransaction cqrs.Dispatcher[*in.TransferTransactionRequest, *out.TransactionTransactionResponse],
+) *transferTransactionHandler {
+	return &transferTransactionHandler{
+		transferTransaction: transferTransaction,
 	}
 }
 
-func (h *getAccountBalanceHandler) Handle(c *gin.Context) (interface{}, error) {
+func (h *transferTransactionHandler) Handle(c *gin.Context) (interface{}, error) {
 	ctx := c.Request.Context()
 	logger := logging.FromContext(ctx)
-	var request in.GetAccountBalanceRequest
-	request.AccountID = c.Param("account_id")
-	if err := c.ShouldBindQuery(&request); err != nil {
+	var request in.TransferTransactionRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		logger.Errorw("Unmarshal request failed", zap.Error(err))
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return nil, stackErr.Error(err)
@@ -43,9 +42,9 @@ func (h *getAccountBalanceHandler) Handle(c *gin.Context) (interface{}, error) {
 		return nil, stackErr.Error(err)
 	}
 
-	result, err := h.getAccountBalance.Dispatch(ctx, &request)
+	result, err := h.transferTransaction.Dispatch(ctx, &request)
 	if err != nil {
-		logger.Errorw("GetAccountBalance failed", zap.Error(err))
+		logger.Errorw("TransferTransaction failed", zap.Error(err))
 		return nil, stackErr.Error(err)
 	}
 	return result, nil

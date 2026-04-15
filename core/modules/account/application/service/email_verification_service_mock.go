@@ -96,9 +96,9 @@ func (mr *MockEmailVerificationServiceMockRecorder) ConsumeVerificationToken(ctx
 }
 
 // SendVerificationEmail mocks base method.
-func (m *MockEmailVerificationService) SendVerificationEmail(ctx context.Context, account *entity.Account, now time.Time) (string, time.Time, error) {
+func (m *MockEmailVerificationService) SendVerificationEmail(ctx context.Context, account *entity.Account) (string, time.Time, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendVerificationEmail", ctx, account, now)
+	ret := m.ctrl.Call(m, "SendVerificationEmail", ctx, account)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(time.Time)
 	ret2, _ := ret[2].(error)
@@ -106,7 +106,7 @@ func (m *MockEmailVerificationService) SendVerificationEmail(ctx context.Context
 }
 
 // SendVerificationEmail indicates an expected call of SendVerificationEmail.
-func (mr *MockEmailVerificationServiceMockRecorder) SendVerificationEmail(ctx, account, now any) *gomock.Call {
+func (mr *MockEmailVerificationServiceMockRecorder) SendVerificationEmail(ctx, account any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendVerificationEmail", reflect.TypeOf((*MockEmailVerificationService)(nil).SendVerificationEmail), ctx, account, now)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendVerificationEmail", reflect.TypeOf((*MockEmailVerificationService)(nil).SendVerificationEmail), ctx, account)
 }

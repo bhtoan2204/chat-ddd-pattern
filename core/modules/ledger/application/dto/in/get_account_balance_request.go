@@ -15,7 +15,7 @@ type GetAccountBalanceRequest struct {
 
 func (r *GetAccountBalanceRequest) Normalize() {
 	r.AccountID = strings.TrimSpace(r.AccountID)
-	r.Currency = strings.ToUpper(strings.TrimSpace(r.Currency))
+	r.Currency = strings.TrimSpace(r.Currency)
 }
 
 func (r *GetAccountBalanceRequest) Validate() error {

@@ -25,7 +25,7 @@ func (r *LedgerEntryRequest) Normalize() {
 
 func (r *CreateTransactionRequest) Normalize() {
 	r.TransactionID = strings.TrimSpace(r.TransactionID)
-	r.Currency = strings.ToUpper(strings.TrimSpace(r.Currency))
+	r.Currency = strings.TrimSpace(r.Currency)
 	for idx := range r.Entries {
 		r.Entries[idx].Normalize()
 	}

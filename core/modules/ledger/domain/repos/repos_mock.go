@@ -40,6 +40,20 @@ func (m *MockRepos) EXPECT() *MockReposMockRecorder {
 	return m.recorder
 }
 
+// LedgerAccountAggregateRepository mocks base method.
+func (m *MockRepos) LedgerAccountAggregateRepository() LedgerAccountAggregateRepository {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LedgerAccountAggregateRepository")
+	ret0, _ := ret[0].(LedgerAccountAggregateRepository)
+	return ret0
+}
+
+// LedgerAccountAggregateRepository indicates an expected call of LedgerAccountAggregateRepository.
+func (mr *MockReposMockRecorder) LedgerAccountAggregateRepository() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LedgerAccountAggregateRepository", reflect.TypeOf((*MockRepos)(nil).LedgerAccountAggregateRepository))
+}
+
 // LedgerRepository mocks base method.
 func (m *MockRepos) LedgerRepository() LedgerRepository {
 	m.ctrl.T.Helper()

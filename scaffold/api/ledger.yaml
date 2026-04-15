@@ -125,3 +125,52 @@ endpoints:
                 type: int64
               - name: created_at
                 type: string
+  - name: LedgerTransferTransaction
+    method: POST
+    path: /ledger/transfers
+    handler: TransferTransactionHandler
+    auth: true
+    usecase:
+      name: LedgerUsecase
+      method: TransferTransaction
+    request:
+      struct: TransferTransactionRequest
+      fields:
+        - name: to_account_id
+          type: string
+          required: true
+        - name: currency
+          type: string
+          required: true
+        - name: amount
+          type: int64
+          required: true
+        - name: metadata
+          type: object
+          required: false
+    response:
+      struct: TransactionTransactionResponse
+      fields:
+        - name: transaction_id
+          type: string
+        - name: currency
+          type: string
+        - name: created_at
+          type: string
+        - name: entries
+          type: array
+          items:
+            struct: LedgerEntryResponse
+            fields:
+              - name: id
+                type: int64
+              - name: transaction_id
+                type: string
+              - name: account_id
+                type: string
+              - name: currency
+                type: string
+              - name: amount
+                type: int64
+              - name: created_at
+                type: string
