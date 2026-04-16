@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"go-socket/core/modules/account/infra/lock"
 	"go-socket/core/modules/ledger/application/dto/in"
 	"go-socket/core/modules/ledger/application/service"
 	"go-socket/core/modules/ledger/domain/entity"
+	"go-socket/core/shared/infra/lock"
 	"go-socket/core/shared/pkg/actorctx"
 
 	"go.uber.org/mock/gomock"
@@ -56,25 +56,25 @@ func TestTransferTransactionHandle(t *testing.T) {
 		releasedKeys := make([]string, 0, 2)
 
 		locker.EXPECT().
-			AcquireLock(gomock.Any(), "ledger-transfer:acc-a", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
+			AcquireLock(gomock.Any(), "ledger-account:acc-a", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
 			DoAndReturn(func(_ context.Context, key, _ string, _ time.Duration, _ time.Duration, _ time.Duration) (bool, error) {
 				acquiredKeys = append(acquiredKeys, key)
 				return true, nil
 			})
 		locker.EXPECT().
-			AcquireLock(gomock.Any(), "ledger-transfer:acc-z", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
+			AcquireLock(gomock.Any(), "ledger-account:acc-z", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
 			DoAndReturn(func(_ context.Context, key, _ string, _ time.Duration, _ time.Duration, _ time.Duration) (bool, error) {
 				acquiredKeys = append(acquiredKeys, key)
 				return true, nil
 			})
 		locker.EXPECT().
-			ReleaseLock(gomock.Any(), "ledger-transfer:acc-z", gomock.Any()).
+			ReleaseLock(gomock.Any(), "ledger-account:acc-z", gomock.Any()).
 			DoAndReturn(func(_ context.Context, key, _ string) (bool, error) {
 				releasedKeys = append(releasedKeys, key)
 				return true, nil
 			})
 		locker.EXPECT().
-			ReleaseLock(gomock.Any(), "ledger-transfer:acc-a", gomock.Any()).
+			ReleaseLock(gomock.Any(), "ledger-account:acc-a", gomock.Any()).
 			DoAndReturn(func(_ context.Context, key, _ string) (bool, error) {
 				releasedKeys = append(releasedKeys, key)
 				return true, nil
@@ -119,10 +119,10 @@ func TestTransferTransactionHandle(t *testing.T) {
 		if capturedCommand.TransactionID == "" {
 			t.Fatalf("expected generated transaction id")
 		}
-		if !stringSlicesEqual(acquiredKeys, []string{"ledger-transfer:acc-a", "ledger-transfer:acc-z"}) {
+		if !stringSlicesEqual(acquiredKeys, []string{"ledger-account:acc-a", "ledger-account:acc-z"}) {
 			t.Fatalf("unexpected acquired lock order: %v", acquiredKeys)
 		}
-		if !stringSlicesEqual(releasedKeys, []string{"ledger-transfer:acc-z", "ledger-transfer:acc-a"}) {
+		if !stringSlicesEqual(releasedKeys, []string{"ledger-account:acc-z", "ledger-account:acc-a"}) {
 			t.Fatalf("unexpected released lock order: %v", releasedKeys)
 		}
 	})

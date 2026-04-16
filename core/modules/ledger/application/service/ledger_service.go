@@ -34,6 +34,9 @@ type RecordPaymentSucceededCommand struct {
 	Amount             int64
 }
 
+const LedgerAccountLockKeyPrefix = "ledger-account"
+
+//go:generate mockgen -package=service -destination=ledger_service_mock.go -source=ledger_service.go
 type LedgerService interface {
 	TransferToAccount(ctx context.Context, command TransferToAccountCommand) (*entity.LedgerTransaction, error)
 	RecordPaymentSucceeded(ctx context.Context, command RecordPaymentSucceededCommand) error

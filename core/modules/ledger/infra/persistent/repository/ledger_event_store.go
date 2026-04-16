@@ -41,17 +41,31 @@ func newLedgerEventStore(dbTX dbTX, serializer eventpkg.Serializer) ledgerEventS
 
 func (s *ledgerEventStoreImpl) CreateIfNotExist(ctx context.Context, aggregateID, aggregateType string) error {
 	now := time.Now().UTC()
-	err := s.db.WithContext(ctx).Create(&model.LedgerAggregateModel{
-		ID:            ledgerAggregateModelID(aggregateType, aggregateID),
-		AggregateID:   aggregateID,
-		AggregateType: aggregateType,
-		Version:       0,
-		CreatedAt:     now,
-		UpdatedAt:     now,
-	}).Error
-	if err != nil && isOracleUniqueConstraintError(err) {
-		return nil
-	}
+
+	sql := `
+		MERGE INTO ledger_aggregates t
+		USING (
+			SELECT ? AS id, ? AS aggregate_id, ? AS aggregate_type, ? AS version, ? AS created_at, ? AS updated_at
+			FROM DUAL
+		) src
+		ON (
+			t.aggregate_id = src.aggregate_id
+			AND t.aggregate_type = src.aggregate_type
+		)
+		WHEN NOT MATCHED THEN
+			INSERT (id, aggregate_id, aggregate_type, version, created_at, updated_at)
+			VALUES (src.id, src.aggregate_id, src.aggregate_type, src.version, src.created_at, src.updated_at)
+		`
+	err := s.db.WithContext(ctx).Exec(
+		sql,
+		uuid.NewString(),
+		aggregateID,
+		aggregateType,
+		0,
+		now,
+		now,
+	).Error
+
 	return mapError(err)
 }
 
@@ -66,8 +80,7 @@ func (s *ledgerEventStoreImpl) CheckAndUpdateVersion(
 		Model(&model.LedgerAggregateModel{}).
 		Where("aggregate_id = ? AND aggregate_type = ? AND version = ?", aggregateID, aggregateType, baseVersion).
 		Updates(map[string]interface{}{
-			"version":    newVersion,
-			"updated_at": time.Now().UTC(),
+			"version": newVersion,
 		})
 	if result.Error != nil {
 		return false, mapError(result.Error)
@@ -153,15 +166,16 @@ func (s *ledgerEventStoreImpl) CreateSnapshot(ctx context.Context, agg eventpkg.
 
 func (s *ledgerEventStoreImpl) ReadSnapshot(ctx context.Context, aggregateID, aggregateType string, agg eventpkg.Aggregate) (bool, error) {
 	var snapshot model.LedgerSnapshotModel
-	err := s.db.WithContext(ctx).
+	result := s.db.WithContext(ctx).
 		Where("aggregate_id = ? AND aggregate_type = ?", aggregateID, aggregateType).
 		Order("version DESC").
-		First(&snapshot).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return false, nil
-		}
-		return false, stackErr.Error(mapError(err))
+		Limit(1).
+		Find(&snapshot)
+	if result.Error != nil {
+		return false, stackErr.Error(mapError(result.Error))
+	}
+	if result.RowsAffected == 0 {
+		return false, nil
 	}
 
 	if err := s.serializer.Unmarshal([]byte(snapshot.SnapshotData), agg); err != nil {

@@ -4,8 +4,8 @@ import "time"
 
 type LedgerAggregateModel struct {
 	ID            string    `gorm:"primaryKey"`
-	AggregateID   string    `gorm:"not null;uniqueIndex:idx_ledger_aggregates_aggregate_id"`
-	AggregateType string    `gorm:"not null"`
+	AggregateID   string    `gorm:"not null;uniqueIndex:idx_ledger_aggregates_agg_type_id"`
+	AggregateType string    `gorm:"not null;uniqueIndex:idx_ledger_aggregates_agg_type_id"`
 	Version       int       `gorm:"not null"`
 	CreatedAt     time.Time `gorm:"autoCreateTime"`
 	UpdatedAt     time.Time `gorm:"autoUpdateTime"`

@@ -85,7 +85,7 @@ func BuildDocument(spec *models.APISpec) (*Document, error) {
 			moduleTag = "default"
 		}
 
-		registerPayloadSchemas(doc.Components.Schemas, componentName(moduleTag, ep.Request.Struct), ep.Request)
+		registerRequestPayloadSchemas(doc.Components.Schemas, componentName(moduleTag, ep.Request.Struct), ep)
 		registerPayloadSchemas(doc.Components.Schemas, componentName(moduleTag, ep.Response.Struct), ep.Response)
 
 		if ep.Auth {
@@ -260,6 +260,30 @@ func buildRequestBody(ep models.Endpoint, moduleTag string) *RequestBody {
 	default:
 		return nil
 	}
+}
+
+func registerRequestPayloadSchemas(dst map[string]*Schema, name string, ep models.Endpoint) {
+	if strings.TrimSpace(name) == "" || strings.TrimSpace(ep.Request.Struct) == "" {
+		return
+	}
+
+	bodyPayload := models.Payload{
+		Struct:     ep.Request.Struct,
+		Collection: ep.Request.Collection,
+		Fields:     make([]models.FieldSpec, 0, len(ep.Request.Fields)),
+	}
+
+	for _, field := range ep.Request.Fields {
+		if fieldLocation(ep, field) != "body" {
+			continue
+		}
+		bodyPayload.Fields = append(bodyPayload.Fields, field)
+	}
+	if len(bodyPayload.Fields) == 0 {
+		return
+	}
+
+	registerPayloadSchemas(dst, name, bodyPayload)
 }
 
 func registerPayloadSchemas(dst map[string]*Schema, name string, payload models.Payload) {

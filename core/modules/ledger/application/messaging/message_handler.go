@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	appCtx "go-socket/core/context"
 	ledgerprojection "go-socket/core/modules/ledger/application/projection"
 	"go-socket/core/modules/ledger/application/service"
+	ledgerrepo "go-socket/core/modules/ledger/infra/persistent/repository"
 	"go-socket/core/shared/config"
+	"go-socket/core/shared/infra/lock"
 	infraMessaging "go-socket/core/shared/infra/messaging"
 	"go-socket/core/shared/pkg/contxt"
 	"go-socket/core/shared/pkg/logging"
@@ -24,17 +27,21 @@ type messageHandler struct {
 	consumer      []infraMessaging.Consumer
 	ledgerService service.LedgerService
 	projector     ledgerprojection.Projector
+	locker        lock.Lock
 }
 
 func NewMessageHandler(
 	cfg *config.Config,
-	ledgerService service.LedgerService,
-	projector ledgerprojection.Projector,
+	appCtx *appCtx.AppContext,
 ) (MessageHandler, error) {
+	ledgerSvc := service.NewLedgerService(ledgerrepo.NewRepoImpl(appCtx))
+	projector := ledgerrepo.NewLedgerProjectionRepoImpl(appCtx.GetDB())
+
 	instance := &messageHandler{
 		consumer:      make([]infraMessaging.Consumer, 0, 1),
-		ledgerService: ledgerService,
+		ledgerService: ledgerSvc,
 		projector:     projector,
+		locker:        appCtx.Locker(),
 	}
 
 	topic := strings.TrimSpace(cfg.KafkaConfig.KafkaLedgerConsumer.PaymentOutboxTopic)
@@ -45,7 +52,7 @@ func NewMessageHandler(
 	handlerName := fmt.Sprintf("ledger-%s-handler", strings.ToLower(topic))
 	consumer, err := infraMessaging.NewConsumer(&infraMessaging.Config{
 		Servers:      cfg.KafkaConfig.KafkaServers,
-		Group:        cfg.KafkaConfig.KafkaLedgerConsumer.LedgerGroup,
+		Group:        cfg.KafkaConfig.KafkaLedgerConsumer.LedgerMessagingGroup,
 		OffsetReset:  cfg.KafkaConfig.KafkaOffsetReset,
 		ConsumeTopic: []string{topic},
 		HandlerName:  handlerName,

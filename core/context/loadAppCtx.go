@@ -2,7 +2,6 @@ package appCtx
 
 import (
 	"context"
-	"go-socket/core/modules/account/infra/lock"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/constant"
 	"go-socket/core/shared/infra/cache"
@@ -10,6 +9,7 @@ import (
 	dbinfra "go-socket/core/shared/infra/db"
 	"go-socket/core/shared/infra/discovery"
 	elasticclient "go-socket/core/shared/infra/elasticsearch"
+	"go-socket/core/shared/infra/lock"
 	"go-socket/core/shared/infra/redis"
 	"go-socket/core/shared/infra/smtp"
 	"go-socket/core/shared/infra/storage"

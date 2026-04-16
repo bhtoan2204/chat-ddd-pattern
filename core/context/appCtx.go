@@ -2,10 +2,10 @@ package appCtx
 
 import (
 	"context"
-	"go-socket/core/modules/account/infra/lock"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/infra/cache"
 	"go-socket/core/shared/infra/discovery"
+	"go-socket/core/shared/infra/lock"
 	"go-socket/core/shared/infra/smtp"
 	"go-socket/core/shared/infra/storage"
 	"go-socket/core/shared/infra/xpaseto"

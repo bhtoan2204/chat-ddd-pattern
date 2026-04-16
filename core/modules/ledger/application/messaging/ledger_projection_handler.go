@@ -19,7 +19,7 @@ func (h *messageHandler) handleLedgerOutboxEvent(ctx context.Context, value []by
 
 	log := logging.FromContext(ctx).Named("LedgerProjectionEvent")
 
-	var event paymentOutboxMessage
+	var event outboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
 		return stackErr.Error(fmt.Errorf("unmarshal ledger outbox event failed: %v", err))
 	}
@@ -31,12 +31,29 @@ func (h *messageHandler) handleLedgerOutboxEvent(ctx context.Context, value []by
 
 	switch event.EventName {
 	case ledgerprojection.EventLedgerTransactionProjected:
-		var payload ledgerprojection.LedgerTransactionProjected
-		if err := json.Unmarshal(event.EventData, &payload); err != nil {
-			return stackErr.Error(fmt.Errorf("unmarshal ledger transaction projected payload failed: %v", err))
+		payload, err := unmarshalLedgerTransactionProjectedPayload(event.EventData)
+		if err != nil {
+			return stackErr.Error(err)
 		}
 		return stackErr.Error(h.projector.ProjectTransaction(ctx, &payload))
 	default:
 		return nil
 	}
+}
+
+func unmarshalLedgerTransactionProjectedPayload(data json.RawMessage) (ledgerprojection.LedgerTransactionProjected, error) {
+	var payload ledgerprojection.LedgerTransactionProjected
+	if err := json.Unmarshal(data, &payload); err == nil {
+		return payload, nil
+	} else {
+		var raw string
+		if err2 := json.Unmarshal(data, &raw); err2 != nil {
+			return ledgerprojection.LedgerTransactionProjected{}, stackErr.Error(fmt.Errorf("unmarshal ledger transaction projected payload failed: %v", err))
+		}
+		if err2 := json.Unmarshal([]byte(raw), &payload); err2 != nil {
+			return ledgerprojection.LedgerTransactionProjected{}, stackErr.Error(fmt.Errorf("unmarshal inner ledger transaction projected payload failed: %v", err2))
+		}
+	}
+
+	return payload, nil
 }

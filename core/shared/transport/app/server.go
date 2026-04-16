@@ -79,11 +79,6 @@ func (s *appServer) buildModuleRuntimes(appContext *appCtx.AppContext) error {
 		return stackErr.Error(fmt.Errorf("build ledger messaging runtime failed: %v", err))
 	}
 
-	// paymentRuntime, err := paymentassembly.BuildProjectionRuntime(s.cfg, appContext)
-	// if err != nil {
-	// 	return stackErr.Error(fmt.Errorf("build payment projection runtime failed: %v", err))
-	// }
-
 	roomRuntime, err := roomassembly.BuildProjectionRuntime(s.cfg, appContext)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("build room projection runtime failed: %v", err))

@@ -16,9 +16,11 @@ func RegisterPrivateRoutes(
 	routes *gin.RouterGroup,
 	getAccountBalance cqrs.Dispatcher[*in.GetAccountBalanceRequest, *out.AccountBalanceResponse],
 	getTransaction cqrs.Dispatcher[*in.GetTransactionRequest, *out.TransactionResponse],
+	listTransaction cqrs.Dispatcher[*in.ListTransactionRequest, *out.ListTransactionResponse],
 	transferTransaction cqrs.Dispatcher[*in.TransferTransactionRequest, *out.TransactionTransactionResponse],
 ) {
 	routes.GET("/ledger/accounts/:account_id/balance", httpx.Wrap(handler.NewGetAccountBalanceHandler(getAccountBalance)))
 	routes.GET("/ledger/transactions/:transaction_id", httpx.Wrap(handler.NewGetTransactionHandler(getTransaction)))
+	routes.GET("/ledger/transactions", httpx.Wrap(handler.NewListTransactionHandler(listTransaction)))
 	routes.POST("/ledger/transfers", httpx.Wrap(handler.NewTransferTransactionHandler(transferTransaction)))
 }

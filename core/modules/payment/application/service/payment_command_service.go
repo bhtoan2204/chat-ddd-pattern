@@ -8,12 +8,12 @@ import (
 	"time"
 
 	appCtx "go-socket/core/context"
-	"go-socket/core/modules/account/infra/lock"
 	"go-socket/core/modules/payment/application/dto/in"
 	"go-socket/core/modules/payment/application/dto/out"
 	"go-socket/core/modules/payment/domain/entity"
 	repos "go-socket/core/modules/payment/domain/repos"
 	domainservice "go-socket/core/modules/payment/domain/service"
+	"go-socket/core/shared/infra/lock"
 	"go-socket/core/shared/pkg/actorctx"
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"

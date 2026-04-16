@@ -123,6 +123,65 @@ func TestBuildDocument(t *testing.T) {
 	if roomListPath.Get.RequestBody != nil {
 		t.Fatalf("did not expect request body for GET")
 	}
+
+	t.Run("request body schema excludes header parameters", func(t *testing.T) {
+		loginDoc, err := BuildDocument(&models.APISpec{
+			Version:  1,
+			BasePath: "/api/v1",
+			Endpoints: []models.Endpoint{
+				{
+					Name:    "AuthLogin",
+					Method:  "POST",
+					Path:    "/auth/login",
+					Handler: "LoginHandler",
+					Usecase: models.Usecase{Name: "AuthUsecase", Method: "Login"},
+					Request: models.Payload{
+						Struct: "LoginRequest",
+						Fields: []models.FieldSpec{
+							{Name: "email", Type: "string", Required: true},
+							{Name: "password", Type: "string", Required: true},
+							{Name: "device_uid", Type: "string", Source: "header", Header: "X-Device-UID", Required: true},
+							{Name: "user_agent", Type: "string", Source: "header", Header: "User-Agent"},
+						},
+					},
+					Response: models.Payload{
+						Struct: "LoginResponse",
+						Fields: []models.FieldSpec{
+							{Name: "access_token", Type: "string"},
+						},
+					},
+				},
+			},
+		})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+
+		loginPath := loginDoc.Paths["/auth/login"]
+		if loginPath == nil || loginPath.Post == nil {
+			t.Fatalf("expected login POST operation")
+		}
+		if len(loginPath.Post.Parameters) != 2 {
+			t.Fatalf("expected 2 header parameters, got %+v", loginPath.Post.Parameters)
+		}
+
+		loginSchema := loginDoc.Components.Schemas["Auth_LoginRequest"]
+		if loginSchema == nil {
+			t.Fatalf("expected auth.LoginRequest schema")
+		}
+		if _, exists := loginSchema.Properties["device_uid"]; exists {
+			t.Fatalf("did not expect header field device_uid in request body schema")
+		}
+		if _, exists := loginSchema.Properties["user_agent"]; exists {
+			t.Fatalf("did not expect header field user_agent in request body schema")
+		}
+		if _, exists := loginSchema.Properties["email"]; !exists {
+			t.Fatalf("expected email in request body schema")
+		}
+		if _, exists := loginSchema.Properties["password"]; !exists {
+			t.Fatalf("expected password in request body schema")
+		}
+	})
 }
 
 func TestGenerateWritesOpenAPIJSON(t *testing.T) {

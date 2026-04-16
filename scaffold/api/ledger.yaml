@@ -2,62 +2,6 @@ version: 1
 basePath: /api/v1
 
 endpoints:
-  - name: LedgerCreateTransaction
-    method: POST
-    path: /ledger/transactions
-    handler: CreateTransactionHandler
-    auth: true
-    usecase:
-      name: LedgerUsecase
-      method: CreateTransaction
-    request:
-      struct: CreateTransactionRequest
-      fields:
-        - name: transaction_id
-          type: string
-          required: true
-        - name: currency
-          type: string
-          required: true
-        - name: entries
-          type: array
-          required: true
-          items:
-            struct: LedgerEntryRequest
-            fields:
-              - name: account_id
-                type: string
-                required: true
-              - name: amount
-                type: int64
-                required: true
-    response:
-      struct: TransactionResponse
-      fields:
-        - name: transaction_id
-          type: string
-        - name: currency
-          type: string
-        - name: created_at
-          type: string
-        - name: entries
-          type: array
-          items:
-            struct: LedgerEntryResponse
-            fields:
-              - name: id
-                type: int64
-              - name: transaction_id
-                type: string
-              - name: account_id
-                type: string
-              - name: currency
-                type: string
-              - name: amount
-                type: int64
-              - name: created_at
-                type: string
-
   - name: LedgerGetAccountBalance
     method: GET
     path: /ledger/accounts/:account_id/balance
@@ -174,3 +118,61 @@ endpoints:
                 type: int64
               - name: created_at
                 type: string
+  - name: LedgerListTransaction
+    method: GET
+    path: /ledger/transactions
+    handler: ListTransactionHandler
+    auth: true
+    usecase:
+      name: LedgerUsecase
+      method: ListTransaction
+    request:
+      struct: ListTransactionRequest
+      fields:
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+        - name: currency
+          type: string
+    response:
+      struct: ListTransactionResponse
+      fields:
+        - name: records
+          type: array
+          items:
+            struct: TransactionResponse
+            fields:
+              - name: transaction_id
+                type: string
+              - name: currency
+                type: string
+              - name: created_at
+                type: string
+              - name: entries
+                type: array
+                items:
+                  struct: LedgerEntryResponse
+                  fields:
+                    - name: id
+                      type: int64
+                    - name: transaction_id
+                      type: string
+                    - name: account_id
+                      type: string
+                    - name: currency
+                      type: string
+                    - name: amount
+                      type: int64
+                    - name: created_at
+                      type: string
+        - name: next_cursor
+          type: string
+        - name: has_more
+          type: bool
+        - name: total
+          type: int64
+        - name: size
+          type: int
+        - name: limit
+          type: int

@@ -4,10 +4,10 @@ import (
 	"context"
 
 	appCtx "go-socket/core/context"
-	"go-socket/core/modules/account/infra/lock"
 	"go-socket/core/modules/payment/application/dto/in"
 	"go-socket/core/modules/payment/application/dto/out"
 	paymentservice "go-socket/core/modules/payment/application/service"
+	"go-socket/core/shared/infra/lock"
 	"go-socket/core/shared/pkg/cqrs"
 )
 

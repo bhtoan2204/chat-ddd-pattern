@@ -37,6 +37,10 @@ func (s *services) GetTransaction(ctx context.Context, transactionID string) (*l
 	return s.ledgerQueryService.GetTransaction(ctx, transactionID)
 }
 
+func (s *services) ListTransactions(ctx context.Context, accountID, cursor, currency string, limit int) (*ledgerout.ListTransactionResponse, error) {
+	return s.ledgerQueryService.ListTransactions(ctx, accountID, cursor, currency, limit)
+}
+
 func (s *services) TransferToAccount(ctx context.Context, command TransferToAccountCommand) (*entity.LedgerTransaction, error) {
 	return s.ledgerService.TransferToAccount(ctx, command)
 }

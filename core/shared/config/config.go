@@ -80,8 +80,8 @@ type KafkaRoomConsumer struct {
 }
 
 type KafkaLedgerConsumer struct {
-	LedgerGroup           string `env:"KAFKA_LEDGER_CONSUMER_GROUP"`
-	LedgerProjectionGroup string `env:"KAFKA_LEDGER_PROJECTION_GROUP"`
+	LedgerMessagingGroup  string `env:"KAFKA_LEDGER_CONSUMER_MESSAGING_GROUP"`
+	LedgerProjectionGroup string `env:"KAFKA_LEDGER_CONSUMER_PROJECTION_GROUP"`
 
 	PaymentOutboxTopic string `env:"KAFKA_CONSUMER_PAYMENT_OUTBOX_TOPIC"`
 	LedgerOutboxTopic  string `env:"KAFKA_CONSUMER_LEDGER_OUTBOX_TOPIC"`
