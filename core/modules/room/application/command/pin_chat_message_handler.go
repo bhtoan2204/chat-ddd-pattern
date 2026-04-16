@@ -2,22 +2,26 @@ package command
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	roomrepos "go-socket/core/modules/room/domain/repos"
+	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type pinChatMessageHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewPinChatMessageHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.PinChatMessageRequest, *out.ChatConversationResponse] {
-	return &pinChatMessageHandler{baseRepo: baseRepo}
+func NewPinChatMessageHandler(baseRepo roomrepos.Repos, services service.Service) cqrs.Handler[*in.PinChatMessageRequest, *out.ChatConversationResponse] {
+	return &pinChatMessageHandler{baseRepo: baseRepo, services: services}
 }
 
 func (h *pinChatMessageHandler) Handle(ctx context.Context, req *in.PinChatMessageRequest) (*out.ChatConversationResponse, error) {
@@ -45,5 +49,12 @@ func (h *pinChatMessageHandler) Handle(ctx context.Context, req *in.PinChatMessa
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	return roomsupport.ToConversationResponse(res), nil
+	out := roomsupport.ToConversationResponse(res)
+
+	h.services.EmitMessage(ctx, types.MessagePayload{
+		RoomId:  out.RoomID,
+		Type:    reflect.TypeOf(out).Elem().Name(),
+		Payload: out,
+	})
+	return out, nil
 }

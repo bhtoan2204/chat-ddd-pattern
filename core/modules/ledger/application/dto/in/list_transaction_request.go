@@ -3,10 +3,7 @@
 package in
 
 import (
-	"errors"
 	"strings"
-
-	"go-socket/core/shared/pkg/stackErr"
 )
 
 type ListTransactionRequest struct {
@@ -17,13 +14,10 @@ type ListTransactionRequest struct {
 
 func (r *ListTransactionRequest) Normalize() {
 	r.Cursor = strings.TrimSpace(r.Cursor)
-	r.Currency = strings.ToUpper(strings.TrimSpace(r.Currency))
+	r.Currency = strings.TrimSpace(r.Currency)
 }
 
 func (r *ListTransactionRequest) Validate() error {
 	r.Normalize()
-	if r.Limit < 0 {
-		return stackErr.Error(errors.New("limit must be greater than or equal to zero"))
-	}
 	return nil
 }

@@ -12,6 +12,7 @@ import (
 	"go-socket/core/shared/pkg/stackErr"
 	modruntime "go-socket/core/shared/runtime"
 	httptransport "go-socket/core/shared/transport/http"
+	"sync"
 
 	"go.uber.org/zap"
 )
@@ -112,9 +113,18 @@ func (s *appServer) stopStartedRuntimes(ctx context.Context, lastIdx int) {
 }
 
 func (s *appServer) stopModuleRuntimes(ctx context.Context) {
+	var wg sync.WaitGroup
+
 	for i := len(s.moduleRuntimes) - 1; i >= 0; i-- {
-		if err := s.moduleRuntimes[i].Stop(); err != nil {
-			logging.FromContext(ctx).Errorw("Failed to stop module runtime", zap.Error(err))
-		}
+		runtime := s.moduleRuntimes[i]
+		wg.Add(1)
+		go func(runtime modruntime.Module) {
+			defer wg.Done()
+			if err := runtime.Stop(); err != nil {
+				logging.FromContext(ctx).Errorw("Failed to stop module runtime", zap.Error(err))
+			}
+		}(runtime)
 	}
+
+	wg.Wait()
 }

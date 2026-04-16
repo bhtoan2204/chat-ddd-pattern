@@ -2,10 +2,10 @@
 package out
 
 type ListTransactionResponse struct {
-	Limit      int                   `json:"limit"`
-	Size       int                   `json:"size"`
-	Total      int64                 `json:"total"`
-	HasMore    bool                  `json:"has_more"`
-	NextCursor string                `json:"next_cursor"`
-	Records    []TransactionResponse `json:"records"`
+	Records    []TransactionResponse `json:"records,omitempty"`
+	NextCursor string                `json:"next_cursor,omitempty"`
+	HasMore    bool                  `json:"has_more,omitempty"`
+	Total      int64                 `json:"total,omitempty"`
+	Size       int                   `json:"size,omitempty"`
+	Limit      int                   `json:"limit,omitempty"`
 }

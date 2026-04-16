@@ -2,5 +2,5 @@
 package out
 
 type SavePushSubscriptionResponse struct {
-	Message string `json:"message"`
+	Message string `json:"message,omitempty"`
 }

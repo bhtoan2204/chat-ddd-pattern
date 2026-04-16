@@ -63,17 +63,20 @@ func GenerateRegistry(spec *models.APISpec) (string, error) {
 }
 
 type registryTemplateData struct {
-	PackageName       string
-	ServerStructName  string
-	ModuleHTTPAlias   string
-	RequestDtoImport  string
-	ResponseDtoImport string
-	ModuleHTTPImport  string
-	DispatcherImport  string
-	HTTPImport        string
-	Fields            []registryParam
-	PublicParams      []registryParam
-	PrivateParams     []registryParam
+	PackageName        string
+	ServerStructName   string
+	ModuleHTTPAlias    string
+	ModuleSocketAlias  string
+	RequestDtoImport   string
+	ResponseDtoImport  string
+	ModuleHTTPImport   string
+	ModuleSocketImport string
+	DispatcherImport   string
+	HTTPImport         string
+	HasSocketTransport bool
+	Fields             []registryParam
+	PublicParams       []registryParam
+	PrivateParams      []registryParam
 }
 
 type registryParam struct {
@@ -85,14 +88,17 @@ type registryParam struct {
 func buildRegistryTemplateData(group moduleEndpoints) registryTemplateData {
 	moduleName := modulePackageName(group.Module.ImportRoot)
 	data := registryTemplateData{
-		PackageName:       "server",
-		ServerStructName:  lowerFirst(moduleName) + "HTTPServer",
-		ModuleHTTPAlias:   moduleName + "http",
-		RequestDtoImport:  group.Module.ImportRoot + "/application/dto/in",
-		ResponseDtoImport: group.Module.ImportRoot + "/application/dto/out",
-		ModuleHTTPImport:  group.Module.ImportRoot + "/transport/http",
-		DispatcherImport:  "go-socket/core/shared/pkg/cqrs",
-		HTTPImport:        "go-socket/core/shared/transport/http",
+		PackageName:        "server",
+		ServerStructName:   lowerFirst(moduleName) + "HTTPServer",
+		ModuleHTTPAlias:    moduleName + "http",
+		ModuleSocketAlias:  moduleName + "socket",
+		RequestDtoImport:   group.Module.ImportRoot + "/application/dto/in",
+		ResponseDtoImport:  group.Module.ImportRoot + "/application/dto/out",
+		ModuleHTTPImport:   group.Module.ImportRoot + "/transport/http",
+		ModuleSocketImport: group.Module.ImportRoot + "/transport/websocket",
+		DispatcherImport:   "go-socket/core/shared/pkg/cqrs",
+		HTTPImport:         "go-socket/core/shared/transport/http",
+		HasSocketTransport: hasSocketTransport(group.Module),
 	}
 
 	fieldSeen := make(map[string]bool)
@@ -126,6 +132,11 @@ func buildRegistryTemplateData(group moduleEndpoints) registryTemplateData {
 	}
 
 	return data
+}
+
+func hasSocketTransport(module modulePaths) bool {
+	info, err := os.Stat(filepath.Join(module.FsRoot, "transport", "websocket"))
+	return err == nil && info.IsDir()
 }
 
 func serverTargetPath(module modulePaths) string {

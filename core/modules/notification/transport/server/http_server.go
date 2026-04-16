@@ -36,6 +36,9 @@ func (s *notificationHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) 
 	notificationhttp.RegisterPrivateRoutes(routes, s.savePushSubscription, s.listNotification)
 }
 
-func (s *notificationHTTPServer) Stop(_ context.Context) error {
+func (s *notificationHTTPServer) RegisterSocketRoutes(routes *gin.RouterGroup) {
+}
+
+func (s *notificationHTTPServer) Stop(ctx context.Context) error {
 	return nil
 }

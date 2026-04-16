@@ -79,7 +79,7 @@ func (c *Client) Send(ctx context.Context, message []byte) {
 func (c *Client) ReadPump(ctx context.Context, hub IHub) {
 	log := logging.FromContext(ctx)
 	defer hub.Unregister(ctx, c)
-
+	log.Infow("read pump started", "client_id", c.id)
 	c.conn.SetReadLimit(maxMessageSize)
 	_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
@@ -89,7 +89,7 @@ func (c *Client) ReadPump(ctx context.Context, hub IHub) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Debugw("stopping read pump due to context cancellation", "client_id", c.id)
+			log.Warnw("stopping read pump due to context cancellation", zap.String("client_id", c.id))
 			return
 		default:
 		}
@@ -131,7 +131,7 @@ func (c *Client) WritePump(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			log.Debugw("stopping write pump due to context cancellation", "client_id", c.id)
+			log.Warnw("stopping write pump due to context cancellation", "client_id", c.id)
 			return
 
 		case message, ok := <-c.send:
@@ -165,7 +165,7 @@ func (c *Client) Close(ctx context.Context) {
 		c.sendMu.Unlock()
 
 		if err := c.conn.Close(); err != nil {
-			log.Debugw("error while closing websocket connection", "client_id", c.id, zap.Error(err))
+			log.Warnw("error while closing websocket connection", "client_id", c.id, zap.Error(err))
 		}
 	})
 }

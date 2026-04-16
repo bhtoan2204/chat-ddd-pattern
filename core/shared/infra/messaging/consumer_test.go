@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
 
@@ -106,4 +107,20 @@ func TestHandleMessageRewindsFailedOffsetWithoutCommitting(t *testing.T) {
 	if fake.seeked[0].Offset != msg.TopicPartition.Offset {
 		t.Fatalf("expected rewind to offset %v, got %v", msg.TopicPartition.Offset, fake.seeked[0].Offset)
 	}
+}
+
+func TestStopClosesConsumerWithoutUnsubscribe(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockClient := NewMockkafkaConsumerClient(ctrl)
+
+	mockClient.EXPECT().Close().Return(nil)
+
+	consumer := &consumer{
+		instance: mockClient,
+		chanStop: make(chan bool, 1),
+		loopDone: make(chan struct{}),
+	}
+	close(consumer.loopDone)
+
+	consumer.Stop()
 }

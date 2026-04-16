@@ -2,22 +2,26 @@ package command
 
 import (
 	"context"
+	"reflect"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	apptypes "go-socket/core/modules/room/application/types"
 	roomrepos "go-socket/core/modules/room/domain/repos"
+	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type sendChatMessageHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewSendChatMessageHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.SendChatMessageRequest, *out.ChatMessageResponse] {
-	return &sendChatMessageHandler{baseRepo: baseRepo}
+func NewSendChatMessageHandler(baseRepo roomrepos.Repos, svc service.Service) cqrs.Handler[*in.SendChatMessageRequest, *out.ChatMessageResponse] {
+	return &sendChatMessageHandler{baseRepo: baseRepo, services: svc}
 }
 
 func (h *sendChatMessageHandler) Handle(ctx context.Context, req *in.SendChatMessageRequest) (*out.ChatMessageResponse, error) {
@@ -43,7 +47,13 @@ func (h *sendChatMessageHandler) Handle(ctx context.Context, req *in.SendChatMes
 		return nil, stackErr.Error(err)
 	}
 
-	return roomsupport.ToMessageResponse(res), nil
+	out := roomsupport.ToMessageResponse(res)
+	h.services.EmitMessage(ctx, types.MessagePayload{
+		RoomId:  out.RoomID,
+		Type:    reflect.TypeOf(out).Elem().Name(),
+		Payload: out,
+	})
+	return out, nil
 }
 
 func mapMentionCommands(items []in.SendChatMessageMentionRequest) []apptypes.SendMessageMentionCommand {

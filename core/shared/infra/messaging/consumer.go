@@ -7,6 +7,7 @@ import (
 	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -46,8 +47,10 @@ type consumer struct {
 	stopSingleton  sync.Once
 
 	chanStop    chan bool
+	loopDone    chan struct{}
 	handler     Handler
 	handlerName string
+	started     uint32
 
 	dlq          bool
 	retryBackoff time.Duration
@@ -85,6 +88,7 @@ func NewConsumer(cfg *Config) (Consumer, error) {
 	return &consumer{
 		instance:     c,
 		chanStop:     make(chan bool, 1),
+		loopDone:     make(chan struct{}),
 		handlerName:  cfg.HandlerName,
 		dlq:          cfg.DLQ,
 		retryBackoff: time.Second,
@@ -94,6 +98,7 @@ func NewConsumer(cfg *Config) (Consumer, error) {
 
 func (c *consumer) Read(f CallBack) {
 	c.startSingleton.Do(func() {
+		atomic.StoreUint32(&c.started, 1)
 		go func() {
 			c.start(f)
 		}()
@@ -116,6 +121,9 @@ func (c *consumer) GetHandlerName() string {
 
 func (c *consumer) start(f CallBack) {
 	log := logging.DefaultLogger()
+	if c.loopDone != nil {
+		defer close(c.loopDone)
+	}
 
 loop:
 	for {
@@ -159,12 +167,15 @@ func (c *consumer) Stop() {
 		log := logging.DefaultLogger()
 		log.Infow("Stopping Kafka consumer gracefully...")
 
-		c.chanStop <- true
+		if c.chanStop != nil {
+			select {
+			case c.chanStop <- true:
+			default:
+			}
+		}
 
-		time.Sleep(500 * time.Millisecond)
-
-		if err := c.instance.Unsubscribe(); err != nil {
-			log.Warnw("Failed to unsubscribe", zap.Error(err))
+		if atomic.LoadUint32(&c.started) == 1 && c.loopDone != nil {
+			<-c.loopDone
 		}
 
 		if err := c.instance.Close(); err != nil {
@@ -198,13 +209,13 @@ func (c *consumer) handleMessage(log *zap.SugaredLogger, f CallBack, msg *kafka.
 			c.StoreDLQ(ctx, msg)
 		}
 
-		// // Rewind to the failed offset so later commits cannot skip an unprocessed message.
-		// if rewindErr := c.rewindMessage(msg); rewindErr != nil {
-		// 	span.RecordError(rewindErr)
-		// 	log.Warnw("Failed to rewind offset after message processing error",
-		// 		zap.Any("topic_partition", msg.TopicPartition),
-		// 		zap.Error(rewindErr))
-		// }
+		// Rewind to the failed offset so later commits cannot skip an unprocessed message.
+		if rewindErr := c.rewindMessage(msg); rewindErr != nil {
+			span.RecordError(rewindErr)
+			log.Warnw("Failed to rewind offset after message processing error",
+				zap.Any("topic_partition", msg.TopicPartition),
+				zap.Error(rewindErr))
+		}
 
 		if c.retryBackoff > 0 {
 			time.Sleep(c.retryBackoff)

@@ -94,6 +94,7 @@ type responseField struct {
 	GoName   string
 	Type     string
 	JSONName string
+	JSONTag  string
 }
 
 type nestedStruct struct {
@@ -109,6 +110,7 @@ func mapResponseFields(fields []models.FieldSpec) []responseField {
 			GoName:   utils.Pascal(f.Name),
 			Type:     fieldType,
 			JSONName: f.Name,
+			JSONTag:  fmt.Sprintf(`json:"%s,omitempty"`, f.Name),
 		})
 	}
 	return result

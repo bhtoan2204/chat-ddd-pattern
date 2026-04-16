@@ -9,6 +9,7 @@ import (
 	roomrepo "go-socket/core/modules/room/infra/persistent/repository"
 	roomprojection "go-socket/core/modules/room/infra/projection/cassandra"
 	roomserver "go-socket/core/modules/room/transport/server"
+	roomsocket "go-socket/core/modules/room/transport/websocket"
 	"go-socket/core/shared/config"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
@@ -28,35 +29,27 @@ func buildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.H
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	roomQueryService := roomservice.NewRoomQueryService(roomReadRepos)
-	chatQueryService := roomservice.NewChatQueryService(roomReadRepos, appContext.GetRedisClient())
-	createRoom := cqrs.NewDispatcher(roomcommand.NewCreateRoomHandler(roomRepos))
-	updateRoom := cqrs.NewDispatcher(roomcommand.NewUpdateRoomHandler(roomRepos))
-	deleteRoom := cqrs.NewDispatcher(roomcommand.NewDeleteRoomHandler(roomRepos))
-	getRoom := cqrs.NewDispatcher(roomquery.NewGetRoomHandler(roomQueryService))
-	listRoom := cqrs.NewDispatcher(roomquery.NewListRoomsHandler(roomQueryService))
-	createDirectConversation := cqrs.NewDispatcher(roomcommand.NewCreateDirectConversationHandler(roomRepos))
-	createGroupChat := cqrs.NewDispatcher(roomcommand.NewCreateGroupChatHandler(roomRepos))
-	updateGroupChat := cqrs.NewDispatcher(roomcommand.NewUpdateGroupChatHandler(roomRepos))
-	addChatMember := cqrs.NewDispatcher(roomcommand.NewAddChatMemberHandler(roomRepos))
-	removeChatMember := cqrs.NewDispatcher(roomcommand.NewRemoveChatMemberHandler(roomRepos))
-	pinChatMessage := cqrs.NewDispatcher(roomcommand.NewPinChatMessageHandler(roomRepos))
-	sendChatMessage := cqrs.NewDispatcher(roomcommand.NewSendChatMessageHandler(roomRepos))
-	editChatMessage := cqrs.NewDispatcher(roomcommand.NewEditChatMessageHandler(roomRepos))
-	deleteChatMessage := cqrs.NewDispatcher(roomcommand.NewDeleteChatMessageHandler(roomRepos))
-	forwardChatMessage := cqrs.NewDispatcher(roomcommand.NewForwardChatMessageHandler(roomRepos))
-	markChatMessageStatus := cqrs.NewDispatcher(roomcommand.NewMarkChatMessageStatusHandler(roomRepos))
-	listChatConversations := cqrs.NewDispatcher(roomquery.NewListChatConversationsHandler(chatQueryService))
-	getChatConversation := cqrs.NewDispatcher(roomquery.NewGetChatConversationHandler(chatQueryService))
-	listChatMessages := cqrs.NewDispatcher(roomquery.NewListChatMessagesHandler(chatQueryService))
-	searchChatMentions := cqrs.NewDispatcher(roomquery.NewSearchChatMentionsHandler(chatQueryService))
-	getChatPresence := cqrs.NewDispatcher(roomquery.NewGetChatPresenceHandler(chatQueryService))
+	roomService := roomservice.NewService(appContext, roomReadRepos)
+	createDirectConversation := cqrs.NewDispatcher(roomcommand.NewCreateDirectConversationHandler(roomRepos, roomService))
+	createGroupChat := cqrs.NewDispatcher(roomcommand.NewCreateGroupChatHandler(roomRepos, roomService))
+	updateGroupChat := cqrs.NewDispatcher(roomcommand.NewUpdateGroupChatHandler(roomRepos, roomService))
+	addChatMember := cqrs.NewDispatcher(roomcommand.NewAddChatMemberHandler(roomRepos, roomService))
+	removeChatMember := cqrs.NewDispatcher(roomcommand.NewRemoveChatMemberHandler(roomRepos, roomService))
+	pinChatMessage := cqrs.NewDispatcher(roomcommand.NewPinChatMessageHandler(roomRepos, roomService))
+	sendChatMessage := cqrs.NewDispatcher(roomcommand.NewSendChatMessageHandler(roomRepos, roomService))
+	editChatMessage := cqrs.NewDispatcher(roomcommand.NewEditChatMessageHandler(roomRepos, roomService))
+	deleteChatMessage := cqrs.NewDispatcher(roomcommand.NewDeleteChatMessageHandler(roomRepos, roomService))
+	forwardChatMessage := cqrs.NewDispatcher(roomcommand.NewForwardChatMessageHandler(roomRepos, roomService))
+	markChatMessageStatus := cqrs.NewDispatcher(roomcommand.NewMarkChatMessageStatusHandler(roomRepos, roomService))
+	listChatConversations := cqrs.NewDispatcher(roomquery.NewListChatConversationsHandler(roomService))
+	getChatConversation := cqrs.NewDispatcher(roomquery.NewGetChatConversationHandler(roomService))
+	listChatMessages := cqrs.NewDispatcher(roomquery.NewListChatMessagesHandler(roomService))
+	searchChatMentions := cqrs.NewDispatcher(roomquery.NewSearchChatMentionsHandler(roomService))
+	getChatPresence := cqrs.NewDispatcher(roomquery.NewGetChatPresenceHandler(roomService))
+	socketHub := roomsocket.NewHub(ctx, appContext)
+	socketUpgrader := roomsocket.NewUpgrader()
+	socketHandler := roomsocket.NewWSHandler(appContext, socketHub, socketUpgrader)
 	server, err := roomserver.NewHTTPServer(
-		createRoom,
-		listRoom,
-		getRoom,
-		updateRoom,
-		deleteRoom,
 		createDirectConversation,
 		createGroupChat,
 		updateGroupChat,
@@ -73,6 +66,8 @@ func buildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.H
 		removeChatMember,
 		pinChatMessage,
 		getChatPresence,
+		socketHandler.Handle,
+		socketHub.Close,
 	)
 	if err != nil {
 		return nil, stackErr.Error(err)

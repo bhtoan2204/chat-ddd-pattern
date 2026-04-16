@@ -2,28 +2,35 @@ package command
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	"go-socket/core/modules/room/domain/entity"
 	roomrepos "go-socket/core/modules/room/domain/repos"
 	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
+	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 type addChatMemberHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewAddChatMemberHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.AddChatMemberRequest, *out.ChatConversationResponse] {
-	return &addChatMemberHandler{baseRepo: baseRepo}
+func NewAddChatMemberHandler(baseRepo roomrepos.Repos, svc service.Service) cqrs.Handler[*in.AddChatMemberRequest, *out.ChatConversationResponse] {
+	return &addChatMemberHandler{baseRepo: baseRepo, services: svc}
 }
+
 func (h *addChatMemberHandler) Handle(ctx context.Context, req *in.AddChatMemberRequest) (*out.ChatConversationResponse, error) {
+	log := logging.FromContext(ctx)
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
 	if err != nil {
 		return nil, stackErr.Error(err)
@@ -60,5 +67,14 @@ func (h *addChatMemberHandler) Handle(ctx context.Context, req *in.AddChatMember
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	return roomsupport.ToConversationResponse(res), nil
+	out := roomsupport.ToConversationResponse(res)
+	if err := h.services.EmitMessage(ctx, types.MessagePayload{
+		RoomId:  out.RoomID,
+		Type:    reflect.TypeOf(out).Elem().Name(),
+		Payload: out,
+	}); err != nil {
+		log.Warnw("Emit msg failed", zap.Error(err))
+	}
+
+	return out, nil
 }

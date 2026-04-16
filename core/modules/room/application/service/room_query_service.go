@@ -22,7 +22,7 @@ type roomQueryService struct {
 	readRepos projection.QueryRepos
 }
 
-func NewRoomQueryService(readRepos projection.QueryRepos) RoomQueryService {
+func newRoomQueryService(readRepos projection.QueryRepos) RoomQueryService {
 	return &roomQueryService{readRepos: readRepos}
 }
 

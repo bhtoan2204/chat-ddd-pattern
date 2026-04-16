@@ -2,6 +2,7 @@ package modruntime
 
 import (
 	"fmt"
+	"sync"
 
 	"go-socket/core/shared/pkg/stackErr"
 )
@@ -31,12 +32,28 @@ func (m *compositeModule) Start() error {
 }
 
 func (m *compositeModule) Stop() error {
-	var firstErr error
+	var (
+		firstErr error
+		errMu    sync.Mutex
+		wg       sync.WaitGroup
+	)
+
 	for idx := len(m.modules) - 1; idx >= 0; idx-- {
-		if err := m.modules[idx].Stop(); err != nil && firstErr == nil {
-			firstErr = stackErr.Error(fmt.Errorf("stop runtime %T failed: %v", m.modules[idx], err))
-		}
+		module := m.modules[idx]
+		wg.Add(1)
+		go func(module Module) {
+			defer wg.Done()
+			if err := module.Stop(); err != nil {
+				errMu.Lock()
+				if firstErr == nil {
+					firstErr = stackErr.Error(fmt.Errorf("stop runtime %T failed: %v", module, err))
+				}
+				errMu.Unlock()
+			}
+		}(module)
 	}
+
+	wg.Wait()
 	return firstErr
 }
 

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	appCtx "go-socket/core/context"
 	"go-socket/core/modules/room/application/projection"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/modules/room/infra/projection/cassandra/views"
@@ -101,7 +102,7 @@ func TestChatQueryServiceListConversationsSkipsRoomsWithoutViewerMembership(t *t
 		}, nil).
 		Times(1)
 
-	service := NewChatQueryService(queryRepos, nil)
+	service := NewService(&appCtx.AppContext{}, queryRepos)
 
 	results, err := service.ListConversations(context.Background(), viewerID, apptypes.ListConversationsQuery{
 		Limit:  20,

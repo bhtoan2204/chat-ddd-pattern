@@ -66,6 +66,9 @@ func (s *accountHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {
 	accounthttp.RegisterPrivateRoutes(routes, s.logout, s.getProfile, s.updateProfile, s.verifyEmail, s.changePassword, s.getAvatar, s.createPresignedUrl, s.searchUsers)
 }
 
-func (s *accountHTTPServer) Stop(_ context.Context) error {
+func (s *accountHTTPServer) RegisterSocketRoutes(routes *gin.RouterGroup) {
+}
+
+func (s *accountHTTPServer) Stop(ctx context.Context) error {
 	return nil
 }

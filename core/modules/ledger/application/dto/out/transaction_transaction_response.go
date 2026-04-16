@@ -2,8 +2,8 @@
 package out
 
 type TransactionTransactionResponse struct {
-	TransactionID string                `json:"transaction_id"`
-	Currency      string                `json:"currency"`
-	CreatedAt     string                `json:"created_at"`
-	Entries       []LedgerEntryResponse `json:"entries"`
+	TransactionID string                `json:"transaction_id,omitempty"`
+	Currency      string                `json:"currency,omitempty"`
+	CreatedAt     string                `json:"created_at,omitempty"`
+	Entries       []LedgerEntryResponse `json:"entries,omitempty"`
 }

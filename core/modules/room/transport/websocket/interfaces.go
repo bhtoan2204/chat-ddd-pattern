@@ -31,5 +31,6 @@ type IHub interface {
 	LeaveRoom(ctx context.Context, client IClient, roomID string) error
 
 	HandleMessage(ctx context.Context, client IClient, msg Message) error
+	Publish(ctx context.Context, msg Message) error
 	Close(ctx context.Context)
 }

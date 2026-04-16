@@ -296,6 +296,20 @@ func (mr *MockIHubMockRecorder) LeaveRoom(ctx, client, roomID any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LeaveRoom", reflect.TypeOf((*MockIHub)(nil).LeaveRoom), ctx, client, roomID)
 }
 
+// Publish mocks base method.
+func (m *MockIHub) Publish(ctx context.Context, msg Message) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Publish", ctx, msg)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Publish indicates an expected call of Publish.
+func (mr *MockIHubMockRecorder) Publish(ctx, msg any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockIHub)(nil).Publish), ctx, msg)
+}
+
 // Register mocks base method.
 func (m *MockIHub) Register(ctx context.Context, client IClient) {
 	m.ctrl.T.Helper()

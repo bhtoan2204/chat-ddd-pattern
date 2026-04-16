@@ -3,14 +3,14 @@ package {{.PackageName}}
 
 type {{.StructName}} struct {
 {{- range .Fields}}
-	{{.GoName}} {{.Type}} `json:"{{.JSONName}}"`
+	{{.GoName}} {{.Type}} `{{.JSONTag}}`
 {{- end}}
 }
 {{- range .AdditionalStructs}}
 
 type {{.StructName}} struct {
 {{- range .Fields}}
-	{{.GoName}} {{.Type}} `json:"{{.JSONName}}"`
+	{{.GoName}} {{.Type}} `{{.JSONTag}}`
 {{- end}}
 }
 {{- end}}

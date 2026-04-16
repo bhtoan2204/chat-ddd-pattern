@@ -2,23 +2,27 @@ package command
 
 import (
 	"context"
+	"reflect"
 
 	"time"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	roomrepos "go-socket/core/modules/room/domain/repos"
+	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type removeChatMemberHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewRemoveChatMemberHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.RemoveChatMemberRequest, *out.ChatConversationResponse] {
-	return &removeChatMemberHandler{baseRepo: baseRepo}
+func NewRemoveChatMemberHandler(baseRepo roomrepos.Repos, services service.Service) cqrs.Handler[*in.RemoveChatMemberRequest, *out.ChatConversationResponse] {
+	return &removeChatMemberHandler{baseRepo: baseRepo, services: services}
 }
 func (h *removeChatMemberHandler) Handle(ctx context.Context, req *in.RemoveChatMemberRequest) (*out.ChatConversationResponse, error) {
 	accountID, err := roomsupport.AccountIDFromCtx(ctx)
@@ -48,5 +52,11 @@ func (h *removeChatMemberHandler) Handle(ctx context.Context, req *in.RemoveChat
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	return roomsupport.ToConversationResponse(res), nil
+	out := roomsupport.ToConversationResponse(res)
+	h.services.EmitMessage(ctx, types.MessagePayload{
+		RoomId:  out.RoomID,
+		Type:    reflect.TypeOf(out).Elem().Name(),
+		Payload: out,
+	})
+	return out, nil
 }

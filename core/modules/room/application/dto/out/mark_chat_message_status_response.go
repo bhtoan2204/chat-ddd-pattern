@@ -2,5 +2,5 @@
 package out
 
 type MarkChatMessageStatusResponse struct {
-	Ok bool `json:"ok"`
+	Ok bool `json:"ok,omitempty"`
 }

@@ -13,10 +13,10 @@ import (
 )
 
 type searchChatMentionsHandler struct {
-	chatService roomservice.ChatQueryService
+	chatService roomservice.Service
 }
 
-func NewSearchChatMentionsHandler(chatService roomservice.ChatQueryService) cqrs.Handler[*in.SearchChatMentionsRequest, []*out.ChatMentionCandidateResponse] {
+func NewSearchChatMentionsHandler(chatService roomservice.Service) cqrs.Handler[*in.SearchChatMentionsRequest, []*out.ChatMentionCandidateResponse] {
 	return &searchChatMentionsHandler{chatService: chatService}
 }
 

@@ -59,7 +59,7 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 		constant.DEFAULT_IDEMPOTENCY_LOCK_TTL,
 		constant.DEFAULT_IDEMPOTENCY_DONE_TTL,
 	)
-	if s.cfg.ServerConfig.Environment == "prod" {
+	if s.cfg.ServerConfig.Environment == "production" {
 		r.Use(middleware.IdempotencyMiddleware(idemManager))
 		r.Use(middleware.RateLimitMiddleware(cache))
 	}
@@ -165,6 +165,7 @@ func (s *Server) registerPrivateAPI() {
 	apiV1.Use(middleware.AuthenMiddleware(s.appCtx))
 	for _, moduleServer := range s.moduleServers {
 		moduleServer.RegisterPrivateRoutes(apiV1)
+		moduleServer.RegisterSocketRoutes(apiV1)
 	}
 }
 

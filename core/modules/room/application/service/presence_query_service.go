@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 
+	appCtx "go-socket/core/context"
 	apptypes "go-socket/core/modules/room/application/types"
 	"go-socket/core/shared/pkg/stackErr"
 
@@ -18,8 +19,8 @@ type presenceQueryService struct {
 	redis *redis.Client
 }
 
-func newPresenceQueryService(redis *redis.Client) PresenceQueryService {
-	return &presenceQueryService{redis: redis}
+func newPresenceQueryService(appCtx *appCtx.AppContext) PresenceQueryService {
+	return &presenceQueryService{redis: appCtx.GetRedisClient()}
 }
 
 func (s *presenceQueryService) GetPresence(ctx context.Context, query apptypes.GetPresenceQuery) (*apptypes.PresenceResult, error) {

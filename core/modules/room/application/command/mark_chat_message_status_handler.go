@@ -3,13 +3,16 @@ package command
 import (
 	"context"
 	"errors"
+	"reflect"
 	"time"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	"go-socket/core/modules/room/domain/entity"
 	roomrepos "go-socket/core/modules/room/domain/repos"
+	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 
@@ -18,10 +21,11 @@ import (
 
 type markChatMessageStatusHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewMarkChatMessageStatusHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.MarkChatMessageStatusRequest, *out.MarkChatMessageStatusResponse] {
-	return &markChatMessageStatusHandler{baseRepo: baseRepo}
+func NewMarkChatMessageStatusHandler(baseRepo roomrepos.Repos, services service.Service) cqrs.Handler[*in.MarkChatMessageStatusRequest, *out.MarkChatMessageStatusResponse] {
+	return &markChatMessageStatusHandler{baseRepo: baseRepo, services: services}
 }
 
 func (h *markChatMessageStatusHandler) Handle(ctx context.Context, req *in.MarkChatMessageStatusRequest) (*out.MarkChatMessageStatusResponse, error) {
@@ -54,5 +58,11 @@ func (h *markChatMessageStatusHandler) Handle(ctx context.Context, req *in.MarkC
 		}
 	}
 
-	return &out.MarkChatMessageStatusResponse{Ok: true}, nil
+	out := &out.MarkChatMessageStatusResponse{Ok: true}
+	h.services.EmitMessage(ctx, types.MessagePayload{
+		RoomId:  agg.Message().RoomID,
+		Type:    reflect.TypeOf(out).Elem().Name(),
+		Payload: out,
+	})
+	return out, nil
 }

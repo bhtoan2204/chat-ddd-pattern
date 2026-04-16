@@ -10,6 +10,7 @@ import (
 	"go-socket/core/shared/infra/storage"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/hasher"
+	"go-socket/core/shared/pkg/pubsub"
 
 	es8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/gocql/gocql"
@@ -32,6 +33,7 @@ type AppContext struct {
 	locker        lock.Lock
 	cassandra     *gocql.Session
 	elasticsearch *es8.Client
+	localBus      *pubsub.Bus
 }
 
 func NewAppContext(ctx context.Context, opts ...Option) (*AppContext, error) {
@@ -114,6 +116,12 @@ func WithElasticsearchClient(client *es8.Client) Option {
 	}
 }
 
+func WithLocalBus(bus *pubsub.Bus) Option {
+	return func(appCtx *AppContext) {
+		appCtx.localBus = bus
+	}
+}
+
 func (appCtx *AppContext) GetRedisClient() *redis.Client {
 	return appCtx.redisClient
 }
@@ -162,7 +170,14 @@ func (appCtx *AppContext) GetElasticsearchClient() *es8.Client {
 	return appCtx.elasticsearch
 }
 
+func (appCtx *AppContext) LocalBus() *pubsub.Bus {
+	return appCtx.localBus
+}
+
 func (appCtx *AppContext) Close() {
+	if appCtx.localBus != nil {
+		appCtx.localBus.Close()
+	}
 	if appCtx.cassandra != nil {
 		appCtx.cassandra.Close()
 	}

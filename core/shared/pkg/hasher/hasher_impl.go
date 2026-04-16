@@ -2,6 +2,7 @@ package hasher
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"go-socket/core/shared/pkg/stackErr"
@@ -67,10 +68,7 @@ func (h *hasherImpl) Verify(ctx context.Context, val string, hash string) (bool,
 	if len(computedHash) != len(expectedHash) {
 		return false, nil
 	}
-	for i := 0; i < len(computedHash); i++ {
-		if computedHash[i] != expectedHash[i] {
-			return false, nil
-		}
-	}
-	return true, nil
+
+	ok := subtle.ConstantTimeCompare(computedHash, expectedHash) == 1
+	return ok, nil
 }

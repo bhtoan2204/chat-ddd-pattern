@@ -73,7 +73,7 @@ func (r *accountRepoImpl) GetAccountByID(ctx context.Context, id string) (*entit
 		r.afterCommit(ctx, func(hookCtx context.Context) {
 			log := logging.FromContext(hookCtx).Named("AccountCacheSetByID")
 			if cacheErr := r.accountCache.Set(hookCtx, accountEntity); cacheErr != nil {
-				log.Errorw("Failed to warm account cache", zap.Error(cacheErr), zap.String("accountID", accountEntity.ID))
+				log.Errorw("Failed to warm account cache", zap.String("accountID", accountEntity.ID))
 			}
 		})
 	}
@@ -102,7 +102,7 @@ func (r *accountRepoImpl) GetAccountByEmail(ctx context.Context, email string) (
 		r.afterCommit(ctx, func(hookCtx context.Context) {
 			log := logging.FromContext(hookCtx).Named("AccountCacheSetByEmail")
 			if cacheErr := r.accountCache.SetByEmail(hookCtx, accountEntity); cacheErr != nil {
-				log.Errorw("Failed to warm account email cache", zap.Error(cacheErr), zap.String("email", accountEntity.Email.Value()))
+				log.Errorw("Failed to warm account email cache", zap.String("email", accountEntity.Email.Value()))
 			}
 		})
 	}
@@ -158,11 +158,11 @@ func (r *accountRepoImpl) DeleteAccount(ctx context.Context, id string) error {
 	r.afterCommit(ctx, func(hookCtx context.Context) {
 		log := logging.FromContext(hookCtx).Named("DeleteAccountCache")
 		if cacheErr := r.accountCache.Delete(hookCtx, id); cacheErr != nil {
-			log.Errorw("Failed to delete account cache by id", zap.Error(cacheErr), zap.String("accountID", id))
+			log.Errorw("Failed to delete account cache by id", zap.String("accountID", id))
 		}
 		if email != "" {
 			if cacheErr := r.accountCache.DeleteByEmail(hookCtx, email); cacheErr != nil {
-				log.Errorw("Failed to delete account cache by email", zap.Error(cacheErr), zap.String("email", email))
+				log.Errorw("Failed to delete account cache by email", zap.String("email", email))
 			}
 		}
 	})
@@ -252,10 +252,10 @@ func (r *accountRepoImpl) syncCacheAfterCommit(ctx context.Context, account *ent
 	r.afterCommit(ctx, func(hookCtx context.Context) {
 		log := logging.FromContext(hookCtx).Named("SyncAccountCache")
 		if cacheErr := r.accountCache.Set(hookCtx, &accountClone); cacheErr != nil {
-			log.Errorw("Failed to update account cache by id", zap.Error(cacheErr), zap.String("accountID", accountClone.ID))
+			log.Errorw("Failed to update account cache by id", zap.String("accountID", accountClone.ID))
 		}
 		if cacheErr := r.accountCache.SetByEmail(hookCtx, &accountClone); cacheErr != nil {
-			log.Errorw("Failed to update account cache by email", zap.Error(cacheErr), zap.String("email", accountClone.Email.Value()))
+			log.Errorw("Failed to update account cache by email", zap.String("email", accountClone.Email.Value()))
 		}
 	})
 }

@@ -32,7 +32,7 @@ func (r *Room) AddClient(ctx context.Context, client IClient) {
 	total := len(r.clients)
 	r.mu.Unlock()
 
-	log.Debugw("client joined room", "room_id", r.id, "client_id", client.GetID(), "total_clients", total)
+	log.Warnw("client joined room", "room_id", r.id, "client_id", client.GetID(), "total_clients", total)
 }
 
 func (r *Room) RemoveClient(ctx context.Context, client IClient) {
@@ -42,7 +42,7 @@ func (r *Room) RemoveClient(ctx context.Context, client IClient) {
 	total := len(r.clients)
 	r.mu.Unlock()
 
-	log.Debugw("client left room", "room_id", r.id, "client_id", client.GetID(), "total_clients", total)
+	log.Warnw("client left room", "room_id", r.id, "client_id", client.GetID(), "total_clients", total)
 }
 
 func (r *Room) Broadcast(ctx context.Context, message []byte) {

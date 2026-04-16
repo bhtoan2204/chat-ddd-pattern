@@ -2,6 +2,6 @@
 package out
 
 type GetAvatarResponse struct {
-	URL       string `json:"url"`
-	ExpiresAt string `json:"expires_at"`
+	URL       string `json:"url,omitempty"`
+	ExpiresAt string `json:"expires_at,omitempty"`
 }

@@ -7,6 +7,7 @@ import (
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
 	roomhttp "go-socket/core/modules/room/transport/http"
+	roomsocket "go-socket/core/modules/room/transport/websocket"
 	"go-socket/core/shared/pkg/cqrs"
 	infrahttp "go-socket/core/shared/transport/http"
 
@@ -14,11 +15,6 @@ import (
 )
 
 type roomHTTPServer struct {
-	createRoom               cqrs.Dispatcher[*in.CreateRoomRequest, *out.CreateRoomResponse]
-	listRooms                cqrs.Dispatcher[*in.ListRoomsRequest, *out.ListRoomsResponse]
-	getRoom                  cqrs.Dispatcher[*in.GetRoomRequest, *out.GetRoomResponse]
-	updateRoom               cqrs.Dispatcher[*in.UpdateRoomRequest, *out.UpdateRoomResponse]
-	deleteRoom               cqrs.Dispatcher[*in.DeleteRoomRequest, *out.DeleteRoomResponse]
 	createDirectConversation cqrs.Dispatcher[*in.CreateDirectConversationRequest, *out.ChatConversationResponse]
 	createGroupChat          cqrs.Dispatcher[*in.CreateGroupChatRequest, *out.ChatConversationResponse]
 	updateGroupChat          cqrs.Dispatcher[*in.UpdateGroupChatRequest, *out.ChatConversationResponse]
@@ -35,14 +31,11 @@ type roomHTTPServer struct {
 	removeChatMember         cqrs.Dispatcher[*in.RemoveChatMemberRequest, *out.ChatConversationResponse]
 	pinChatMessage           cqrs.Dispatcher[*in.PinChatMessageRequest, *out.ChatConversationResponse]
 	getChatPresence          cqrs.Dispatcher[*in.GetChatPresenceRequest, *out.ChatPresenceResponse]
+	socketHandler            gin.HandlerFunc
+	socketStopper            func(context.Context)
 }
 
 func NewHTTPServer(
-	createRoom cqrs.Dispatcher[*in.CreateRoomRequest, *out.CreateRoomResponse],
-	listRooms cqrs.Dispatcher[*in.ListRoomsRequest, *out.ListRoomsResponse],
-	getRoom cqrs.Dispatcher[*in.GetRoomRequest, *out.GetRoomResponse],
-	updateRoom cqrs.Dispatcher[*in.UpdateRoomRequest, *out.UpdateRoomResponse],
-	deleteRoom cqrs.Dispatcher[*in.DeleteRoomRequest, *out.DeleteRoomResponse],
 	createDirectConversation cqrs.Dispatcher[*in.CreateDirectConversationRequest, *out.ChatConversationResponse],
 	createGroupChat cqrs.Dispatcher[*in.CreateGroupChatRequest, *out.ChatConversationResponse],
 	updateGroupChat cqrs.Dispatcher[*in.UpdateGroupChatRequest, *out.ChatConversationResponse],
@@ -59,13 +52,10 @@ func NewHTTPServer(
 	removeChatMember cqrs.Dispatcher[*in.RemoveChatMemberRequest, *out.ChatConversationResponse],
 	pinChatMessage cqrs.Dispatcher[*in.PinChatMessageRequest, *out.ChatConversationResponse],
 	getChatPresence cqrs.Dispatcher[*in.GetChatPresenceRequest, *out.ChatPresenceResponse],
+	socketHandler gin.HandlerFunc,
+	socketStopper func(context.Context),
 ) (infrahttp.HTTPServer, error) {
 	return &roomHTTPServer{
-		createRoom:               createRoom,
-		listRooms:                listRooms,
-		getRoom:                  getRoom,
-		updateRoom:               updateRoom,
-		deleteRoom:               deleteRoom,
 		createDirectConversation: createDirectConversation,
 		createGroupChat:          createGroupChat,
 		updateGroupChat:          updateGroupChat,
@@ -82,6 +72,8 @@ func NewHTTPServer(
 		removeChatMember:         removeChatMember,
 		pinChatMessage:           pinChatMessage,
 		getChatPresence:          getChatPresence,
+		socketHandler:            socketHandler,
+		socketStopper:            socketStopper,
 	}, nil
 }
 
@@ -90,9 +82,16 @@ func (s *roomHTTPServer) RegisterPublicRoutes(routes *gin.RouterGroup) {
 }
 
 func (s *roomHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {
-	roomhttp.RegisterPrivateRoutes(routes, s.createRoom, s.listRooms, s.getRoom, s.updateRoom, s.deleteRoom, s.createDirectConversation, s.createGroupChat, s.updateGroupChat, s.listChatConversations, s.getChatConversation, s.listChatMessages, s.searchChatMentions, s.sendChatMessage, s.editChatMessage, s.deleteChatMessage, s.forwardChatMessage, s.markChatMessageStatus, s.addChatMember, s.removeChatMember, s.pinChatMessage, s.getChatPresence)
+	roomhttp.RegisterPrivateRoutes(routes, s.createDirectConversation, s.createGroupChat, s.updateGroupChat, s.listChatConversations, s.getChatConversation, s.listChatMessages, s.searchChatMentions, s.sendChatMessage, s.editChatMessage, s.deleteChatMessage, s.forwardChatMessage, s.markChatMessageStatus, s.addChatMember, s.removeChatMember, s.pinChatMessage, s.getChatPresence)
 }
 
-func (s *roomHTTPServer) Stop(_ context.Context) error {
+func (s *roomHTTPServer) RegisterSocketRoutes(routes *gin.RouterGroup) {
+	roomsocket.RegisterPrivateRoutes(routes, s.socketHandler)
+}
+
+func (s *roomHTTPServer) Stop(ctx context.Context) error {
+	if s.socketStopper != nil {
+		s.socketStopper(ctx)
+	}
 	return nil
 }

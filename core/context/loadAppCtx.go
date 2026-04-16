@@ -15,6 +15,7 @@ import (
 	"go-socket/core/shared/infra/storage"
 	"go-socket/core/shared/infra/xpaseto"
 	"go-socket/core/shared/pkg/hasher"
+	"go-socket/core/shared/pkg/pubsub"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
@@ -78,6 +79,12 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 		return nil, stackErr.Error(err)
 	}
 	opts = append(opts, WithElasticsearchClient(elasticsearchClient))
+
+	localBus := pubsub.New(pubsub.Config{
+		BufferSize:  256,
+		PublishMode: pubsub.PublishBlocking,
+	})
+	opts = append(opts, WithLocalBus(localBus))
 
 	return NewAppContext(ctx, opts...)
 }

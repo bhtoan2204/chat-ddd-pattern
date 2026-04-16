@@ -19,5 +19,5 @@ func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (infrahtt
 	listTransaction := cqrs.NewDispatcher(ledgerquery.NewListTransactionHandler(ledgerQueryService))
 	transferTransaction := cqrs.NewDispatcher(ledgercommand.NewTransferTransaction(appContext, ledgerService))
 
-	return ledgerserver.NewHTTPServer(getAccountBalance, getTransaction, listTransaction, transferTransaction)
+	return ledgerserver.NewHTTPServer(getAccountBalance, getTransaction, transferTransaction, listTransaction)
 }

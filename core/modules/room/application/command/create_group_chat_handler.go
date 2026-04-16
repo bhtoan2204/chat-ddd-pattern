@@ -7,6 +7,7 @@ import (
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	"go-socket/core/modules/room/domain/aggregate"
 	"go-socket/core/modules/room/domain/entity"
@@ -20,10 +21,11 @@ import (
 
 type createGroupChatHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewCreateGroupChatHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.CreateGroupChatRequest, *out.ChatConversationResponse] {
-	return &createGroupChatHandler{baseRepo: baseRepo}
+func NewCreateGroupChatHandler(baseRepo roomrepos.Repos, services service.Service) cqrs.Handler[*in.CreateGroupChatRequest, *out.ChatConversationResponse] {
+	return &createGroupChatHandler{baseRepo: baseRepo, services: services}
 }
 
 func (h *createGroupChatHandler) Handle(ctx context.Context, req *in.CreateGroupChatRequest) (*out.ChatConversationResponse, error) {

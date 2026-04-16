@@ -36,6 +36,9 @@ func (s *paymentHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {
 	paymenthttp.RegisterPrivateRoutes(routes, s.createPayment)
 }
 
-func (s *paymentHTTPServer) Stop(_ context.Context) error {
+func (s *paymentHTTPServer) RegisterSocketRoutes(routes *gin.RouterGroup) {
+}
+
+func (s *paymentHTTPServer) Stop(ctx context.Context) error {
 	return nil
 }

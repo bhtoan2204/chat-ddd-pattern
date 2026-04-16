@@ -7,6 +7,9 @@ import (
 	"{{.RequestDtoImport}}"
 	"{{.ResponseDtoImport}}"
 	{{.ModuleHTTPAlias}} "{{.ModuleHTTPImport}}"
+{{- if .HasSocketTransport }}
+	{{.ModuleSocketAlias}} "{{.ModuleSocketImport}}"
+{{- end }}
 	"{{.DispatcherImport}}"
 	infrahttp "{{.HTTPImport}}"
 
@@ -17,17 +20,29 @@ type {{.ServerStructName}} struct {
 {{- range .Fields}}
 	{{.Name}} cqrs.Dispatcher[{{.RequestType}}, {{.ResponseType}}]
 {{- end}}
+{{- if .HasSocketTransport }}
+	socketHandler gin.HandlerFunc
+	socketStopper func(context.Context)
+{{- end }}
 }
 
 func NewHTTPServer(
 {{- range .Fields}}
 	{{.Name}} cqrs.Dispatcher[{{.RequestType}}, {{.ResponseType}}],
 {{- end}}
+{{- if .HasSocketTransport }}
+	socketHandler gin.HandlerFunc,
+	socketStopper func(context.Context),
+{{- end }}
 ) (infrahttp.HTTPServer, error) {
 	return &{{.ServerStructName}}{
 {{- range .Fields}}
 		{{.Name}}: {{.Name}},
 {{- end}}
+{{- if .HasSocketTransport }}
+		socketHandler: socketHandler,
+		socketStopper: socketStopper,
+{{- end }}
 	}, nil
 }
 
@@ -39,6 +54,17 @@ func (s *{{.ServerStructName}}) RegisterPrivateRoutes(routes *gin.RouterGroup) {
 	{{.ModuleHTTPAlias}}.RegisterPrivateRoutes(routes{{- range .PrivateParams}}, s.{{.Name}}{{- end}})
 }
 
-func (s *{{.ServerStructName}}) Stop(_ context.Context) error {
+func (s *{{.ServerStructName}}) RegisterSocketRoutes(routes *gin.RouterGroup) {
+{{- if .HasSocketTransport }}
+	{{.ModuleSocketAlias}}.RegisterPrivateRoutes(routes, s.socketHandler)
+{{- end }}
+}
+
+func (s *{{.ServerStructName}}) Stop(ctx context.Context) error {
+{{- if .HasSocketTransport }}
+	if s.socketStopper != nil {
+		s.socketStopper(ctx)
+	}
+{{- end }}
 	return nil
 }

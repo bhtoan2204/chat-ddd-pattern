@@ -10,5 +10,6 @@ import (
 type HTTPServer interface {
 	RegisterPublicRoutes(routes *gin.RouterGroup)
 	RegisterPrivateRoutes(routes *gin.RouterGroup)
+	RegisterSocketRoutes(routes *gin.RouterGroup)
 	Stop(ctx context.Context) error
 }

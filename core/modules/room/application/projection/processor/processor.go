@@ -69,9 +69,7 @@ func (p *processor) Start() error {
 }
 
 func (p *processor) Stop() error {
-	for _, consumer := range p.consumer {
-		consumer.Stop()
-	}
+	infraMessaging.StopConsumers(p.consumer)
 	return nil
 }
 

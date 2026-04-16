@@ -76,9 +76,7 @@ func (h *messageHandler) Start() error {
 }
 
 func (h *messageHandler) Stop() error {
-	for _, consumer := range h.consumer {
-		consumer.Stop()
-	}
+	infraMessaging.StopConsumers(h.consumer)
 	return nil
 }
 

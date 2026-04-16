@@ -2,22 +2,26 @@ package command
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	roomrepos "go-socket/core/modules/room/domain/repos"
+	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type deleteChatMessageHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewDeleteChatMessageHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.DeleteChatMessageRequest, *out.DeleteChatMessageResponse] {
-	return &deleteChatMessageHandler{baseRepo: baseRepo}
+func NewDeleteChatMessageHandler(baseRepo roomrepos.Repos, services service.Service) cqrs.Handler[*in.DeleteChatMessageRequest, *out.DeleteChatMessageResponse] {
+	return &deleteChatMessageHandler{baseRepo: baseRepo, services: services}
 }
 
 func (h *deleteChatMessageHandler) Handle(ctx context.Context, req *in.DeleteChatMessageRequest) (*out.DeleteChatMessageResponse, error) {
@@ -40,5 +44,11 @@ func (h *deleteChatMessageHandler) Handle(ctx context.Context, req *in.DeleteCha
 		return nil, stackErr.Error(err)
 	}
 
-	return &out.DeleteChatMessageResponse{Ok: true}, nil
+	out := &out.DeleteChatMessageResponse{Ok: true}
+	h.services.EmitMessage(ctx, types.MessagePayload{
+		RoomId:  agg.Message().RoomID,
+		Type:    reflect.TypeOf(out).Elem().Name(),
+		Payload: out,
+	})
+	return out, nil
 }

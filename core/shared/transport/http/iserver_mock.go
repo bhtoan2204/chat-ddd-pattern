@@ -65,6 +65,18 @@ func (mr *MockHTTPServerMockRecorder) RegisterPublicRoutes(routes any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterPublicRoutes", reflect.TypeOf((*MockHTTPServer)(nil).RegisterPublicRoutes), routes)
 }
 
+// RegisterSocketRoutes mocks base method.
+func (m *MockHTTPServer) RegisterSocketRoutes(routes *gin.RouterGroup) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "RegisterSocketRoutes", routes)
+}
+
+// RegisterSocketRoutes indicates an expected call of RegisterSocketRoutes.
+func (mr *MockHTTPServerMockRecorder) RegisterSocketRoutes(routes any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RegisterSocketRoutes", reflect.TypeOf((*MockHTTPServer)(nil).RegisterSocketRoutes), routes)
+}
+
 // Stop mocks base method.
 func (m *MockHTTPServer) Stop(ctx context.Context) error {
 	m.ctrl.T.Helper()

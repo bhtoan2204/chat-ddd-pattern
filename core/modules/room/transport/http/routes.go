@@ -14,11 +14,6 @@ import (
 func RegisterPublicRoutes(_ *gin.RouterGroup) {}
 func RegisterPrivateRoutes(
 	routes *gin.RouterGroup,
-	createRoom cqrs.Dispatcher[*in.CreateRoomRequest, *out.CreateRoomResponse],
-	listRooms cqrs.Dispatcher[*in.ListRoomsRequest, *out.ListRoomsResponse],
-	getRoom cqrs.Dispatcher[*in.GetRoomRequest, *out.GetRoomResponse],
-	updateRoom cqrs.Dispatcher[*in.UpdateRoomRequest, *out.UpdateRoomResponse],
-	deleteRoom cqrs.Dispatcher[*in.DeleteRoomRequest, *out.DeleteRoomResponse],
 	createDirectConversation cqrs.Dispatcher[*in.CreateDirectConversationRequest, *out.ChatConversationResponse],
 	createGroupChat cqrs.Dispatcher[*in.CreateGroupChatRequest, *out.ChatConversationResponse],
 	updateGroupChat cqrs.Dispatcher[*in.UpdateGroupChatRequest, *out.ChatConversationResponse],
@@ -36,11 +31,6 @@ func RegisterPrivateRoutes(
 	pinChatMessage cqrs.Dispatcher[*in.PinChatMessageRequest, *out.ChatConversationResponse],
 	getChatPresence cqrs.Dispatcher[*in.GetChatPresenceRequest, *out.ChatPresenceResponse],
 ) {
-	routes.POST("/chat/room/create", httpx.Wrap(handler.NewCreateRoomHandler(createRoom)))
-	routes.GET("/chat/room/list", httpx.Wrap(handler.NewListRoomsHandler(listRooms)))
-	routes.GET("/chat/room/get", httpx.Wrap(handler.NewGetRoomHandler(getRoom)))
-	routes.PUT("/chat/room/update", httpx.Wrap(handler.NewUpdateRoomHandler(updateRoom)))
-	routes.DELETE("/chat/room/delete", httpx.Wrap(handler.NewDeleteRoomHandler(deleteRoom)))
 	routes.POST("/chat/direct", httpx.Wrap(handler.NewCreateDirectConversationHandler(createDirectConversation)))
 	routes.POST("/chat/groups", httpx.Wrap(handler.NewCreateGroupChatHandler(createGroupChat)))
 	routes.PATCH("/chat/groups/:room_id", httpx.Wrap(handler.NewUpdateGroupChatHandler(updateGroupChat)))

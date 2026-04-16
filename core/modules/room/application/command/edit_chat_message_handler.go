@@ -2,22 +2,26 @@ package command
 
 import (
 	"context"
+	"reflect"
 	"time"
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	roomrepos "go-socket/core/modules/room/domain/repos"
+	"go-socket/core/modules/room/types"
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
 type editChatMessageHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewEditChatMessageHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.EditChatMessageRequest, *out.ChatMessageResponse] {
-	return &editChatMessageHandler{baseRepo: baseRepo}
+func NewEditChatMessageHandler(baseRepo roomrepos.Repos, services service.Service) cqrs.Handler[*in.EditChatMessageRequest, *out.ChatMessageResponse] {
+	return &editChatMessageHandler{baseRepo: baseRepo, services: services}
 }
 
 func (h *editChatMessageHandler) Handle(ctx context.Context, req *in.EditChatMessageRequest) (*out.ChatMessageResponse, error) {
@@ -44,5 +48,11 @@ func (h *editChatMessageHandler) Handle(ctx context.Context, req *in.EditChatMes
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	return roomsupport.ToMessageResponse(res), nil
+	out := roomsupport.ToMessageResponse(res)
+	h.services.EmitMessage(ctx, types.MessagePayload{
+		RoomId:  out.RoomID,
+		Type:    reflect.TypeOf(out).Elem().Name(),
+		Payload: out,
+	})
+	return out, nil
 }

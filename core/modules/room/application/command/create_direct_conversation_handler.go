@@ -8,6 +8,7 @@ import (
 
 	"go-socket/core/modules/room/application/dto/in"
 	"go-socket/core/modules/room/application/dto/out"
+	"go-socket/core/modules/room/application/service"
 	roomsupport "go-socket/core/modules/room/application/support"
 	"go-socket/core/modules/room/domain/aggregate"
 	"go-socket/core/modules/room/domain/entity"
@@ -22,10 +23,11 @@ import (
 
 type createDirectConversationHandler struct {
 	baseRepo roomrepos.Repos
+	services service.Service
 }
 
-func NewCreateDirectConversationHandler(baseRepo roomrepos.Repos) cqrs.Handler[*in.CreateDirectConversationRequest, *out.ChatConversationResponse] {
-	return &createDirectConversationHandler{baseRepo: baseRepo}
+func NewCreateDirectConversationHandler(baseRepo roomrepos.Repos, services service.Service) cqrs.Handler[*in.CreateDirectConversationRequest, *out.ChatConversationResponse] {
+	return &createDirectConversationHandler{baseRepo: baseRepo, services: services}
 }
 
 func (h *createDirectConversationHandler) Handle(ctx context.Context, req *in.CreateDirectConversationRequest) (*out.ChatConversationResponse, error) {
