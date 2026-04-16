@@ -254,7 +254,7 @@ func TestPaymentIntentApplyProviderResultRestoresClearingAccountKey(t *testing.T
 	}
 }
 
-func TestPaymentIntentBuildsDomainEvents(t *testing.T) {
+func TestPaymentIntentBuildsEventData(t *testing.T) {
 	now := time.Date(2026, 4, 7, 8, 0, 0, 0, time.UTC)
 	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "credit", now)
 	if err != nil {
@@ -271,26 +271,25 @@ func TestPaymentIntentBuildsDomainEvents(t *testing.T) {
 		t.Fatalf("expected no error, got %v", err)
 	}
 
-	createdEvent := intent.CreatedEvent(map[string]string{"source": "test"}, now)
-	if createdEvent.EventName != sharedevents.EventPaymentCreated {
-		t.Fatalf("unexpected created event name: %s", createdEvent.EventName)
+	createdEventData := intent.BuildCreatedEventData(map[string]string{"source": "test"}, now)
+	if createdEventData.TransactionID != "txn-1" {
+		t.Fatalf("unexpected created transaction id: %s", createdEventData.TransactionID)
+	}
+	if createdEventData.CreatedAt != now {
+		t.Fatalf("unexpected created event time: %v", createdEventData.CreatedAt)
 	}
 
-	succeededEvent := intent.SucceededEvent(PaymentProviderResult{
+	succeededEventData := intent.BuildSucceededEventData(PaymentProviderResult{
 		EventID:     "evt-1",
 		EventType:   "payment.succeeded",
 		ExternalRef: "ref-1",
 		Status:      PaymentStatusSuccess,
 	}, now)
-	if succeededEvent.EventName != sharedevents.EventPaymentSucceeded {
-		t.Fatalf("unexpected success event name: %s", succeededEvent.EventName)
+	if succeededEventData.IdempotencyKey != "payment.succeeded:txn-1" {
+		t.Fatalf("unexpected success idempotency key: %s", succeededEventData.IdempotencyKey)
 	}
-	payload, ok := succeededEvent.EventData.(sharedevents.PaymentSucceededEvent)
-	if !ok {
-		t.Fatalf("unexpected success payload type: %T", succeededEvent.EventData)
-	}
-	if payload.IdempotencyKey != "payment.succeeded:txn-1" {
-		t.Fatalf("unexpected success idempotency key: %s", payload.IdempotencyKey)
+	if succeededEventData.ProviderPaymentRef != "ref-1" {
+		t.Fatalf("unexpected success provider payment ref: %s", succeededEventData.ProviderPaymentRef)
 	}
 
 	processedEvent, err := intent.NewProcessedTransitionEvent(sharedevents.EventPaymentSucceeded, now)

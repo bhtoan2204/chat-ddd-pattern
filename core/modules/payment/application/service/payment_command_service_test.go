@@ -7,13 +7,12 @@ import (
 	"time"
 
 	"go-socket/core/modules/payment/application/dto/in"
+	paymentaggregate "go-socket/core/modules/payment/domain/aggregate"
 	"go-socket/core/modules/payment/domain/entity"
 	repos "go-socket/core/modules/payment/domain/repos"
 	domainservice "go-socket/core/modules/payment/domain/service"
-	sharedevents "go-socket/core/shared/contracts/events"
 	sharedlock "go-socket/core/shared/infra/lock"
 	"go-socket/core/shared/pkg/actorctx"
-	eventpkg "go-socket/core/shared/pkg/event"
 
 	"go.uber.org/mock/gomock"
 )
@@ -59,10 +58,7 @@ func TestProcessWebhookLocksByTransactionIDAndFinalizesSuccess(t *testing.T) {
 	provider := domainservice.NewMockPaymentProvider(ctrl)
 	locker := sharedlock.NewMockLock(ctrl)
 
-	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "wallet:available", time.Now().UTC())
-	if err != nil {
-		t.Fatalf("new provider top up intent: %v", err)
-	}
+	paymentAggregate := mustRehydratePaymentAggregate(t, "txn-1", "stripe", 100, "VND", "wallet:available")
 
 	providerRegistry.EXPECT().Get("stripe").Return(provider, nil)
 	provider.EXPECT().ParseWebhook(gomock.Any(), []byte("{}"), "sig-1").Return(&domainservice.PaymentWebhook{
@@ -79,34 +75,30 @@ func TestProcessWebhookLocksByTransactionIDAndFinalizesSuccess(t *testing.T) {
 	}, nil)
 
 	baseRepo.EXPECT().ProviderPaymentRepository().Return(providerRepo).AnyTimes()
-	providerRepo.EXPECT().GetIntentByTransactionID(gomock.Any(), "txn-1").Return(intent, nil).Times(2)
+	providerRepo.EXPECT().GetByTransactionID(gomock.Any(), "txn-1").Return(paymentAggregate, nil).Times(2)
 	locker.EXPECT().AcquireLock(gomock.Any(), "payment:txn-1", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).Return(true, nil)
 	locker.EXPECT().ReleaseLock(gomock.Any(), "payment:txn-1", gomock.Any()).Return(true, nil)
 	baseRepo.EXPECT().WithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(repos.Repos) error) error {
 		return fn(txRepos)
 	})
 	txRepos.EXPECT().ProviderPaymentRepository().Return(providerRepo).AnyTimes()
-	providerRepo.EXPECT().FinalizeSuccessfulPayment(
-		gomock.Any(),
-		intent,
-		gomock.AssignableToTypeOf(&entity.ProcessedPaymentEvent{}),
-		gomock.AssignableToTypeOf(eventpkg.Event{}),
-	).DoAndReturn(func(_ context.Context, savedIntent *entity.PaymentIntent, processedEvent *entity.ProcessedPaymentEvent, successEvent eventpkg.Event, _ ...eventpkg.Event) error {
-		if savedIntent.Status != entity.PaymentStatusSuccess {
-			t.Fatalf("expected saved intent status success, got %s", savedIntent.Status)
+	providerRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
+		if savedAggregate.Status() != entity.PaymentStatusSuccess {
+			t.Fatalf("expected saved aggregate status success, got %s", savedAggregate.Status())
 		}
-		if processedEvent.IdempotencyKey != "payment.succeeded:txn-1" {
-			t.Fatalf("unexpected processed event idempotency key: %s", processedEvent.IdempotencyKey)
+		processedEvents := savedAggregate.PendingProcessedEvents()
+		if len(processedEvents) != 1 {
+			t.Fatalf("expected 1 processed event, got %d", len(processedEvents))
 		}
-		if successEvent.EventName != sharedevents.EventPaymentSucceeded {
-			t.Fatalf("unexpected success event name: %s", successEvent.EventName)
+		if processedEvents[0].IdempotencyKey != "payment.succeeded:txn-1" {
+			t.Fatalf("unexpected processed event idempotency key: %s", processedEvents[0].IdempotencyKey)
 		}
-		payload, ok := successEvent.EventData.(sharedevents.PaymentSucceededEvent)
-		if !ok {
-			t.Fatalf("unexpected success payload type: %T", successEvent.EventData)
+		outboxEvents := savedAggregate.PendingOutboxEvents()
+		if len(outboxEvents) != 1 {
+			t.Fatalf("expected 1 outbox event, got %d", len(outboxEvents))
 		}
-		if payload.IdempotencyKey != "payment.succeeded:txn-1" {
-			t.Fatalf("unexpected success payload idempotency key: %s", payload.IdempotencyKey)
+		if outboxEvents[0].EventName != "payment.succeeded" {
+			t.Fatalf("unexpected outbox event name: %s", outboxEvents[0].EventName)
 		}
 		return nil
 	})
@@ -142,32 +134,28 @@ func TestApplyProviderOutcomeFinalizesSuccessOnlyOncePerPayment(t *testing.T) {
 	txRepos := repos.NewMockRepos(ctrl)
 	providerRepo := repos.NewMockProviderPaymentRepository(ctrl)
 
-	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "wallet:available", time.Now().UTC())
-	if err != nil {
-		t.Fatalf("new provider top up intent: %v", err)
-	}
+	paymentAggregate := mustRehydratePaymentAggregate(t, "txn-1", "stripe", 100, "VND", "wallet:available")
 
 	baseRepo.EXPECT().WithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(repos.Repos) error) error {
 		return fn(txRepos)
-	}).Times(2)
+	}).Times(1)
 	txRepos.EXPECT().ProviderPaymentRepository().Return(providerRepo).AnyTimes()
-	providerRepo.EXPECT().FinalizeSuccessfulPayment(
-		gomock.Any(),
-		intent,
-		gomock.AssignableToTypeOf(&entity.ProcessedPaymentEvent{}),
-		gomock.AssignableToTypeOf(eventpkg.Event{}),
-	).DoAndReturn(func(_ context.Context, _ *entity.PaymentIntent, processedEvent *entity.ProcessedPaymentEvent, successEvent eventpkg.Event, _ ...eventpkg.Event) error {
-		if processedEvent.IdempotencyKey != "payment.succeeded:txn-1" {
-			t.Fatalf("unexpected processed event idempotency key: %s", processedEvent.IdempotencyKey)
+	providerRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
+		if savedAggregate.Status() != entity.PaymentStatusSuccess {
+			t.Fatalf("expected saved aggregate status success, got %s", savedAggregate.Status())
 		}
-		if successEvent.EventName != sharedevents.EventPaymentSucceeded {
-			t.Fatalf("unexpected success event name: %s", successEvent.EventName)
+		processedEvents := savedAggregate.PendingProcessedEvents()
+		if len(processedEvents) != 1 {
+			t.Fatalf("expected 1 processed event, got %d", len(processedEvents))
+		}
+		if processedEvents[0].IdempotencyKey != "payment.succeeded:txn-1" {
+			t.Fatalf("unexpected processed event idempotency key: %s", processedEvents[0].IdempotencyKey)
 		}
 		return nil
 	}).Times(1)
 
 	svc := &paymentCommandService{baseRepo: baseRepo}
-	duplicate, err := svc.applyProviderOutcome(context.Background(), intent, entity.PaymentProviderResult{
+	duplicate, err := svc.applyProviderOutcome(context.Background(), paymentAggregate, entity.PaymentProviderResult{
 		TransactionID: "txn-1",
 		EventID:       "evt-checkout-completed",
 		EventType:     "checkout.session.completed",
@@ -182,11 +170,11 @@ func TestApplyProviderOutcomeFinalizesSuccessOnlyOncePerPayment(t *testing.T) {
 	if duplicate {
 		t.Fatalf("expected first success to finalize payment")
 	}
-	if intent.Status != entity.PaymentStatusSuccess {
-		t.Fatalf("expected success status, got %s", intent.Status)
+	if paymentAggregate.Status() != entity.PaymentStatusSuccess {
+		t.Fatalf("expected success status, got %s", paymentAggregate.Status())
 	}
 
-	duplicate, err = svc.applyProviderOutcome(context.Background(), intent, entity.PaymentProviderResult{
+	duplicate, err = svc.applyProviderOutcome(context.Background(), paymentAggregate, entity.PaymentProviderResult{
 		TransactionID: "txn-1",
 		EventID:       "evt-charge-succeeded",
 		EventType:     "charge.succeeded",
@@ -201,34 +189,26 @@ func TestApplyProviderOutcomeFinalizesSuccessOnlyOncePerPayment(t *testing.T) {
 	if !duplicate {
 		t.Fatalf("expected second success to be treated as duplicate")
 	}
-	if intent.Status != entity.PaymentStatusSuccess {
-		t.Fatalf("expected status to stay success, got %s", intent.Status)
+	if paymentAggregate.Status() != entity.PaymentStatusSuccess {
+		t.Fatalf("expected status to stay success, got %s", paymentAggregate.Status())
 	}
 }
 
-func TestApplyProviderOutcomeIgnoresFailAfterSuccess(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	baseRepo := repos.NewMockRepos(ctrl)
-
-	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "wallet:available", time.Now().UTC())
-	if err != nil {
-		t.Fatalf("new provider top up intent: %v", err)
-	}
-	if err := intent.ApplyProviderResult(entity.PaymentProviderResult{
+func TestApplyProviderOutcomeIgnoresFailAfterSuccessWithoutPersist(t *testing.T) {
+	paymentAggregate := mustRehydratePaymentAggregate(t, "txn-1", "stripe", 100, "VND", "wallet:available")
+	_, err := paymentAggregate.ApplyProviderOutcome(entity.PaymentProviderResult{
 		ExternalRef: "cs-1",
 		Status:      entity.PaymentStatusSuccess,
 		Amount:      100,
 		Currency:    "VND",
-	}, time.Now().UTC()); err != nil {
+	}, "", false, time.Now().UTC())
+	if err != nil {
 		t.Fatalf("apply initial success: %v", err)
 	}
+	paymentAggregate.MarkPersisted()
 
-	baseRepo.EXPECT().WithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(repos.Repos) error) error {
-		return fn(repos.NewMockRepos(ctrl))
-	})
-
-	svc := &paymentCommandService{baseRepo: baseRepo}
-	duplicate, err := svc.applyProviderOutcome(context.Background(), intent, entity.PaymentProviderResult{
+	svc := &paymentCommandService{}
+	duplicate, err := svc.applyProviderOutcome(context.Background(), paymentAggregate, entity.PaymentProviderResult{
 		TransactionID: "txn-1",
 		EventID:       "evt-payment-failed",
 		EventType:     "payment_intent.payment_failed",
@@ -243,8 +223,8 @@ func TestApplyProviderOutcomeIgnoresFailAfterSuccess(t *testing.T) {
 	if !duplicate {
 		t.Fatalf("expected fail-after-success to be ignored as duplicate")
 	}
-	if intent.Status != entity.PaymentStatusSuccess {
-		t.Fatalf("expected status to stay success, got %s", intent.Status)
+	if paymentAggregate.Status() != entity.PaymentStatusSuccess {
+		t.Fatalf("expected status to stay success, got %s", paymentAggregate.Status())
 	}
 }
 
@@ -254,50 +234,45 @@ func TestApplyProviderOutcomeFinalizesRefundAsReversal(t *testing.T) {
 	txRepos := repos.NewMockRepos(ctrl)
 	providerRepo := repos.NewMockProviderPaymentRepository(ctrl)
 
-	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "wallet:available", time.Now().UTC())
-	if err != nil {
-		t.Fatalf("new provider top up intent: %v", err)
-	}
-	if err := intent.ApplyProviderResult(entity.PaymentProviderResult{
+	paymentAggregate := mustRehydratePaymentAggregate(t, "txn-1", "stripe", 100, "VND", "wallet:available")
+	_, err := paymentAggregate.ApplyProviderOutcome(entity.PaymentProviderResult{
 		ExternalRef: "cs-1",
 		Status:      entity.PaymentStatusSuccess,
 		Amount:      100,
 		Currency:    "VND",
-	}, time.Now().UTC()); err != nil {
+	}, "", false, time.Now().UTC())
+	if err != nil {
 		t.Fatalf("apply initial success: %v", err)
 	}
+	paymentAggregate.MarkPersisted()
 
 	baseRepo.EXPECT().WithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(repos.Repos) error) error {
 		return fn(txRepos)
 	})
 	txRepos.EXPECT().ProviderPaymentRepository().Return(providerRepo).AnyTimes()
-	providerRepo.EXPECT().FinalizeReversedPayment(
-		gomock.Any(),
-		intent,
-		gomock.AssignableToTypeOf(&entity.ProcessedPaymentEvent{}),
-		gomock.AssignableToTypeOf(eventpkg.Event{}),
-	).DoAndReturn(func(_ context.Context, savedIntent *entity.PaymentIntent, processedEvent *entity.ProcessedPaymentEvent, reversalEvent eventpkg.Event, _ ...eventpkg.Event) error {
-		if savedIntent.Status != entity.PaymentStatusRefunded {
-			t.Fatalf("expected refunded status, got %s", savedIntent.Status)
+	providerRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
+		if savedAggregate.Status() != entity.PaymentStatusRefunded {
+			t.Fatalf("expected refunded status, got %s", savedAggregate.Status())
 		}
-		if processedEvent.IdempotencyKey != "payment.refunded:txn-1" {
-			t.Fatalf("unexpected processed event idempotency key: %s", processedEvent.IdempotencyKey)
+		processedEvents := savedAggregate.PendingProcessedEvents()
+		if len(processedEvents) != 1 {
+			t.Fatalf("expected 1 processed event, got %d", len(processedEvents))
 		}
-		if reversalEvent.EventName != sharedevents.EventPaymentRefunded {
-			t.Fatalf("unexpected reversal event name: %s", reversalEvent.EventName)
+		if processedEvents[0].IdempotencyKey != "payment.refunded:txn-1" {
+			t.Fatalf("unexpected processed event idempotency key: %s", processedEvents[0].IdempotencyKey)
 		}
-		payload, ok := reversalEvent.EventData.(sharedevents.PaymentRefundedEvent)
-		if !ok {
-			t.Fatalf("unexpected reversal payload type: %T", reversalEvent.EventData)
+		outboxEvents := savedAggregate.PendingOutboxEvents()
+		if len(outboxEvents) != 1 {
+			t.Fatalf("expected 1 outbox event, got %d", len(outboxEvents))
 		}
-		if payload.IdempotencyKey != "payment.refunded:txn-1" {
-			t.Fatalf("unexpected reversal payload idempotency key: %s", payload.IdempotencyKey)
+		if outboxEvents[0].EventName != "payment.refunded" {
+			t.Fatalf("unexpected outbox event name: %s", outboxEvents[0].EventName)
 		}
 		return nil
 	})
 
 	svc := &paymentCommandService{baseRepo: baseRepo}
-	duplicate, err := svc.applyProviderOutcome(context.Background(), intent, entity.PaymentProviderResult{
+	duplicate, err := svc.applyProviderOutcome(context.Background(), paymentAggregate, entity.PaymentProviderResult{
 		TransactionID: "txn-1",
 		EventID:       "evt-charge-refunded",
 		EventType:     "charge.refunded",
@@ -312,7 +287,28 @@ func TestApplyProviderOutcomeFinalizesRefundAsReversal(t *testing.T) {
 	if duplicate {
 		t.Fatalf("expected first refund to finalize reversal")
 	}
-	if intent.Status != entity.PaymentStatusRefunded {
-		t.Fatalf("expected refunded status, got %s", intent.Status)
+	if paymentAggregate.Status() != entity.PaymentStatusRefunded {
+		t.Fatalf("expected refunded status, got %s", paymentAggregate.Status())
 	}
+}
+
+func mustRehydratePaymentAggregate(
+	t *testing.T,
+	transactionID string,
+	provider string,
+	amount int64,
+	currency string,
+	creditAccountID string,
+) *paymentaggregate.PaymentIntentAggregate {
+	t.Helper()
+
+	intent, err := entity.NewProviderTopUpIntent(transactionID, provider, amount, currency, creditAccountID, time.Now().UTC())
+	if err != nil {
+		t.Fatalf("new provider top up intent: %v", err)
+	}
+	paymentAggregate, err := paymentaggregate.RehydratePaymentIntentAggregate(intent)
+	if err != nil {
+		t.Fatalf("rehydrate payment aggregate: %v", err)
+	}
+	return paymentAggregate
 }

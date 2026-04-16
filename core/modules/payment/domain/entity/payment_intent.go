@@ -3,7 +3,6 @@ package entity
 import "time"
 
 const (
-	PaymentAggregateType    = "payment"
 	PaymentStatusCreating   = "CREATING"
 	PaymentStatusPending    = "PENDING"
 	PaymentStatusSuccess    = "SUCCESS"
@@ -12,6 +11,16 @@ const (
 	PaymentStatusRefunded   = "REFUNDED"
 	PaymentStatusChargeback = "CHARGEBACK"
 )
+
+var ValidPaymentStatuses = map[string]string{
+	PaymentStatusCreating:   PaymentStatusCreating,
+	PaymentStatusPending:    PaymentStatusPending,
+	PaymentStatusSuccess:    PaymentStatusSuccess,
+	PaymentStatusFailed:     PaymentStatusFailed,
+	PaymentStatusCancelled:  PaymentStatusCancelled,
+	PaymentStatusRefunded:   PaymentStatusRefunded,
+	PaymentStatusChargeback: PaymentStatusChargeback,
+}
 
 type PaymentTransitionType string
 

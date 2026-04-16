@@ -11,8 +11,7 @@ package repos
 
 import (
 	context "context"
-	entity "go-socket/core/modules/payment/domain/entity"
-	event "go-socket/core/shared/pkg/event"
+	aggregate "go-socket/core/modules/payment/domain/aggregate"
 	reflect "reflect"
 
 	gomock "go.uber.org/mock/gomock"
@@ -42,118 +41,60 @@ func (m *MockProviderPaymentRepository) EXPECT() *MockProviderPaymentRepositoryM
 	return m.recorder
 }
 
-// CreatePaymentIntent mocks base method.
-func (m *MockProviderPaymentRepository) CreatePaymentIntent(ctx context.Context, intent *entity.PaymentIntent, createdEvent event.Event) error {
+// Create mocks base method.
+func (m *MockProviderPaymentRepository) Create(ctx context.Context, arg1 *aggregate.PaymentIntentAggregate) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePaymentIntent", ctx, intent, createdEvent)
+	ret := m.ctrl.Call(m, "Create", ctx, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// CreatePaymentIntent indicates an expected call of CreatePaymentIntent.
-func (mr *MockProviderPaymentRepositoryMockRecorder) CreatePaymentIntent(ctx, intent, createdEvent any) *gomock.Call {
+// Create indicates an expected call of Create.
+func (mr *MockProviderPaymentRepositoryMockRecorder) Create(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePaymentIntent", reflect.TypeOf((*MockProviderPaymentRepository)(nil).CreatePaymentIntent), ctx, intent, createdEvent)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockProviderPaymentRepository)(nil).Create), ctx, arg1)
 }
 
-// FinalizeReversedPayment mocks base method.
-func (m *MockProviderPaymentRepository) FinalizeReversedPayment(ctx context.Context, intent *entity.PaymentIntent, processedEvent *entity.ProcessedPaymentEvent, reversalEvent event.Event, outboxEvents ...event.Event) error {
+// GetByExternalRef mocks base method.
+func (m *MockProviderPaymentRepository) GetByExternalRef(ctx context.Context, provider, externalRef string) (*aggregate.PaymentIntentAggregate, error) {
 	m.ctrl.T.Helper()
-	varargs := []any{ctx, intent, processedEvent, reversalEvent}
-	for _, a := range outboxEvents {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "FinalizeReversedPayment", varargs...)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// FinalizeReversedPayment indicates an expected call of FinalizeReversedPayment.
-func (mr *MockProviderPaymentRepositoryMockRecorder) FinalizeReversedPayment(ctx, intent, processedEvent, reversalEvent any, outboxEvents ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, intent, processedEvent, reversalEvent}, outboxEvents...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalizeReversedPayment", reflect.TypeOf((*MockProviderPaymentRepository)(nil).FinalizeReversedPayment), varargs...)
-}
-
-// FinalizeSuccessfulPayment mocks base method.
-func (m *MockProviderPaymentRepository) FinalizeSuccessfulPayment(ctx context.Context, intent *entity.PaymentIntent, processedEvent *entity.ProcessedPaymentEvent, successEvent event.Event, outboxEvents ...event.Event) error {
-	m.ctrl.T.Helper()
-	varargs := []any{ctx, intent, processedEvent, successEvent}
-	for _, a := range outboxEvents {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "FinalizeSuccessfulPayment", varargs...)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// FinalizeSuccessfulPayment indicates an expected call of FinalizeSuccessfulPayment.
-func (mr *MockProviderPaymentRepositoryMockRecorder) FinalizeSuccessfulPayment(ctx, intent, processedEvent, successEvent any, outboxEvents ...any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, intent, processedEvent, successEvent}, outboxEvents...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FinalizeSuccessfulPayment", reflect.TypeOf((*MockProviderPaymentRepository)(nil).FinalizeSuccessfulPayment), varargs...)
-}
-
-// GetIntentByExternalRef mocks base method.
-func (m *MockProviderPaymentRepository) GetIntentByExternalRef(ctx context.Context, provider, externalRef string) (*entity.PaymentIntent, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIntentByExternalRef", ctx, provider, externalRef)
-	ret0, _ := ret[0].(*entity.PaymentIntent)
+	ret := m.ctrl.Call(m, "GetByExternalRef", ctx, provider, externalRef)
+	ret0, _ := ret[0].(*aggregate.PaymentIntentAggregate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetIntentByExternalRef indicates an expected call of GetIntentByExternalRef.
-func (mr *MockProviderPaymentRepositoryMockRecorder) GetIntentByExternalRef(ctx, provider, externalRef any) *gomock.Call {
+// GetByExternalRef indicates an expected call of GetByExternalRef.
+func (mr *MockProviderPaymentRepositoryMockRecorder) GetByExternalRef(ctx, provider, externalRef any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIntentByExternalRef", reflect.TypeOf((*MockProviderPaymentRepository)(nil).GetIntentByExternalRef), ctx, provider, externalRef)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByExternalRef", reflect.TypeOf((*MockProviderPaymentRepository)(nil).GetByExternalRef), ctx, provider, externalRef)
 }
 
-// GetIntentByTransactionID mocks base method.
-func (m *MockProviderPaymentRepository) GetIntentByTransactionID(ctx context.Context, transactionID string) (*entity.PaymentIntent, error) {
+// GetByTransactionID mocks base method.
+func (m *MockProviderPaymentRepository) GetByTransactionID(ctx context.Context, transactionID string) (*aggregate.PaymentIntentAggregate, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetIntentByTransactionID", ctx, transactionID)
-	ret0, _ := ret[0].(*entity.PaymentIntent)
+	ret := m.ctrl.Call(m, "GetByTransactionID", ctx, transactionID)
+	ret0, _ := ret[0].(*aggregate.PaymentIntentAggregate)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetIntentByTransactionID indicates an expected call of GetIntentByTransactionID.
-func (mr *MockProviderPaymentRepositoryMockRecorder) GetIntentByTransactionID(ctx, transactionID any) *gomock.Call {
+// GetByTransactionID indicates an expected call of GetByTransactionID.
+func (mr *MockProviderPaymentRepositoryMockRecorder) GetByTransactionID(ctx, transactionID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIntentByTransactionID", reflect.TypeOf((*MockProviderPaymentRepository)(nil).GetIntentByTransactionID), ctx, transactionID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByTransactionID", reflect.TypeOf((*MockProviderPaymentRepository)(nil).GetByTransactionID), ctx, transactionID)
 }
 
-// IsProcessed mocks base method.
-func (m *MockProviderPaymentRepository) IsProcessed(ctx context.Context, provider, idempotencyKey string) (bool, error) {
+// Save mocks base method.
+func (m *MockProviderPaymentRepository) Save(ctx context.Context, arg1 *aggregate.PaymentIntentAggregate) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IsProcessed", ctx, provider, idempotencyKey)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IsProcessed indicates an expected call of IsProcessed.
-func (mr *MockProviderPaymentRepositoryMockRecorder) IsProcessed(ctx, provider, idempotencyKey any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsProcessed", reflect.TypeOf((*MockProviderPaymentRepository)(nil).IsProcessed), ctx, provider, idempotencyKey)
-}
-
-// SavePaymentIntent mocks base method.
-func (m *MockProviderPaymentRepository) SavePaymentIntent(ctx context.Context, intent *entity.PaymentIntent, outboxEvents ...event.Event) error {
-	m.ctrl.T.Helper()
-	varargs := []any{ctx, intent}
-	for _, a := range outboxEvents {
-		varargs = append(varargs, a)
-	}
-	ret := m.ctrl.Call(m, "SavePaymentIntent", varargs...)
+	ret := m.ctrl.Call(m, "Save", ctx, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// SavePaymentIntent indicates an expected call of SavePaymentIntent.
-func (mr *MockProviderPaymentRepositoryMockRecorder) SavePaymentIntent(ctx, intent any, outboxEvents ...any) *gomock.Call {
+// Save indicates an expected call of Save.
+func (mr *MockProviderPaymentRepositoryMockRecorder) Save(ctx, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{ctx, intent}, outboxEvents...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SavePaymentIntent", reflect.TypeOf((*MockProviderPaymentRepository)(nil).SavePaymentIntent), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Save", reflect.TypeOf((*MockProviderPaymentRepository)(nil).Save), ctx, arg1)
 }

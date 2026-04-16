@@ -10,13 +10,12 @@ import (
 	appCtx "go-socket/core/context"
 	"go-socket/core/modules/payment/application/dto/in"
 	"go-socket/core/modules/payment/application/dto/out"
+	paymentaggregate "go-socket/core/modules/payment/domain/aggregate"
 	"go-socket/core/modules/payment/domain/entity"
 	repos "go-socket/core/modules/payment/domain/repos"
 	domainservice "go-socket/core/modules/payment/domain/service"
-	sharedevents "go-socket/core/shared/contracts/events"
 	"go-socket/core/shared/infra/lock"
 	"go-socket/core/shared/pkg/actorctx"
-	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
 
@@ -53,79 +52,58 @@ func (s *paymentCommandService) CreatePayment(
 	req *in.CreatePaymentRequest,
 ) (*out.CreatePaymentResponse, error) {
 	log := logging.FromContext(ctx).Named("CreatePayment")
-	if err := wrapPaymentValidation(req.Validate()); err != nil {
-		return nil, stackErr.Error(err)
-	}
-
 	creditAccountID, err := s.resolveCreatePaymentCreditAccount(ctx, req)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
 
 	now := time.Now().UTC()
-	intent, err := entity.NewProviderTopUpIntent(
+	paymentAggregate, err := paymentaggregate.NewProviderTopUpAggregate(
 		uuid.New().String(),
 		req.Provider,
 		req.Amount,
 		req.Currency,
 		creditAccountID,
+		req.Metadata,
 		now,
 	)
 	if err != nil {
-		return nil, wrapPaymentValidation(err)
+		return nil, stackErr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 	}
 
-	provider, err := s.providerRegistry.Get(intent.Provider)
+	provider, err := s.providerRegistry.Get(paymentAggregate.Provider())
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
 
 	if err := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		return stackErr.Error(tx.ProviderPaymentRepository().CreatePaymentIntent(
-			ctx,
-			intent,
-			intent.CreatedEvent(req.Metadata, now),
-		))
+		return stackErr.Error(tx.ProviderPaymentRepository().Create(ctx, paymentAggregate))
 	}); err != nil {
 		if errors.Is(err, repos.ErrProviderPaymentDuplicateIntent) {
-			return nil, fmt.Errorf("%v: %s", ErrDuplicatePayment, intent.TransactionID)
+			return nil, stackErr.Error(fmt.Errorf("%v: %s", ErrDuplicatePayment, paymentAggregate.TransactionID()))
 		}
 		return nil, stackErr.Error(err)
 	}
 
-	creation, err := provider.CreatePayment(ctx, intent, req.Metadata)
+	intentSnapshot := paymentAggregate.Snapshot()
+	creation, err := provider.CreatePayment(ctx, intentSnapshot, req.Metadata)
 	if err != nil {
-		log.Errorw("provider create payment failed",
-			"provider", provider.Name(),
-			"transaction_id", intent.TransactionID,
-			zap.Error(err),
-		)
-		if persistErr := s.markCreateFailed(ctx, intent); persistErr != nil {
-			log.Errorw("failed to persist create-payment failure state",
-				"provider", provider.Name(),
-				"transaction_id", intent.TransactionID,
-				zap.Error(persistErr),
-			)
+		log.Errorw("provider create payment failed", "provider", provider.Name(), "transaction_id", paymentAggregate.TransactionID(), zap.Error(err))
+		if persistErr := s.markCreateFailed(ctx, paymentAggregate); persistErr != nil {
+			log.Errorw("failed to persist create-payment failure state", "provider", provider.Name(), "transaction_id", paymentAggregate.TransactionID(), zap.Error(persistErr))
 		}
 		return nil, stackErr.Error(err)
 	}
 
-	if _, err := s.applyProviderOutcome(ctx, intent, creation.Result, creation.CheckoutURL, true); err != nil {
+	if _, err := s.applyProviderOutcome(ctx, paymentAggregate, creation.Result, creation.CheckoutURL, true); err != nil {
 		return nil, stackErr.Error(err)
 	}
-
-	log.Infow("payment created",
-		zap.String("provider", creation.Provider),
-		zap.String("transaction_id", intent.TransactionID),
-		zap.String("status", intent.Status),
-		zap.String("external_ref", intent.ExternalRef),
-	)
 
 	return &out.CreatePaymentResponse{
 		Provider:      creation.Provider,
-		TransactionID: intent.TransactionID,
-		ExternalRef:   intent.ExternalRef,
-		Status:        intent.Status,
+		TransactionID: paymentAggregate.TransactionID(),
+		ExternalRef:   paymentAggregate.ExternalRef(),
+		Status:        paymentAggregate.Status(),
 		CheckoutURL:   creation.CheckoutURL,
 	}, nil
 }
@@ -150,40 +128,44 @@ func (s *paymentCommandService) ProcessWebhook(
 		}, nil
 	}
 
-	intent, err := s.findIntent(ctx, webhook.Provider, webhook.Result)
+	paymentAggregate, err := s.findPaymentAggregate(ctx, webhook.Provider, webhook.Result)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
 
-	lockKey := fmt.Sprintf("payment:%s", intent.TransactionID)
+	lockKey := fmt.Sprintf("payment:%s", paymentAggregate.TransactionID())
 	lockValue := uuid.NewString()
 	locked, err := s.locker.AcquireLock(ctx, lockKey, lockValue, 30*time.Second, 100*time.Millisecond, 3*time.Second)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
 	if !locked {
-		return nil, stackErr.Error(fmt.Errorf("acquire payment lock failed: transaction_id=%s", intent.TransactionID))
+		return nil, stackErr.Error(fmt.Errorf("acquire payment lock failed: transaction_id=%s", paymentAggregate.TransactionID()))
 	}
 	defer s.locker.ReleaseLock(ctx, lockKey, lockValue)
 
-	intent, err = s.baseRepo.ProviderPaymentRepository().GetIntentByTransactionID(ctx, intent.TransactionID)
+	paymentAggregate, err = s.baseRepo.ProviderPaymentRepository().GetByTransactionID(ctx, paymentAggregate.TransactionID())
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	if err := wrapPaymentValidation(intent.ValidateProviderResultForStatus(webhook.Result.Status, webhook.Result.Amount, webhook.Result.Currency)); err != nil {
-		return nil, stackErr.Error(err)
+	if err := paymentAggregate.ValidateProviderResultForStatus(
+		webhook.Result.Status,
+		webhook.Result.Amount,
+		webhook.Result.Currency,
+	); err != nil {
+		return nil, stackErr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 	}
 
-	duplicate, err := s.applyProviderOutcome(ctx, intent, webhook.Result, "", false)
+	duplicate, err := s.applyProviderOutcome(ctx, paymentAggregate, webhook.Result, "", false)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
 
 	return &out.ProcessWebhookResponse{
-		Provider:      intent.Provider,
-		TransactionID: intent.TransactionID,
-		ExternalRef:   intent.ExternalRef,
-		Status:        intent.Status,
+		Provider:      paymentAggregate.Provider(),
+		TransactionID: paymentAggregate.TransactionID(),
+		ExternalRef:   paymentAggregate.ExternalRef(),
+		Status:        paymentAggregate.Status(),
 		Duplicate:     duplicate,
 		LedgerPosted:  false,
 	}, nil
@@ -191,187 +173,49 @@ func (s *paymentCommandService) ProcessWebhook(
 
 func (s *paymentCommandService) applyProviderOutcome(
 	ctx context.Context,
-	intent *entity.PaymentIntent,
+	paymentAggregate *paymentaggregate.PaymentIntentAggregate,
 	result entity.PaymentProviderResult,
 	checkoutURL string,
 	emitCheckoutEvent bool,
 ) (bool, error) {
-	switch entity.NormalizePaymentStatus(result.Status) {
-	case entity.PaymentStatusSuccess:
-		return s.finalizeSuccessfulPayment(ctx, intent, result, checkoutURL, emitCheckoutEvent)
-	case entity.PaymentStatusRefunded, entity.PaymentStatusChargeback:
-		return s.finalizeReversedPayment(ctx, intent, result, checkoutURL, emitCheckoutEvent)
-	default:
-		return s.persistNonFinalOutcome(ctx, intent, result, checkoutURL, emitCheckoutEvent)
+	mutation, err := paymentAggregate.ApplyProviderOutcome(result, checkoutURL, emitCheckoutEvent, time.Now().UTC())
+	if err != nil {
+		return false, stackErr.Error(err)
 	}
-}
-
-func (s *paymentCommandService) persistNonFinalOutcome(
-	ctx context.Context,
-	intent *entity.PaymentIntent,
-	result entity.PaymentProviderResult,
-	checkoutURL string,
-	emitCheckoutEvent bool,
-) (bool, error) {
-	duplicate := false
-	persistErr := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		updatedAt := time.Now().UTC()
-		transition, err := intent.TransitionProviderResult(result, updatedAt)
-		if err != nil {
-			return stackErr.Error(err)
-		}
-		if transition.Ignored || (!transition.StateChanged && !transition.ExternalRefChanged) {
-			duplicate = true
-			return nil
-		}
-
-		outboxEvents := checkoutSessionEvents(intent, checkoutURL, updatedAt, emitCheckoutEvent)
-		if transition.Type == entity.PaymentTransitionFailed {
-			outboxEvents = append(outboxEvents, intent.FailedEvent(intent.CurrentProviderResult(result), updatedAt))
-		}
-
-		return stackErr.Error(tx.ProviderPaymentRepository().SavePaymentIntent(ctx, intent, outboxEvents...))
-	})
-	if persistErr != nil {
-		return false, stackErr.Error(persistErr)
+	if !mutation.Persist {
+		return mutation.Duplicate, nil
 	}
 
-	return duplicate, nil
-}
-
-func (s *paymentCommandService) finalizeSuccessfulPayment(
-	ctx context.Context,
-	intent *entity.PaymentIntent,
-	result entity.PaymentProviderResult,
-	checkoutURL string,
-	emitCheckoutEvent bool,
-) (bool, error) {
-	duplicate := false
 	persistErr := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		updatedAt := time.Now().UTC()
-		transition, err := intent.TransitionProviderResult(result, updatedAt)
-		if err != nil {
-			return stackErr.Error(err)
-		}
-		if transition.Ignored || transition.Type == entity.PaymentTransitionNone {
-			duplicate = true
-			if transition.ExternalRefChanged {
-				return stackErr.Error(tx.ProviderPaymentRepository().SavePaymentIntent(
-					ctx,
-					intent,
-					checkoutSessionEvents(intent, checkoutURL, updatedAt, emitCheckoutEvent)...,
-				))
-			}
-			return nil
-		}
-		if transition.Type != entity.PaymentTransitionSucceeded {
-			duplicate = true
-			return nil
-		}
-
-		processedEvent, err := intent.NewProcessedTransitionEvent(sharedevents.EventPaymentSucceeded, updatedAt)
-		if err != nil {
-			return stackErr.Error(err)
-		}
-
-		if err := tx.ProviderPaymentRepository().FinalizeSuccessfulPayment(
-			ctx,
-			intent,
-			processedEvent,
-			intent.SucceededEvent(intent.CurrentProviderResult(result), updatedAt),
-			checkoutSessionEvents(intent, checkoutURL, updatedAt, emitCheckoutEvent)...,
-		); err != nil {
+		if err := tx.ProviderPaymentRepository().Save(ctx, paymentAggregate); err != nil {
 			if errors.Is(err, repos.ErrProviderPaymentDuplicateProcessed) {
-				duplicate = true
-				return nil
+				return stackErr.Error(err)
 			}
 			return stackErr.Error(err)
 		}
-
 		return nil
 	})
 	if persistErr != nil {
+		if errors.Is(persistErr, repos.ErrProviderPaymentDuplicateProcessed) {
+			return true, nil
+		}
 		return false, stackErr.Error(persistErr)
 	}
 
-	return duplicate, nil
+	return mutation.Duplicate, nil
 }
 
-func (s *paymentCommandService) finalizeReversedPayment(
-	ctx context.Context,
-	intent *entity.PaymentIntent,
-	result entity.PaymentProviderResult,
-	checkoutURL string,
-	emitCheckoutEvent bool,
-) (bool, error) {
-	duplicate := false
-	persistErr := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		updatedAt := time.Now().UTC()
-		transition, err := intent.TransitionProviderResult(result, updatedAt)
-		if err != nil {
-			return stackErr.Error(err)
-		}
-		if transition.Ignored || transition.Type == entity.PaymentTransitionNone {
-			duplicate = true
-			return nil
-		}
-
-		var (
-			processedEvent *entity.ProcessedPaymentEvent
-			reversalEvent  eventpkg.Event
-		)
-		switch transition.Type {
-		case entity.PaymentTransitionRefunded:
-			processedEvent, err = intent.NewProcessedTransitionEvent(sharedevents.EventPaymentRefunded, updatedAt)
-			if err != nil {
-				return stackErr.Error(err)
-			}
-			reversalEvent = intent.RefundedEvent(intent.CurrentProviderResult(result), updatedAt)
-		case entity.PaymentTransitionChargeback:
-			processedEvent, err = intent.NewProcessedTransitionEvent(sharedevents.EventPaymentChargeback, updatedAt)
-			if err != nil {
-				return stackErr.Error(err)
-			}
-			reversalEvent = intent.ChargebackEvent(intent.CurrentProviderResult(result), updatedAt)
-		default:
-			duplicate = true
-			return nil
-		}
-
-		if err := tx.ProviderPaymentRepository().FinalizeReversedPayment(
-			ctx,
-			intent,
-			processedEvent,
-			reversalEvent,
-			checkoutSessionEvents(intent, checkoutURL, updatedAt, emitCheckoutEvent)...,
-		); err != nil {
-			if errors.Is(err, repos.ErrProviderPaymentDuplicateProcessed) {
-				duplicate = true
-				return nil
-			}
-			return stackErr.Error(err)
-		}
-
-		return nil
-	})
-	if persistErr != nil {
-		return false, stackErr.Error(persistErr)
-	}
-
-	return duplicate, nil
-}
-
-func (s *paymentCommandService) findIntent(
+func (s *paymentCommandService) findPaymentAggregate(
 	ctx context.Context,
 	provider string,
 	result entity.PaymentProviderResult,
-) (*entity.PaymentIntent, error) {
+) (*paymentaggregate.PaymentIntentAggregate, error) {
 	store := s.baseRepo.ProviderPaymentRepository()
 
 	if strings.TrimSpace(result.TransactionID) != "" {
-		intent, err := store.GetIntentByTransactionID(ctx, result.TransactionID)
+		paymentAggregate, err := store.GetByTransactionID(ctx, result.TransactionID)
 		if err == nil {
-			return intent, nil
+			return paymentAggregate, nil
 		}
 		if !errors.Is(err, repos.ErrProviderPaymentNotFound) {
 			return nil, stackErr.Error(err)
@@ -379,9 +223,9 @@ func (s *paymentCommandService) findIntent(
 	}
 
 	if strings.TrimSpace(result.ExternalRef) != "" {
-		intent, err := store.GetIntentByExternalRef(ctx, provider, result.ExternalRef)
+		paymentAggregate, err := store.GetByExternalRef(ctx, provider, result.ExternalRef)
 		if err == nil {
-			return intent, nil
+			return paymentAggregate, nil
 		}
 		if !errors.Is(err, repos.ErrProviderPaymentNotFound) {
 			return nil, stackErr.Error(err)
@@ -396,42 +240,18 @@ func (s *paymentCommandService) findIntent(
 	))
 }
 
-func (s *paymentCommandService) markCreateFailed(ctx context.Context, intent *entity.PaymentIntent) error {
-	transition, err := intent.MarkCreateFailed(time.Now().UTC())
+func (s *paymentCommandService) markCreateFailed(ctx context.Context, paymentAggregate *paymentaggregate.PaymentIntentAggregate) error {
+	mutation, err := paymentAggregate.MarkCreateFailed(time.Now().UTC())
 	if err != nil {
 		return stackErr.Error(err)
 	}
-	if transition.Ignored || !transition.StateChanged {
+	if !mutation.Persist {
 		return nil
 	}
 
-	failedResult := intent.CurrentProviderResult(entity.PaymentProviderResult{Status: entity.PaymentStatusFailed})
 	return stackErr.Error(s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		return stackErr.Error(tx.ProviderPaymentRepository().SavePaymentIntent(
-			ctx,
-			intent,
-			intent.FailedEvent(failedResult, intent.UpdatedAt),
-		))
+		return stackErr.Error(tx.ProviderPaymentRepository().Save(ctx, paymentAggregate))
 	}))
-}
-
-func checkoutSessionEvents(
-	intent *entity.PaymentIntent,
-	checkoutURL string,
-	occurredAt time.Time,
-	emitCheckoutEvent bool,
-) []eventpkg.Event {
-	if !emitCheckoutEvent || !intent.ShouldEmitCheckoutSessionCreated(checkoutURL) {
-		return nil
-	}
-	return []eventpkg.Event{intent.CheckoutSessionCreatedEvent(checkoutURL, occurredAt)}
-}
-
-func wrapPaymentValidation(err error) error {
-	if err == nil {
-		return nil
-	}
-	return stackErr.Error(fmt.Errorf("%v: %s", ErrValidation, err.Error()))
 }
 
 func (s *paymentCommandService) resolveCreatePaymentCreditAccount(
@@ -445,7 +265,7 @@ func (s *paymentCommandService) resolveCreatePaymentCreditAccount(
 
 	requestedCreditAccountID := strings.TrimSpace(req.CreditAccountID)
 	if requestedCreditAccountID != "" && requestedCreditAccountID != actorAccountID {
-		return "", wrapPaymentValidation(fmt.Errorf("credit_account_id must match authenticated account"))
+		return "", stackErr.Error((fmt.Errorf("%v: %s", ErrValidation, fmt.Errorf("credit_account_id must match authenticated account"))))
 	}
 
 	return actorAccountID, nil

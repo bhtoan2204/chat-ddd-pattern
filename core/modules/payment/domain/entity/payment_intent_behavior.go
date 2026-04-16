@@ -7,7 +7,6 @@ import (
 	"time"
 
 	sharedevents "go-socket/core/shared/contracts/events"
-	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/stackErr"
 )
 
@@ -97,24 +96,8 @@ func effectivePaymentClearingAccountKey(provider, clearingAccountKey string) str
 }
 
 func NormalizePaymentStatus(status string) string {
-	switch strings.ToUpper(strings.TrimSpace(status)) {
-	case PaymentStatusCreating:
-		return PaymentStatusCreating
-	case PaymentStatusPending:
-		return PaymentStatusPending
-	case PaymentStatusSuccess:
-		return PaymentStatusSuccess
-	case PaymentStatusFailed:
-		return PaymentStatusFailed
-	case PaymentStatusCancelled:
-		return PaymentStatusCancelled
-	case PaymentStatusRefunded:
-		return PaymentStatusRefunded
-	case PaymentStatusChargeback:
-		return PaymentStatusChargeback
-	default:
-		return ""
-	}
+	normalized := strings.ToUpper(strings.TrimSpace(status))
+	return ValidPaymentStatuses[normalized]
 }
 
 func NormalizePaymentStatusOrPending(status string) string {
@@ -342,154 +325,112 @@ func (p *PaymentIntent) TransitionIdempotencyKey(eventName string) string {
 	return fmt.Sprintf("%s:%s", strings.TrimSpace(eventName), strings.TrimSpace(p.TransactionID))
 }
 
-func (p *PaymentIntent) CreatedEvent(metadata map[string]string, createdAt time.Time) eventpkg.Event {
+func (p *PaymentIntent) BuildCreatedEventData(metadata map[string]string, createdAt time.Time) sharedevents.PaymentCreatedEvent {
 	p.ensureWorkflowDefaults()
 	occurredAt := normalizePaymentTime(createdAt)
-	return eventpkg.Event{
-		AggregateID:   p.TransactionID,
-		AggregateType: PaymentAggregateType,
-		Version:       1,
-		EventName:     sharedevents.EventPaymentCreated,
-		EventData: sharedevents.PaymentCreatedEvent{
-			PaymentID:          p.TransactionID,
-			TransactionID:      p.TransactionID,
-			Provider:           p.Provider,
-			ClearingAccountKey: p.ClearingAccountKey,
-			Amount:             p.Amount,
-			Currency:           p.Currency,
-			CreditAccountID:    p.CreditAccountID,
-			Status:             p.Status,
-			Metadata:           metadata,
-			CreatedAt:          occurredAt,
-		},
-		CreatedAt: occurredAt.Unix(),
+	return sharedevents.PaymentCreatedEvent{
+		PaymentID:          p.TransactionID,
+		TransactionID:      p.TransactionID,
+		Provider:           p.Provider,
+		ClearingAccountKey: p.ClearingAccountKey,
+		Amount:             p.Amount,
+		Currency:           p.Currency,
+		CreditAccountID:    p.CreditAccountID,
+		Status:             p.Status,
+		Metadata:           metadata,
+		CreatedAt:          occurredAt,
 	}
 }
 
-func (p *PaymentIntent) CheckoutSessionCreatedEvent(checkoutURL string, occurredAt time.Time) eventpkg.Event {
+func (p *PaymentIntent) BuildCheckoutSessionCreatedEventData(checkoutURL string, occurredAt time.Time) sharedevents.PaymentCheckoutSessionCreatedEvent {
 	p.ensureWorkflowDefaults()
 	eventTime := normalizePaymentTime(occurredAt)
-	return eventpkg.Event{
-		AggregateID:   p.TransactionID,
-		AggregateType: PaymentAggregateType,
-		Version:       1,
-		EventName:     sharedevents.EventPaymentCheckoutSessionCreated,
-		EventData: sharedevents.PaymentCheckoutSessionCreatedEvent{
-			PaymentID:          p.TransactionID,
-			TransactionID:      p.TransactionID,
-			Provider:           p.Provider,
-			ProviderPaymentRef: p.ExternalRef,
-			CheckoutURL:        strings.TrimSpace(checkoutURL),
-			Amount:             p.Amount,
-			Currency:           p.Currency,
-			Status:             p.Status,
-			OccurredAt:         eventTime,
-		},
-		CreatedAt: eventTime.Unix(),
+	return sharedevents.PaymentCheckoutSessionCreatedEvent{
+		PaymentID:          p.TransactionID,
+		TransactionID:      p.TransactionID,
+		Provider:           p.Provider,
+		ProviderPaymentRef: p.ExternalRef,
+		CheckoutURL:        strings.TrimSpace(checkoutURL),
+		Amount:             p.Amount,
+		Currency:           p.Currency,
+		Status:             p.Status,
+		OccurredAt:         eventTime,
 	}
 }
 
-func (p *PaymentIntent) SucceededEvent(result PaymentProviderResult, occurredAt time.Time) eventpkg.Event {
+func (p *PaymentIntent) BuildSucceededEventData(result PaymentProviderResult, occurredAt time.Time) sharedevents.PaymentSucceededEvent {
 	p.ensureWorkflowDefaults()
 	eventTime := normalizePaymentTime(occurredAt)
-	return eventpkg.Event{
-		AggregateID:   p.TransactionID,
-		AggregateType: PaymentAggregateType,
-		Version:       1,
-		EventName:     sharedevents.EventPaymentSucceeded,
-		EventData: sharedevents.PaymentSucceededEvent{
-			PaymentID:          p.TransactionID,
-			TransactionID:      p.TransactionID,
-			Provider:           p.Provider,
-			ClearingAccountKey: p.ClearingAccountKey,
-			ProviderEventID:    strings.TrimSpace(result.EventID),
-			ProviderEventType:  strings.TrimSpace(result.EventType),
-			ProviderPaymentRef: coalescePaymentValue(result.ExternalRef, p.ExternalRef),
-			Amount:             p.Amount,
-			Currency:           p.Currency,
-			CreditAccountID:    p.CreditAccountID,
-			IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentSucceeded),
-			SucceededAt:        eventTime,
-		},
-		CreatedAt: eventTime.Unix(),
+	return sharedevents.PaymentSucceededEvent{
+		PaymentID:          p.TransactionID,
+		TransactionID:      p.TransactionID,
+		Provider:           p.Provider,
+		ClearingAccountKey: p.ClearingAccountKey,
+		ProviderEventID:    strings.TrimSpace(result.EventID),
+		ProviderEventType:  strings.TrimSpace(result.EventType),
+		ProviderPaymentRef: coalescePaymentValue(result.ExternalRef, p.ExternalRef),
+		Amount:             p.Amount,
+		Currency:           p.Currency,
+		CreditAccountID:    p.CreditAccountID,
+		IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentSucceeded),
+		SucceededAt:        eventTime,
 	}
 }
 
-func (p *PaymentIntent) FailedEvent(result PaymentProviderResult, occurredAt time.Time) eventpkg.Event {
+func (p *PaymentIntent) BuildFailedEventData(result PaymentProviderResult, occurredAt time.Time) sharedevents.PaymentFailedEvent {
 	p.ensureWorkflowDefaults()
 	eventTime := normalizePaymentTime(occurredAt)
-	return eventpkg.Event{
-		AggregateID:   p.TransactionID,
-		AggregateType: PaymentAggregateType,
-		Version:       1,
-		EventName:     sharedevents.EventPaymentFailed,
-		EventData: sharedevents.PaymentFailedEvent{
-			PaymentID:          p.TransactionID,
-			TransactionID:      p.TransactionID,
-			Provider:           p.Provider,
-			ProviderEventID:    strings.TrimSpace(result.EventID),
-			ProviderEventType:  strings.TrimSpace(result.EventType),
-			ProviderPaymentRef: coalescePaymentValue(result.ExternalRef, p.ExternalRef),
-			Amount:             p.Amount,
-			Currency:           p.Currency,
-			Status:             NormalizePaymentStatusOrPending(result.Status),
-			OccurredAt:         eventTime,
-		},
-		CreatedAt: eventTime.Unix(),
+	return sharedevents.PaymentFailedEvent{
+		PaymentID:          p.TransactionID,
+		TransactionID:      p.TransactionID,
+		Provider:           p.Provider,
+		ProviderEventID:    strings.TrimSpace(result.EventID),
+		ProviderEventType:  strings.TrimSpace(result.EventType),
+		ProviderPaymentRef: coalescePaymentValue(result.ExternalRef, p.ExternalRef),
+		Amount:             p.Amount,
+		Currency:           p.Currency,
+		Status:             NormalizePaymentStatusOrPending(result.Status),
+		OccurredAt:         eventTime,
 	}
 }
 
-func (p *PaymentIntent) RefundedEvent(result PaymentProviderResult, occurredAt time.Time) eventpkg.Event {
+func (p *PaymentIntent) BuildRefundedEventData(result PaymentProviderResult, occurredAt time.Time) sharedevents.PaymentRefundedEvent {
 	p.ensureWorkflowDefaults()
 	eventTime := normalizePaymentTime(occurredAt)
 	current := p.CurrentProviderResult(result)
-	return eventpkg.Event{
-		AggregateID:   p.TransactionID,
-		AggregateType: PaymentAggregateType,
-		Version:       1,
-		EventName:     sharedevents.EventPaymentRefunded,
-		EventData: sharedevents.PaymentRefundedEvent{
-			PaymentID:          p.TransactionID,
-			TransactionID:      p.TransactionID,
-			Provider:           p.Provider,
-			ClearingAccountKey: p.ClearingAccountKey,
-			ProviderEventID:    strings.TrimSpace(current.EventID),
-			ProviderEventType:  strings.TrimSpace(current.EventType),
-			ProviderPaymentRef: coalescePaymentValue(current.ExternalRef, p.ExternalRef),
-			Amount:             paymentResultAmountOrDefault(current.Amount, p.Amount),
-			Currency:           p.Currency,
-			CreditAccountID:    p.CreditAccountID,
-			IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentRefunded),
-			RefundedAt:         eventTime,
-		},
-		CreatedAt: eventTime.Unix(),
+	return sharedevents.PaymentRefundedEvent{
+		PaymentID:          p.TransactionID,
+		TransactionID:      p.TransactionID,
+		Provider:           p.Provider,
+		ClearingAccountKey: p.ClearingAccountKey,
+		ProviderEventID:    strings.TrimSpace(current.EventID),
+		ProviderEventType:  strings.TrimSpace(current.EventType),
+		ProviderPaymentRef: coalescePaymentValue(current.ExternalRef, p.ExternalRef),
+		Amount:             paymentResultAmountOrDefault(current.Amount, p.Amount),
+		Currency:           p.Currency,
+		CreditAccountID:    p.CreditAccountID,
+		IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentRefunded),
+		RefundedAt:         eventTime,
 	}
 }
 
-func (p *PaymentIntent) ChargebackEvent(result PaymentProviderResult, occurredAt time.Time) eventpkg.Event {
+func (p *PaymentIntent) BuildChargebackEventData(result PaymentProviderResult, occurredAt time.Time) sharedevents.PaymentChargebackEvent {
 	p.ensureWorkflowDefaults()
 	eventTime := normalizePaymentTime(occurredAt)
 	current := p.CurrentProviderResult(result)
-	return eventpkg.Event{
-		AggregateID:   p.TransactionID,
-		AggregateType: PaymentAggregateType,
-		Version:       1,
-		EventName:     sharedevents.EventPaymentChargeback,
-		EventData: sharedevents.PaymentChargebackEvent{
-			PaymentID:          p.TransactionID,
-			TransactionID:      p.TransactionID,
-			Provider:           p.Provider,
-			ClearingAccountKey: p.ClearingAccountKey,
-			ProviderEventID:    strings.TrimSpace(current.EventID),
-			ProviderEventType:  strings.TrimSpace(current.EventType),
-			ProviderPaymentRef: coalescePaymentValue(current.ExternalRef, p.ExternalRef),
-			Amount:             paymentResultAmountOrDefault(current.Amount, p.Amount),
-			Currency:           p.Currency,
-			CreditAccountID:    p.CreditAccountID,
-			IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentChargeback),
-			ChargedBackAt:      eventTime,
-		},
-		CreatedAt: eventTime.Unix(),
+	return sharedevents.PaymentChargebackEvent{
+		PaymentID:          p.TransactionID,
+		TransactionID:      p.TransactionID,
+		Provider:           p.Provider,
+		ClearingAccountKey: p.ClearingAccountKey,
+		ProviderEventID:    strings.TrimSpace(current.EventID),
+		ProviderEventType:  strings.TrimSpace(current.EventType),
+		ProviderPaymentRef: coalescePaymentValue(current.ExternalRef, p.ExternalRef),
+		Amount:             paymentResultAmountOrDefault(current.Amount, p.Amount),
+		Currency:           p.Currency,
+		CreditAccountID:    p.CreditAccountID,
+		IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentChargeback),
+		ChargedBackAt:      eventTime,
 	}
 }
 
