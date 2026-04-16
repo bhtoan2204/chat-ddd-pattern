@@ -34,12 +34,23 @@ type RecordPaymentSucceededCommand struct {
 	Amount             int64
 }
 
+type RecordPaymentReversedCommand struct {
+	PaymentID          string
+	TransactionID      string
+	ClearingAccountKey string
+	CreditAccountID    string
+	Currency           string
+	Amount             int64
+	ReversalType       string
+}
+
 const LedgerAccountLockKeyPrefix = "ledger-account"
 
 //go:generate mockgen -package=service -destination=ledger_service_mock.go -source=ledger_service.go
 type LedgerService interface {
 	TransferToAccount(ctx context.Context, command TransferToAccountCommand) (*entity.LedgerTransaction, error)
 	RecordPaymentSucceeded(ctx context.Context, command RecordPaymentSucceededCommand) error
+	RecordPaymentReversed(ctx context.Context, command RecordPaymentReversedCommand) error
 }
 
 type ledgerService struct {
@@ -196,7 +207,7 @@ func (s *ledgerService) RecordPaymentSucceeded(ctx context.Context, command Reco
 		}
 		if err := txRepos.LedgerOutboxEventsRepository().Append(ctx, newLedgerTransactionProjectedEvent(
 			transaction,
-			"payment.succeeded",
+			entity.PaymentReferenceSucceeded,
 			booking.PaymentID,
 		)); err != nil {
 			return stackErr.Error(err)
@@ -210,6 +221,98 @@ func (s *ledgerService) RecordPaymentSucceeded(ctx context.Context, command Reco
 	log.Infow("payment booked into ledger",
 		zap.String("payment_id", booking.PaymentID),
 		zap.String("ledger_transaction_id", booking.LedgerTransactionID()),
+		zap.Bool("already_booked", alreadyBooked),
+	)
+
+	return nil
+}
+
+func (s *ledgerService) RecordPaymentReversed(ctx context.Context, command RecordPaymentReversedCommand) error {
+	log := logging.FromContext(ctx).Named("RecordPaymentReversed")
+	booking, err := entity.NewPaymentReversalBooking(entity.PaymentReversalBookingInput{
+		PaymentID:          command.PaymentID,
+		TransactionID:      command.TransactionID,
+		ClearingAccountKey: command.ClearingAccountKey,
+		CreditAccountID:    command.CreditAccountID,
+		Currency:           command.Currency,
+		Amount:             command.Amount,
+		ReversalType:       command.ReversalType,
+	})
+	if err != nil {
+		return stackErr.Error(fmt.Errorf("%v: %v", ErrValidation, err))
+	}
+
+	transaction, err := entity.NewLedgerTransaction(booking.LedgerTransactionID(), booking.LedgerEntries())
+	if err != nil {
+		return stackErr.Error(fmt.Errorf("%v: %v", ErrValidation, err))
+	}
+
+	alreadyBooked := false
+	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
+		debitAgg, err := s.loadLedgerAccount(ctx, txRepos, booking.DebitAccountID)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		creditAgg, err := s.loadLedgerAccount(ctx, txRepos, booking.CreditAccountID)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+
+		debitApplied, err := debitAgg.ReversePayment(
+			transaction.TransactionID,
+			booking.ReversalType,
+			booking.PaymentID,
+			booking.CreditAccountID,
+			transaction.Currency,
+			-booking.Amount,
+			transaction.CreatedAt,
+		)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		creditApplied, err := creditAgg.ReversePayment(
+			transaction.TransactionID,
+			booking.ReversalType,
+			booking.PaymentID,
+			booking.DebitAccountID,
+			transaction.Currency,
+			booking.Amount,
+			transaction.CreatedAt,
+		)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		if debitApplied != creditApplied {
+			return stackErr.Error(fmt.Errorf("ledger payment reversal became inconsistent for transaction_id=%s", transaction.TransactionID))
+		}
+		if !debitApplied {
+			alreadyBooked = true
+			return nil
+		}
+
+		if err := txRepos.LedgerAccountAggregateRepository().Save(ctx, debitAgg); err != nil {
+			return stackErr.Error(err)
+		}
+		if err := txRepos.LedgerAccountAggregateRepository().Save(ctx, creditAgg); err != nil {
+			return stackErr.Error(err)
+		}
+		if err := txRepos.LedgerOutboxEventsRepository().Append(ctx, newLedgerTransactionProjectedEvent(
+			transaction,
+			booking.ReversalType,
+			booking.PaymentID,
+		)); err != nil {
+			return stackErr.Error(err)
+		}
+
+		return nil
+	}); err != nil {
+		return stackErr.Error(err)
+	}
+
+	log.Infow("payment reversal booked into ledger",
+		zap.String("payment_id", booking.PaymentID),
+		zap.String("ledger_transaction_id", booking.LedgerTransactionID()),
+		zap.String("reversal_type", booking.ReversalType),
 		zap.Bool("already_booked", alreadyBooked),
 	)
 

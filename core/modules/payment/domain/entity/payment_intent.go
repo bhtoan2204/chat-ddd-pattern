@@ -3,12 +3,36 @@ package entity
 import "time"
 
 const (
-	PaymentAggregateType  = "payment"
-	PaymentStatusCreating = "CREATING"
-	PaymentStatusPending  = "PENDING"
-	PaymentStatusSuccess  = "SUCCESS"
-	PaymentStatusFailed   = "FAILED"
+	PaymentAggregateType    = "payment"
+	PaymentStatusCreating   = "CREATING"
+	PaymentStatusPending    = "PENDING"
+	PaymentStatusSuccess    = "SUCCESS"
+	PaymentStatusFailed     = "FAILED"
+	PaymentStatusCancelled  = "CANCELLED"
+	PaymentStatusRefunded   = "REFUNDED"
+	PaymentStatusChargeback = "CHARGEBACK"
 )
+
+type PaymentTransitionType string
+
+const (
+	PaymentTransitionNone       PaymentTransitionType = "none"
+	PaymentTransitionPending    PaymentTransitionType = "pending"
+	PaymentTransitionSucceeded  PaymentTransitionType = "succeeded"
+	PaymentTransitionFailed     PaymentTransitionType = "failed"
+	PaymentTransitionCancelled  PaymentTransitionType = "cancelled"
+	PaymentTransitionRefunded   PaymentTransitionType = "refunded"
+	PaymentTransitionChargeback PaymentTransitionType = "chargeback"
+)
+
+type PaymentTransition struct {
+	PreviousStatus     string
+	CurrentStatus      string
+	Type               PaymentTransitionType
+	StateChanged       bool
+	ExternalRefChanged bool
+	Ignored            bool
+}
 
 type PaymentIntent struct {
 	TransactionID      string

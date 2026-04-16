@@ -7,6 +7,8 @@ const (
 	EventPaymentCheckoutSessionCreated = "payment.checkout_session_created"
 	EventPaymentSucceeded              = "payment.succeeded"
 	EventPaymentFailed                 = "payment.failed"
+	EventPaymentRefunded               = "payment.refunded"
+	EventPaymentChargeback             = "payment.chargeback"
 )
 
 type PaymentCreatedEvent struct {
@@ -60,4 +62,34 @@ type PaymentFailedEvent struct {
 	Currency           string    `json:"currency"`
 	Status             string    `json:"status"`
 	OccurredAt         time.Time `json:"occurred_at"`
+}
+
+type PaymentRefundedEvent struct {
+	PaymentID          string    `json:"payment_id"`
+	TransactionID      string    `json:"transaction_id"`
+	Provider           string    `json:"provider"`
+	ClearingAccountKey string    `json:"clearing_account_key"`
+	ProviderEventID    string    `json:"provider_event_id,omitempty"`
+	ProviderEventType  string    `json:"provider_event_type,omitempty"`
+	ProviderPaymentRef string    `json:"provider_payment_ref,omitempty"`
+	Amount             int64     `json:"amount"`
+	Currency           string    `json:"currency"`
+	CreditAccountID    string    `json:"credit_account_id"`
+	IdempotencyKey     string    `json:"idempotency_key"`
+	RefundedAt         time.Time `json:"refunded_at"`
+}
+
+type PaymentChargebackEvent struct {
+	PaymentID          string    `json:"payment_id"`
+	TransactionID      string    `json:"transaction_id"`
+	Provider           string    `json:"provider"`
+	ClearingAccountKey string    `json:"clearing_account_key"`
+	ProviderEventID    string    `json:"provider_event_id,omitempty"`
+	ProviderEventType  string    `json:"provider_event_type,omitempty"`
+	ProviderPaymentRef string    `json:"provider_payment_ref,omitempty"`
+	Amount             int64     `json:"amount"`
+	Currency           string    `json:"currency"`
+	CreditAccountID    string    `json:"credit_account_id"`
+	IdempotencyKey     string    `json:"idempotency_key"`
+	ChargedBackAt      time.Time `json:"charged_back_at"`
 }

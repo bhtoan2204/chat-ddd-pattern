@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+const (
+	PaymentReferenceSucceeded  = "payment.succeeded"
+	PaymentReferenceRefunded   = "payment.refunded"
+	PaymentReferenceChargeback = "payment.chargeback"
+)
+
 var (
 	ErrPaymentBookingIDRequired            = errors.New("payment_id is required")
 	ErrPaymentBookingClearingKeyRequired   = errors.New("clearing_account_key is required")
@@ -13,6 +19,7 @@ var (
 	ErrPaymentBookingCurrencyRequired      = errors.New("currency is required")
 	ErrPaymentBookingAccountsMustDiffer    = errors.New("debit_account_id and credit_account_id must be different")
 	ErrPaymentBookingAmountInvalid         = errors.New("amount must be positive")
+	ErrPaymentBookingTypeInvalid           = errors.New("payment booking type is invalid")
 )
 
 type PaymentSucceededBooking struct {
@@ -31,6 +38,26 @@ type PaymentSucceededBookingInput struct {
 	CreditAccountID    string
 	Currency           string
 	Amount             int64
+}
+
+type PaymentReversalBooking struct {
+	PaymentID          string
+	ClearingAccountKey string
+	ReversalType       string
+	DebitAccountID     string
+	CreditAccountID    string
+	Currency           string
+	Amount             int64
+}
+
+type PaymentReversalBookingInput struct {
+	PaymentID          string
+	TransactionID      string
+	ClearingAccountKey string
+	CreditAccountID    string
+	Currency           string
+	Amount             int64
+	ReversalType       string
 }
 
 func NewPaymentSucceededBooking(input PaymentSucceededBookingInput) (*PaymentSucceededBooking, error) {
@@ -83,6 +110,80 @@ func (b *PaymentSucceededBooking) LedgerEntries() []LedgerEntryInput {
 	}
 }
 
+func NewPaymentReversalBooking(input PaymentReversalBookingInput) (*PaymentReversalBooking, error) {
+	paymentID := strings.TrimSpace(input.PaymentID)
+	if paymentID == "" {
+		paymentID = strings.TrimSpace(input.TransactionID)
+	}
+	if paymentID == "" {
+		return nil, ErrPaymentBookingIDRequired
+	}
+
+	reversalType := normalizePaymentBookingType(input.ReversalType)
+	if reversalType == "" {
+		return nil, ErrPaymentBookingTypeInvalid
+	}
+
+	clearingAccountKey := strings.ToLower(strings.TrimSpace((input.ClearingAccountKey)))
+	if clearingAccountKey == "" {
+		return nil, ErrPaymentBookingClearingKeyRequired
+	}
+	debitAccountID := strings.TrimSpace(input.CreditAccountID)
+	if debitAccountID == "" {
+		return nil, ErrPaymentBookingCreditAccountRequired
+	}
+	currency := strings.ToUpper(strings.TrimSpace((input.Currency)))
+	if currency == "" {
+		return nil, ErrPaymentBookingCurrencyRequired
+	}
+	if input.Amount <= 0 {
+		return nil, ErrPaymentBookingAmountInvalid
+	}
+	creditAccountID := ledgerClearingAccountID(clearingAccountKey)
+	if debitAccountID == creditAccountID {
+		return nil, ErrPaymentBookingAccountsMustDiffer
+	}
+
+	return &PaymentReversalBooking{
+		PaymentID:          paymentID,
+		ClearingAccountKey: clearingAccountKey,
+		ReversalType:       reversalType,
+		DebitAccountID:     debitAccountID,
+		CreditAccountID:    creditAccountID,
+		Currency:           currency,
+		Amount:             input.Amount,
+	}, nil
+}
+
+func (b *PaymentReversalBooking) LedgerTransactionID() string {
+	suffix := "reversed"
+	switch b.ReversalType {
+	case PaymentReferenceRefunded:
+		suffix = "refunded"
+	case PaymentReferenceChargeback:
+		suffix = "chargeback"
+	}
+	return fmt.Sprintf("payment:%s:%s", strings.TrimSpace(b.PaymentID), suffix)
+}
+
+func (b *PaymentReversalBooking) LedgerEntries() []LedgerEntryInput {
+	return []LedgerEntryInput{
+		{AccountID: b.DebitAccountID, Currency: b.Currency, Amount: -b.Amount},
+		{AccountID: b.CreditAccountID, Currency: b.Currency, Amount: b.Amount},
+	}
+}
+
 func ledgerClearingAccountID(clearingAccountKey string) string {
 	return fmt.Sprintf("ledger:clearing:%s", strings.ToLower(strings.TrimSpace((clearingAccountKey))))
+}
+
+func normalizePaymentBookingType(value string) string {
+	switch strings.TrimSpace(value) {
+	case PaymentReferenceRefunded:
+		return PaymentReferenceRefunded
+	case PaymentReferenceChargeback:
+		return PaymentReferenceChargeback
+	default:
+		return ""
+	}
 }

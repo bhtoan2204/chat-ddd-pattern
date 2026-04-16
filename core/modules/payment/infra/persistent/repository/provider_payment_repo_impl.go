@@ -53,6 +53,7 @@ func (r *providerPaymentRepoImpl) SavePaymentIntent(ctx context.Context, intent 
 			"clearing_account_key": intent.ClearingAccountKey,
 			"credit_account_id":    intent.CreditAccountID,
 			"status":               intent.Status,
+			"updated_at":           intent.UpdatedAt,
 		})
 	if result.Error != nil {
 		return mapError(result.Error)
@@ -75,6 +76,20 @@ func (r *providerPaymentRepoImpl) FinalizeSuccessfulPayment(
 		return stackErr.Error(err)
 	}
 	outboxEvents = append(outboxEvents, successEvent)
+	return stackErr.Error(r.SavePaymentIntent(ctx, intent, outboxEvents...))
+}
+
+func (r *providerPaymentRepoImpl) FinalizeReversedPayment(
+	ctx context.Context,
+	intent *entity.PaymentIntent,
+	processedEvent *entity.ProcessedPaymentEvent,
+	reversalEvent eventpkg.Event,
+	outboxEvents ...eventpkg.Event,
+) error {
+	if err := r.MarkProcessed(ctx, processedEvent); err != nil {
+		return stackErr.Error(err)
+	}
+	outboxEvents = append(outboxEvents, reversalEvent)
 	return stackErr.Error(r.SavePaymentIntent(ctx, intent, outboxEvents...))
 }
 
@@ -260,6 +275,9 @@ func normalizeProviderPaymentIntent(intent *entity.PaymentIntent) *entity.Paymen
 	intent.CreditAccountID = strings.TrimSpace(intent.CreditAccountID)
 	if strings.TrimSpace(intent.ClearingAccountKey) == "" && intent.Provider != "" {
 		intent.ClearingAccountKey = fmt.Sprintf("provider:%s", intent.Provider)
+	}
+	if intent.Status = entity.NormalizePaymentStatus(intent.Status); intent.Status == "" {
+		intent.Status = entity.PaymentStatusCreating
 	}
 	return intent
 }

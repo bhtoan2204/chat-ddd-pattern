@@ -48,3 +48,7 @@ func (s *services) TransferToAccount(ctx context.Context, command TransferToAcco
 func (s *services) RecordPaymentSucceeded(ctx context.Context, command RecordPaymentSucceededCommand) error {
 	return s.ledgerService.RecordPaymentSucceeded(ctx, command)
 }
+
+func (s *services) RecordPaymentReversed(ctx context.Context, command RecordPaymentReversedCommand) error {
+	return s.ledgerService.RecordPaymentReversed(ctx, command)
+}

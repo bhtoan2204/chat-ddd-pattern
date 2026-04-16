@@ -106,6 +106,12 @@ func NormalizePaymentStatus(status string) string {
 		return PaymentStatusSuccess
 	case PaymentStatusFailed:
 		return PaymentStatusFailed
+	case PaymentStatusCancelled:
+		return PaymentStatusCancelled
+	case PaymentStatusRefunded:
+		return PaymentStatusRefunded
+	case PaymentStatusChargeback:
+		return PaymentStatusChargeback
 	default:
 		return ""
 	}
@@ -119,58 +125,129 @@ func NormalizePaymentStatusOrPending(status string) string {
 }
 
 func (p *PaymentIntent) SetProviderState(externalRef, status string, updatedAt time.Time) error {
+	_, err := p.transitionProviderState(externalRef, status, updatedAt)
+	return err
+}
+
+func (p *PaymentIntent) TransitionProviderResult(result PaymentProviderResult, updatedAt time.Time) (PaymentTransition, error) {
+	if p != nil {
+		p.ensureWorkflowDefaults()
+	}
+	nextStatus := NormalizePaymentStatusOrPending(result.Status)
+	if err := p.ValidateProviderResultForStatus(nextStatus, result.Amount, result.Currency); err != nil {
+		return PaymentTransition{}, stackErr.Error(err)
+	}
+
+	return p.transitionProviderState(result.ExternalRef, nextStatus, updatedAt)
+}
+
+func (p *PaymentIntent) ApplyProviderResult(result PaymentProviderResult, updatedAt time.Time) error {
+	_, err := p.TransitionProviderResult(result, updatedAt)
+	return err
+}
+
+func (p *PaymentIntent) transitionProviderState(externalRef, status string, updatedAt time.Time) (PaymentTransition, error) {
 	if p == nil {
-		return ErrPaymentTransactionIDRequired
+		return PaymentTransition{}, ErrPaymentTransactionIDRequired
 	}
 	p.ensureWorkflowDefaults()
 
 	normalizedStatus := NormalizePaymentStatus(status)
 	if normalizedStatus == "" {
-		return ErrPaymentStatusInvalid
+		return PaymentTransition{}, ErrPaymentStatusInvalid
 	}
 
-	if externalRef = strings.TrimSpace(externalRef); externalRef != "" {
+	transition := resolvePaymentTransition(NormalizePaymentStatusOrPending(p.Status), normalizedStatus)
+	if transition.StateChanged {
+		p.Status = transition.CurrentStatus
+	}
+
+	if externalRef = strings.TrimSpace(externalRef); externalRef != "" && externalRef != p.ExternalRef {
 		p.ExternalRef = externalRef
+		transition.ExternalRefChanged = true
 	}
-	p.Status = normalizedStatus
-	p.UpdatedAt = normalizePaymentTime(updatedAt)
-	return nil
+
+	if transition.StateChanged || transition.ExternalRefChanged {
+		p.UpdatedAt = normalizePaymentTime(updatedAt)
+	}
+
+	return transition, nil
 }
 
-func (p *PaymentIntent) ApplyProviderResult(result PaymentProviderResult, updatedAt time.Time) error {
-	if p != nil {
-		p.ensureWorkflowDefaults()
-	}
-	if err := p.ValidateProviderResult(result.Amount, result.Currency); err != nil {
-		return stackErr.Error(err)
+func resolvePaymentTransition(previousStatus, nextStatus string) PaymentTransition {
+	transition := PaymentTransition{
+		PreviousStatus: NormalizePaymentStatusOrPending(previousStatus),
+		CurrentStatus:  NormalizePaymentStatusOrPending(previousStatus),
+		Type:           PaymentTransitionNone,
 	}
 
-	return p.SetProviderState(result.ExternalRef, NormalizePaymentStatusOrPending(result.Status), updatedAt)
+	if transition.CurrentStatus == nextStatus {
+		return transition
+	}
+
+	switch transition.CurrentStatus {
+	case PaymentStatusCreating:
+		switch nextStatus {
+		case PaymentStatusPending:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionPending
+			transition.StateChanged = true
+		case PaymentStatusSuccess:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionSucceeded
+			transition.StateChanged = true
+		case PaymentStatusFailed:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionFailed
+			transition.StateChanged = true
+		case PaymentStatusCancelled:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionCancelled
+			transition.StateChanged = true
+		default:
+			transition.Ignored = true
+		}
+	case PaymentStatusPending:
+		switch nextStatus {
+		case PaymentStatusSuccess:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionSucceeded
+			transition.StateChanged = true
+		case PaymentStatusFailed:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionFailed
+			transition.StateChanged = true
+		case PaymentStatusCancelled:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionCancelled
+			transition.StateChanged = true
+		default:
+			transition.Ignored = true
+		}
+	case PaymentStatusSuccess:
+		switch nextStatus {
+		case PaymentStatusRefunded:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionRefunded
+			transition.StateChanged = true
+		case PaymentStatusChargeback:
+			transition.CurrentStatus = nextStatus
+			transition.Type = PaymentTransitionChargeback
+			transition.StateChanged = true
+		default:
+			transition.Ignored = true
+		}
+	case PaymentStatusFailed, PaymentStatusCancelled, PaymentStatusRefunded, PaymentStatusChargeback:
+		transition.Ignored = true
+	default:
+		transition.Ignored = true
+	}
+
+	return transition
 }
 
-func (p *PaymentIntent) CurrentProviderResult(source PaymentProviderResult) PaymentProviderResult {
-	if p == nil {
-		return PaymentProviderResult{}
-	}
-
-	amount := source.Amount
-	if amount == 0 {
-		amount = p.Amount
-	}
-
-	return PaymentProviderResult{
-		TransactionID: coalescePaymentValue(source.TransactionID, p.TransactionID),
-		EventID:       strings.TrimSpace(source.EventID),
-		EventType:     strings.TrimSpace(source.EventType),
-		Status:        NormalizePaymentStatusOrPending(coalescePaymentValue(source.Status, p.Status)),
-		Amount:        amount,
-		Currency:      coalescePaymentValue(source.Currency, p.Currency),
-		ExternalRef:   coalescePaymentValue(source.ExternalRef, p.ExternalRef),
-	}
-}
-
-func (p *PaymentIntent) MarkCreateFailed(updatedAt time.Time) error {
-	return p.SetProviderState("", PaymentStatusFailed, updatedAt)
+func (p *PaymentIntent) MarkCreateFailed(updatedAt time.Time) (PaymentTransition, error) {
+	return p.transitionProviderState("", PaymentStatusFailed, updatedAt)
 }
 
 func (p *PaymentIntent) IsSucceeded() bool {
@@ -181,6 +258,35 @@ func (p *PaymentIntent) IsFailed() bool {
 	return p != nil && p.Status == PaymentStatusFailed
 }
 
+func (p *PaymentIntent) IsCancelled() bool {
+	return p != nil && p.Status == PaymentStatusCancelled
+}
+
+func (p *PaymentIntent) IsRefunded() bool {
+	return p != nil && p.Status == PaymentStatusRefunded
+}
+
+func (p *PaymentIntent) IsChargeback() bool {
+	return p != nil && p.Status == PaymentStatusChargeback
+}
+
+func (p *PaymentIntent) IsTerminal() bool {
+	if p == nil {
+		return false
+	}
+
+	switch p.Status {
+	case PaymentStatusSuccess, PaymentStatusFailed, PaymentStatusCancelled, PaymentStatusRefunded, PaymentStatusChargeback:
+		return true
+	default:
+		return false
+	}
+}
+
+func (p *PaymentIntent) IsFinalized() bool {
+	return p != nil && (p.IsSucceeded() || p.IsRefunded() || p.IsChargeback())
+}
+
 func (p *PaymentIntent) ShouldEmitCheckoutSessionCreated(checkoutURL string) bool {
 	if p == nil {
 		return false
@@ -189,12 +295,30 @@ func (p *PaymentIntent) ShouldEmitCheckoutSessionCreated(checkoutURL string) boo
 }
 
 func (p *PaymentIntent) ValidateProviderResult(amount int64, currency string) error {
+	return p.ValidateProviderResultForStatus(p.Status, amount, currency)
+}
+
+func (p *PaymentIntent) ValidateProviderResultForStatus(status string, amount int64, currency string) error {
 	if p == nil {
 		return ErrPaymentTransactionIDRequired
 	}
-	if amount != 0 && amount != p.Amount {
-		return ErrPaymentProviderAmountMismatch
+
+	normalizedStatus := NormalizePaymentStatus(status)
+	if normalizedStatus == "" {
+		normalizedStatus = NormalizePaymentStatusOrPending(status)
 	}
+
+	switch normalizedStatus {
+	case PaymentStatusRefunded, PaymentStatusChargeback:
+		if amount != 0 && amount > p.Amount {
+			return ErrPaymentProviderAmountMismatch
+		}
+	default:
+		if amount != 0 && amount != p.Amount {
+			return ErrPaymentProviderAmountMismatch
+		}
+	}
+
 	if currency = strings.TrimSpace(currency); currency != "" && !strings.EqualFold(currency, p.Currency) {
 		return ErrPaymentProviderCurrencyMismatch
 	}
@@ -212,6 +336,10 @@ func (p *PaymentIntent) PaymentIdempotencyKey(eventID, externalRef string) strin
 		return externalRef
 	}
 	return strings.TrimSpace(p.TransactionID)
+}
+
+func (p *PaymentIntent) TransitionIdempotencyKey(eventName string) string {
+	return fmt.Sprintf("%s:%s", strings.TrimSpace(eventName), strings.TrimSpace(p.TransactionID))
 }
 
 func (p *PaymentIntent) CreatedEvent(metadata map[string]string, createdAt time.Time) eventpkg.Event {
@@ -280,7 +408,7 @@ func (p *PaymentIntent) SucceededEvent(result PaymentProviderResult, occurredAt 
 			Amount:             p.Amount,
 			Currency:           p.Currency,
 			CreditAccountID:    p.CreditAccountID,
-			IdempotencyKey:     fmt.Sprintf("%s:%s", sharedevents.EventPaymentSucceeded, p.TransactionID),
+			IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentSucceeded),
 			SucceededAt:        eventTime,
 		},
 		CreatedAt: eventTime.Unix(),
@@ -311,10 +439,73 @@ func (p *PaymentIntent) FailedEvent(result PaymentProviderResult, occurredAt tim
 	}
 }
 
+func (p *PaymentIntent) RefundedEvent(result PaymentProviderResult, occurredAt time.Time) eventpkg.Event {
+	p.ensureWorkflowDefaults()
+	eventTime := normalizePaymentTime(occurredAt)
+	current := p.CurrentProviderResult(result)
+	return eventpkg.Event{
+		AggregateID:   p.TransactionID,
+		AggregateType: PaymentAggregateType,
+		Version:       1,
+		EventName:     sharedevents.EventPaymentRefunded,
+		EventData: sharedevents.PaymentRefundedEvent{
+			PaymentID:          p.TransactionID,
+			TransactionID:      p.TransactionID,
+			Provider:           p.Provider,
+			ClearingAccountKey: p.ClearingAccountKey,
+			ProviderEventID:    strings.TrimSpace(current.EventID),
+			ProviderEventType:  strings.TrimSpace(current.EventType),
+			ProviderPaymentRef: coalescePaymentValue(current.ExternalRef, p.ExternalRef),
+			Amount:             paymentResultAmountOrDefault(current.Amount, p.Amount),
+			Currency:           p.Currency,
+			CreditAccountID:    p.CreditAccountID,
+			IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentRefunded),
+			RefundedAt:         eventTime,
+		},
+		CreatedAt: eventTime.Unix(),
+	}
+}
+
+func (p *PaymentIntent) ChargebackEvent(result PaymentProviderResult, occurredAt time.Time) eventpkg.Event {
+	p.ensureWorkflowDefaults()
+	eventTime := normalizePaymentTime(occurredAt)
+	current := p.CurrentProviderResult(result)
+	return eventpkg.Event{
+		AggregateID:   p.TransactionID,
+		AggregateType: PaymentAggregateType,
+		Version:       1,
+		EventName:     sharedevents.EventPaymentChargeback,
+		EventData: sharedevents.PaymentChargebackEvent{
+			PaymentID:          p.TransactionID,
+			TransactionID:      p.TransactionID,
+			Provider:           p.Provider,
+			ClearingAccountKey: p.ClearingAccountKey,
+			ProviderEventID:    strings.TrimSpace(current.EventID),
+			ProviderEventType:  strings.TrimSpace(current.EventType),
+			ProviderPaymentRef: coalescePaymentValue(current.ExternalRef, p.ExternalRef),
+			Amount:             paymentResultAmountOrDefault(current.Amount, p.Amount),
+			Currency:           p.Currency,
+			CreditAccountID:    p.CreditAccountID,
+			IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentChargeback),
+			ChargedBackAt:      eventTime,
+		},
+		CreatedAt: eventTime.Unix(),
+	}
+}
+
 func (p *PaymentIntent) NewProcessedEvent(result PaymentProviderResult, createdAt time.Time) (*ProcessedPaymentEvent, error) {
 	return NewProcessedPaymentEvent(
 		p.Provider,
 		p.PaymentIdempotencyKey(result.EventID, result.ExternalRef),
+		p.TransactionID,
+		createdAt,
+	)
+}
+
+func (p *PaymentIntent) NewProcessedTransitionEvent(eventName string, createdAt time.Time) (*ProcessedPaymentEvent, error) {
+	return NewProcessedPaymentEvent(
+		p.Provider,
+		p.TransitionIdempotencyKey(eventName),
 		p.TransactionID,
 		createdAt,
 	)
@@ -358,6 +549,13 @@ func coalescePaymentValue(values ...string) string {
 	return ""
 }
 
+func paymentResultAmountOrDefault(amount int64, fallback int64) int64 {
+	if amount != 0 {
+		return amount
+	}
+	return fallback
+}
+
 func (p *PaymentIntent) ensureWorkflowDefaults() {
 	if p == nil {
 		return
@@ -368,4 +566,28 @@ func (p *PaymentIntent) ensureWorkflowDefaults() {
 	p.Currency = strings.ToUpper(strings.TrimSpace(p.Currency))
 	p.ClearingAccountKey = effectivePaymentClearingAccountKey(p.Provider, p.ClearingAccountKey)
 	p.CreditAccountID = strings.TrimSpace(p.CreditAccountID)
+	if p.Status = NormalizePaymentStatus(p.Status); p.Status == "" {
+		p.Status = PaymentStatusCreating
+	}
+}
+
+func (p *PaymentIntent) CurrentProviderResult(source PaymentProviderResult) PaymentProviderResult {
+	if p == nil {
+		return PaymentProviderResult{}
+	}
+
+	amount := source.Amount
+	if amount == 0 {
+		amount = p.Amount
+	}
+
+	return PaymentProviderResult{
+		TransactionID: coalescePaymentValue(source.TransactionID, p.TransactionID),
+		EventID:       strings.TrimSpace(source.EventID),
+		EventType:     strings.TrimSpace(source.EventType),
+		Status:        NormalizePaymentStatusOrPending(coalescePaymentValue(source.Status, p.Status)),
+		Amount:        amount,
+		Currency:      coalescePaymentValue(source.Currency, p.Currency),
+		ExternalRef:   coalescePaymentValue(source.ExternalRef, p.ExternalRef),
+	}
 }

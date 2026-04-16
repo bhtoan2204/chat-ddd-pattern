@@ -18,6 +18,13 @@ type ProviderPaymentRepository interface {
 		successEvent eventpkg.Event,
 		outboxEvents ...eventpkg.Event,
 	) error
+	FinalizeReversedPayment(
+		ctx context.Context,
+		intent *entity.PaymentIntent,
+		processedEvent *entity.ProcessedPaymentEvent,
+		reversalEvent eventpkg.Event,
+		outboxEvents ...eventpkg.Event,
+	) error
 
 	GetIntentByTransactionID(ctx context.Context, transactionID string) (*entity.PaymentIntent, error)
 	GetIntentByExternalRef(ctx context.Context, provider, externalRef string) (*entity.PaymentIntent, error)

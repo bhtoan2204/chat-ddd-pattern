@@ -37,9 +37,14 @@ func (s *ledgerQueryService) GetAccountBalance(ctx context.Context, accountID, c
 		return nil, stackErr.Error(fmt.Errorf("%v: currency is required", ErrValidation))
 	}
 
-	balance, err := s.baseRepo.LedgerRepository().GetBalance(ctx, accountID, currency)
+	aggregate, err := s.baseRepo.LedgerAccountAggregateRepository().Load(ctx, accountID)
 	if err != nil {
 		return nil, stackErr.Error(err)
+	}
+
+	balance := int64(0)
+	if aggregate != nil {
+		balance = aggregate.Balance(currency)
 	}
 
 	return &ledgerout.AccountBalanceResponse{

@@ -241,7 +241,9 @@ func (p *Provider) ParseEvent(_ context.Context, event *providers.WebhookEvent) 
 			Currency:      string(intent.Currency),
 			ExternalRef:   intent.ID,
 		}, nil
-	case stripe.EventTypeChargeSucceeded, stripe.EventTypeChargeFailed:
+	case stripe.EventTypeChargeSucceeded,
+		stripe.EventTypeChargeFailed,
+		stripe.EventTypeChargeRefunded:
 		var charge stripe.Charge
 		if err := json.Unmarshal([]byte(event.Attributes["object"]), &charge); err != nil {
 			return nil, fmt.Errorf("decode stripe charge event: %v", err)
@@ -251,10 +253,25 @@ func (p *Provider) ParseEvent(_ context.Context, event *providers.WebhookEvent) 
 			TransactionID: stripeChargeTransactionID(&charge),
 			EventID:       event.EventID,
 			EventType:     event.EventType,
-			Status:        stripeChargeStatus(event.EventType, string(charge.Status), charge.Paid),
-			Amount:        charge.Amount,
+			Status:        stripeChargeStatus(event.EventType, string(charge.Status), charge.Paid, charge.Refunded),
+			Amount:        stripeChargeResultAmount(event.EventType, &charge),
 			Currency:      string(charge.Currency),
 			ExternalRef:   charge.ID,
+		}, nil
+	case stripe.EventTypeChargeDisputeFundsWithdrawn:
+		var dispute stripe.Dispute
+		if err := json.Unmarshal([]byte(event.Attributes["object"]), &dispute); err != nil {
+			return nil, fmt.Errorf("decode stripe dispute event: %v", err)
+		}
+
+		return &providers.PaymentResult{
+			TransactionID: stripeDisputeTransactionID(&dispute),
+			EventID:       event.EventID,
+			EventType:     event.EventType,
+			Status:        entity.PaymentStatusChargeback,
+			Amount:        dispute.Amount,
+			Currency:      string(dispute.Currency),
+			ExternalRef:   stripeDisputeExternalRef(&dispute),
 		}, nil
 	default:
 		return nil, providers.ErrWebhookEventIgnored
@@ -267,8 +284,10 @@ func (p *Provider) stripeClient() *stripeclient.API {
 
 func stripeSessionStatus(eventType, paymentStatus string) string {
 	switch eventType {
-	case "checkout.session.async_payment_failed", "checkout.session.expired":
+	case "checkout.session.async_payment_failed":
 		return entity.PaymentStatusFailed
+	case "checkout.session.expired":
+		return entity.PaymentStatusCancelled
 	}
 	if strings.EqualFold(strings.TrimSpace(paymentStatus), "paid") {
 		return entity.PaymentStatusSuccess
@@ -287,8 +306,10 @@ func stripePaymentIntentStatus(eventType, status string) string {
 	switch strings.ToLower(strings.TrimSpace(status)) {
 	case "succeeded":
 		return entity.PaymentStatusSuccess
-	case "requires_payment_method", "canceled":
+	case "requires_payment_method":
 		return entity.PaymentStatusFailed
+	case "canceled":
+		return entity.PaymentStatusCancelled
 	default:
 		return entity.PaymentStatusPending
 	}
@@ -307,12 +328,26 @@ func stripeChargeTransactionID(charge *stripe.Charge) string {
 	return ""
 }
 
-func stripeChargeStatus(eventType, status string, paid bool) string {
+func stripeChargeResultAmount(eventType string, charge *stripe.Charge) int64 {
+	if charge == nil {
+		return 0
+	}
+	if eventType == string(stripe.EventTypeChargeRefunded) && charge.AmountRefunded > 0 {
+		return charge.AmountRefunded
+	}
+	return charge.Amount
+}
+
+func stripeChargeStatus(eventType, status string, paid bool, refunded bool) string {
 	switch eventType {
 	case "charge.succeeded":
 		return entity.PaymentStatusSuccess
 	case "charge.failed":
 		return entity.PaymentStatusFailed
+	case "charge.refunded":
+		if refunded {
+			return entity.PaymentStatusRefunded
+		}
 	}
 
 	switch strings.ToLower(strings.TrimSpace(status)) {
@@ -322,10 +357,44 @@ func stripeChargeStatus(eventType, status string, paid bool) string {
 		return entity.PaymentStatusFailed
 	}
 
+	if refunded {
+		return entity.PaymentStatusRefunded
+	}
 	if paid {
 		return entity.PaymentStatusSuccess
 	}
 	return entity.PaymentStatusPending
+}
+
+func stripeDisputeTransactionID(dispute *stripe.Dispute) string {
+	if dispute == nil {
+		return ""
+	}
+	if transactionID := strings.TrimSpace(dispute.Metadata["transaction_id"]); transactionID != "" {
+		return transactionID
+	}
+	if dispute.Charge != nil {
+		if transactionID := stripeChargeTransactionID(dispute.Charge); transactionID != "" {
+			return transactionID
+		}
+	}
+	if dispute.PaymentIntent != nil {
+		return strings.TrimSpace(dispute.PaymentIntent.Metadata["transaction_id"])
+	}
+	return ""
+}
+
+func stripeDisputeExternalRef(dispute *stripe.Dispute) string {
+	if dispute == nil {
+		return ""
+	}
+	if dispute.Charge != nil && strings.TrimSpace(dispute.Charge.ID) != "" {
+		return strings.TrimSpace(dispute.Charge.ID)
+	}
+	if dispute.PaymentIntent != nil && strings.TrimSpace(dispute.PaymentIntent.ID) != "" {
+		return strings.TrimSpace(dispute.PaymentIntent.ID)
+	}
+	return strings.TrimSpace(dispute.ID)
 }
 
 func firstNonEmpty(values ...string) string {

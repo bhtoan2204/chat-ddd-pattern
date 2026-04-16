@@ -9,19 +9,27 @@ import (
 	"go-socket/core/modules/payment/providers"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
+	stripe "github.com/stripe/stripe-go/v75"
+	stripeclient "github.com/stripe/stripe-go/v75/client"
 	stripewebhook "github.com/stripe/stripe-go/v75/webhook"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 func TestCreatePaymentUsesStripeGoCheckoutSession(t *testing.T) {
 	var receivedForm url.Values
 	var receivedVersion string
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	httpClient := &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		if r.Method != http.MethodPost {
 			t.Fatalf("expected POST request, got %s", r.Method)
 		}
@@ -40,18 +48,34 @@ func TestCreatePaymentUsesStripeGoCheckoutSession(t *testing.T) {
 		}
 		receivedVersion = r.Header.Get("Stripe-Version")
 
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"id":"cs_test_123","object":"checkout.session","url":"https://checkout.stripe.com/c/pay/cs_test_123"}`))
-	}))
-	defer server.Close()
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header: http.Header{
+				"Content-Type": []string{"application/json"},
+			},
+			Body: io.NopCloser(strings.NewReader(`{"id":"cs_test_123","object":"checkout.session","url":"https://checkout.stripe.com/c/pay/cs_test_123"}`)),
+		}, nil
+	})}
 
 	provider := &Provider{
 		secretKey:  "sk_test_123",
 		successURL: "https://merchant.example/success",
 		cancelURL:  "https://merchant.example/cancel",
-		httpClient: server.Client(),
-		apiBaseURL: server.URL,
+		httpClient: httpClient,
+		apiBaseURL: "https://api.stripe.test",
 	}
+	provider.client = stripeclient.New(provider.secretKey, &stripe.Backends{
+		API: stripe.GetBackendWithConfig(stripe.APIBackend, &stripe.BackendConfig{
+			HTTPClient: httpClient,
+			URL:        stripe.String(provider.apiBaseURL),
+		}),
+		Connect: stripe.GetBackendWithConfig(stripe.ConnectBackend, &stripe.BackendConfig{
+			HTTPClient: httpClient,
+		}),
+		Uploads: stripe.GetBackendWithConfig(stripe.UploadsBackend, &stripe.BackendConfig{
+			HTTPClient: httpClient,
+		}),
+	})
 
 	response, err := provider.CreatePayment(context.Background(), providers.CreatePaymentRequest{
 		TransactionID: "tx_123",
@@ -232,6 +256,89 @@ func TestParseChargeSucceededEvent(t *testing.T) {
 	}
 	if result.Currency != "usd" {
 		t.Fatalf("expected currency usd, got %s", result.Currency)
+	}
+	if result.ExternalRef != "ch_test_123" {
+		t.Fatalf("expected external_ref ch_test_123, got %s", result.ExternalRef)
+	}
+}
+
+func TestParseChargeRefundedEvent(t *testing.T) {
+	provider := &Provider{}
+
+	event := &providers.WebhookEvent{
+		Provider:  ProviderName,
+		EventID:   "evt_test_refund_123",
+		EventType: "charge.refunded",
+		Attributes: map[string]string{
+			"object": `{
+				"id":"ch_test_123",
+				"object":"charge",
+				"status":"succeeded",
+				"paid":true,
+				"refunded":true,
+				"amount":5000,
+				"amount_refunded":5000,
+				"currency":"usd",
+				"metadata":{
+					"transaction_id":"tx_123"
+				}
+			}`,
+		},
+	}
+
+	result, err := provider.ParseEvent(context.Background(), event)
+	if err != nil {
+		t.Fatalf("expected no parse error, got %v", err)
+	}
+	if result.TransactionID != "tx_123" {
+		t.Fatalf("expected transaction_id tx_123, got %s", result.TransactionID)
+	}
+	if result.Status != entity.PaymentStatusRefunded {
+		t.Fatalf("expected refunded status, got %s", result.Status)
+	}
+	if result.Amount != 5000 {
+		t.Fatalf("expected amount 5000, got %d", result.Amount)
+	}
+	if result.ExternalRef != "ch_test_123" {
+		t.Fatalf("expected external_ref ch_test_123, got %s", result.ExternalRef)
+	}
+}
+
+func TestParseChargeDisputeFundsWithdrawnEvent(t *testing.T) {
+	provider := &Provider{}
+
+	event := &providers.WebhookEvent{
+		Provider:  ProviderName,
+		EventID:   "evt_test_dispute_123",
+		EventType: "charge.dispute.funds_withdrawn",
+		Attributes: map[string]string{
+			"object": `{
+				"id":"dp_test_123",
+				"object":"dispute",
+				"amount":5000,
+				"currency":"usd",
+				"metadata":{
+					"transaction_id":"tx_123"
+				},
+				"charge":{
+					"id":"ch_test_123"
+				}
+			}`,
+		},
+	}
+
+	result, err := provider.ParseEvent(context.Background(), event)
+	if err != nil {
+		t.Fatalf("expected no parse error, got %v", err)
+	}
+	if result.TransactionID != "tx_123" {
+		t.Fatalf("expected transaction_id tx_123, got %s", result.TransactionID)
+	}
+	if result.Status != entity.PaymentStatusChargeback {
+		t.Fatalf("expected chargeback status, got %s", result.Status)
+	}
+	if result.Amount != 5000 {
+		t.Fatalf("expected amount 5000, got %d", result.Amount)
 	}
 	if result.ExternalRef != "ch_test_123" {
 		t.Fatalf("expected external_ref ch_test_123, got %s", result.ExternalRef)

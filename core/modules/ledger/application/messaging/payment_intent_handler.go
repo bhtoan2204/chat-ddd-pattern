@@ -50,20 +50,73 @@ func (h *messageHandler) handlePaymentOutboxEvent(ctx context.Context, value []b
 			return stackErr.Error(h.ledgerService.RecordPaymentSucceeded(ctx, command))
 		}
 
-		opts := sharedlock.DefaultMultiLockOptions()
-		opts.KeyPrefix = ledgerservice.LedgerAccountLockKeyPrefix
-
-		_, err = sharedlock.WithLocks(ctx, h.locker, lockKeys, opts, func() (struct{}, error) {
-			return struct{}{}, h.ledgerService.RecordPaymentSucceeded(ctx, command)
-		})
+		return stackErr.Error(h.withLedgerAccountLocks(ctx, lockKeys, func() error {
+			return h.ledgerService.RecordPaymentSucceeded(ctx, command)
+		}))
+	case sharedevents.EventPaymentRefunded:
+		payload, err := unmarshalPaymentRefundedPayload(event.EventData)
 		if err != nil {
 			return stackErr.Error(err)
 		}
+		payload.PaymentID = resolvePaymentRefundedID(event.AggregateID, payload)
+		command := ledgerservice.RecordPaymentReversedCommand{
+			PaymentID:          payload.PaymentID,
+			TransactionID:      payload.TransactionID,
+			ClearingAccountKey: payload.ClearingAccountKey,
+			CreditAccountID:    payload.CreditAccountID,
+			Currency:           payload.Currency,
+			Amount:             payload.Amount,
+			ReversalType:       ledgerentity.PaymentReferenceRefunded,
+		}
 
-		return nil
+		lockKeys, err := paymentReversedAccountLockKeys(command)
+		if err != nil {
+			return stackErr.Error(h.ledgerService.RecordPaymentReversed(ctx, command))
+		}
+
+		return stackErr.Error(h.withLedgerAccountLocks(ctx, lockKeys, func() error {
+			return h.ledgerService.RecordPaymentReversed(ctx, command)
+		}))
+	case sharedevents.EventPaymentChargeback:
+		payload, err := unmarshalPaymentChargebackPayload(event.EventData)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		payload.PaymentID = resolvePaymentChargebackID(event.AggregateID, payload)
+		command := ledgerservice.RecordPaymentReversedCommand{
+			PaymentID:          payload.PaymentID,
+			TransactionID:      payload.TransactionID,
+			ClearingAccountKey: payload.ClearingAccountKey,
+			CreditAccountID:    payload.CreditAccountID,
+			Currency:           payload.Currency,
+			Amount:             payload.Amount,
+			ReversalType:       ledgerentity.PaymentReferenceChargeback,
+		}
+
+		lockKeys, err := paymentReversedAccountLockKeys(command)
+		if err != nil {
+			return stackErr.Error(h.ledgerService.RecordPaymentReversed(ctx, command))
+		}
+
+		return stackErr.Error(h.withLedgerAccountLocks(ctx, lockKeys, func() error {
+			return h.ledgerService.RecordPaymentReversed(ctx, command)
+		}))
 	default:
 		return nil
 	}
+}
+
+func (h *messageHandler) withLedgerAccountLocks(ctx context.Context, lockKeys []string, fn func() error) error {
+	opts := sharedlock.DefaultMultiLockOptions()
+	opts.KeyPrefix = ledgerservice.LedgerAccountLockKeyPrefix
+
+	_, err := sharedlock.WithLocks(ctx, h.locker, lockKeys, opts, func() (struct{}, error) {
+		return struct{}{}, fn()
+	})
+	if err != nil {
+		return stackErr.Error(err)
+	}
+	return nil
 }
 
 func unmarshalPaymentSucceededPayload(data json.RawMessage) (sharedevents.PaymentSucceededEvent, error) {
@@ -77,6 +130,40 @@ func unmarshalPaymentSucceededPayload(data json.RawMessage) (sharedevents.Paymen
 		}
 		if err2 := json.Unmarshal([]byte(raw), &payload); err2 != nil {
 			return sharedevents.PaymentSucceededEvent{}, stackErr.Error(fmt.Errorf("unmarshal inner payload failed: %v", err2))
+		}
+	}
+
+	return payload, nil
+}
+
+func unmarshalPaymentRefundedPayload(data json.RawMessage) (sharedevents.PaymentRefundedEvent, error) {
+	var payload sharedevents.PaymentRefundedEvent
+	if err := json.Unmarshal(data, &payload); err == nil {
+		return payload, nil
+	} else {
+		var raw string
+		if err2 := json.Unmarshal(data, &raw); err2 != nil {
+			return sharedevents.PaymentRefundedEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment refunded payload failed: %v", err))
+		}
+		if err2 := json.Unmarshal([]byte(raw), &payload); err2 != nil {
+			return sharedevents.PaymentRefundedEvent{}, stackErr.Error(fmt.Errorf("unmarshal inner payload failed: %v", err2))
+		}
+	}
+
+	return payload, nil
+}
+
+func unmarshalPaymentChargebackPayload(data json.RawMessage) (sharedevents.PaymentChargebackEvent, error) {
+	var payload sharedevents.PaymentChargebackEvent
+	if err := json.Unmarshal(data, &payload); err == nil {
+		return payload, nil
+	} else {
+		var raw string
+		if err2 := json.Unmarshal(data, &raw); err2 != nil {
+			return sharedevents.PaymentChargebackEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment chargeback payload failed: %v", err))
+		}
+		if err2 := json.Unmarshal([]byte(raw), &payload); err2 != nil {
+			return sharedevents.PaymentChargebackEvent{}, stackErr.Error(fmt.Errorf("unmarshal inner payload failed: %v", err2))
 		}
 	}
 
@@ -97,6 +184,30 @@ func resolvePaymentSucceededID(aggregateID string, payload sharedevents.PaymentS
 	return strings.TrimSpace(payload.TransactionID)
 }
 
+func resolvePaymentRefundedID(aggregateID string, payload sharedevents.PaymentRefundedEvent) string {
+	paymentID := strings.TrimSpace(payload.PaymentID)
+	if paymentID != "" {
+		return paymentID
+	}
+	paymentID = strings.TrimSpace(aggregateID)
+	if paymentID != "" {
+		return paymentID
+	}
+	return strings.TrimSpace(payload.TransactionID)
+}
+
+func resolvePaymentChargebackID(aggregateID string, payload sharedevents.PaymentChargebackEvent) string {
+	paymentID := strings.TrimSpace(payload.PaymentID)
+	if paymentID != "" {
+		return paymentID
+	}
+	paymentID = strings.TrimSpace(aggregateID)
+	if paymentID != "" {
+		return paymentID
+	}
+	return strings.TrimSpace(payload.TransactionID)
+}
+
 func paymentSucceededAccountLockKeys(command ledgerservice.RecordPaymentSucceededCommand) ([]string, error) {
 	booking, err := ledgerentity.NewPaymentSucceededBooking(ledgerentity.PaymentSucceededBookingInput{
 		PaymentID:          command.PaymentID,
@@ -105,6 +216,23 @@ func paymentSucceededAccountLockKeys(command ledgerservice.RecordPaymentSucceede
 		CreditAccountID:    command.CreditAccountID,
 		Currency:           command.Currency,
 		Amount:             command.Amount,
+	})
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	return []string{booking.DebitAccountID, booking.CreditAccountID}, nil
+}
+
+func paymentReversedAccountLockKeys(command ledgerservice.RecordPaymentReversedCommand) ([]string, error) {
+	booking, err := ledgerentity.NewPaymentReversalBooking(ledgerentity.PaymentReversalBookingInput{
+		PaymentID:          command.PaymentID,
+		TransactionID:      command.TransactionID,
+		ClearingAccountKey: command.ClearingAccountKey,
+		CreditAccountID:    command.CreditAccountID,
+		Currency:           command.Currency,
+		Amount:             command.Amount,
+		ReversalType:       command.ReversalType,
 	})
 	if err != nil {
 		return nil, stackErr.Error(err)

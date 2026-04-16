@@ -211,6 +211,122 @@ func TestLedgerServiceRecordPaymentSucceeded(t *testing.T) {
 	})
 }
 
+func TestLedgerServiceRecordPaymentReversed(t *testing.T) {
+	t.Run("books refunded payment reversal and projects transaction", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		baseRepo := ledgerrepos.NewMockRepos(ctrl)
+		txRepos := ledgerrepos.NewMockRepos(ctrl)
+		accountRepo := ledgerrepos.NewMockLedgerAccountAggregateRepository(ctrl)
+		outboxRepo := ledgerrepos.NewMockLedgerOutboxEventsRepository(ctrl)
+
+		walletAgg, _ := ledgeraggregate.NewLedgerAccountAggregate("wallet:available")
+		_, _ = walletAgg.BookPayment("payment:pay-1:succeeded", "pay-1", "ledger:clearing:provider:stripe", "VND", 100, gomockTime())
+		walletAgg.Root().Update()
+
+		clearingAgg, _ := ledgeraggregate.NewLedgerAccountAggregate("ledger:clearing:provider:stripe")
+		_, _ = clearingAgg.BookPayment("payment:pay-1:succeeded", "pay-1", "wallet:available", "VND", -100, gomockTime())
+		clearingAgg.Root().Update()
+
+		baseRepo.EXPECT().
+			WithTransaction(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(ledgerrepos.Repos) error) error {
+				return fn(txRepos)
+			})
+		txRepos.EXPECT().LedgerAccountAggregateRepository().Return(accountRepo).AnyTimes()
+		txRepos.EXPECT().LedgerOutboxEventsRepository().Return(outboxRepo)
+
+		accountRepo.EXPECT().Load(gomock.Any(), "wallet:available").Return(walletAgg, nil)
+		accountRepo.EXPECT().Load(gomock.Any(), "ledger:clearing:provider:stripe").Return(clearingAgg, nil)
+		accountRepo.EXPECT().
+			Save(gomock.Any(), gomock.AssignableToTypeOf(&ledgeraggregate.LedgerAccountAggregate{})).
+			DoAndReturn(func(_ context.Context, aggregate *ledgeraggregate.LedgerAccountAggregate) error {
+				switch aggregate.AggregateID() {
+				case "wallet:available":
+					if aggregate.Balance("VND") != 0 {
+						t.Fatalf("expected wallet balance 0, got %d", aggregate.Balance("VND"))
+					}
+				case "ledger:clearing:provider:stripe":
+					if aggregate.Balance("VND") != 0 {
+						t.Fatalf("expected clearing balance 0, got %d", aggregate.Balance("VND"))
+					}
+				default:
+					t.Fatalf("unexpected aggregate saved: %s", aggregate.AggregateID())
+				}
+				return nil
+			}).Times(2)
+		outboxRepo.EXPECT().
+			Append(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, evt eventpkg.Event) error {
+				payload, ok := evt.EventData.(*ledgerprojection.LedgerTransactionProjected)
+				if !ok {
+					t.Fatalf("unexpected outbox payload type: %T", evt.EventData)
+				}
+				if payload.TransactionID != "payment:pay-1:refunded" {
+					t.Fatalf("unexpected transaction id: %s", payload.TransactionID)
+				}
+				if payload.ReferenceType != "payment.refunded" {
+					t.Fatalf("unexpected reference type: %s", payload.ReferenceType)
+				}
+				if payload.ReferenceID != "pay-1" {
+					t.Fatalf("unexpected reference id: %s", payload.ReferenceID)
+				}
+				return nil
+			})
+
+		service := NewLedgerService(baseRepo)
+		err := service.RecordPaymentReversed(context.Background(), RecordPaymentReversedCommand{
+			PaymentID:          "pay-1",
+			ClearingAccountKey: "provider:stripe",
+			CreditAccountID:    "wallet:available",
+			Currency:           "VND",
+			Amount:             100,
+			ReversalType:       "payment.refunded",
+		})
+		if err != nil {
+			t.Fatalf("expected no error, got %v", err)
+		}
+	})
+
+	t.Run("treats duplicate reversal delivery as idempotent", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		baseRepo := ledgerrepos.NewMockRepos(ctrl)
+		txRepos := ledgerrepos.NewMockRepos(ctrl)
+		accountRepo := ledgerrepos.NewMockLedgerAccountAggregateRepository(ctrl)
+
+		walletAgg, _ := ledgeraggregate.NewLedgerAccountAggregate("wallet:available")
+		_, _ = walletAgg.BookPayment("payment:pay-1:succeeded", "pay-1", "ledger:clearing:provider:stripe", "VND", 100, gomockTime())
+		_, _ = walletAgg.ReversePayment("payment:pay-1:refunded", "payment.refunded", "pay-1", "ledger:clearing:provider:stripe", "VND", -100, gomockTime())
+		walletAgg.Root().Update()
+
+		clearingAgg, _ := ledgeraggregate.NewLedgerAccountAggregate("ledger:clearing:provider:stripe")
+		_, _ = clearingAgg.BookPayment("payment:pay-1:succeeded", "pay-1", "wallet:available", "VND", -100, gomockTime())
+		_, _ = clearingAgg.ReversePayment("payment:pay-1:refunded", "payment.refunded", "pay-1", "wallet:available", "VND", 100, gomockTime())
+		clearingAgg.Root().Update()
+
+		baseRepo.EXPECT().
+			WithTransaction(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, fn func(ledgerrepos.Repos) error) error {
+				return fn(txRepos)
+			})
+		txRepos.EXPECT().LedgerAccountAggregateRepository().Return(accountRepo).AnyTimes()
+		accountRepo.EXPECT().Load(gomock.Any(), "wallet:available").Return(walletAgg, nil)
+		accountRepo.EXPECT().Load(gomock.Any(), "ledger:clearing:provider:stripe").Return(clearingAgg, nil)
+
+		service := NewLedgerService(baseRepo)
+		err := service.RecordPaymentReversed(context.Background(), RecordPaymentReversedCommand{
+			PaymentID:          "pay-1",
+			ClearingAccountKey: "provider:stripe",
+			CreditAccountID:    "wallet:available",
+			Currency:           "VND",
+			Amount:             100,
+			ReversalType:       "payment.refunded",
+		})
+		if err != nil {
+			t.Fatalf("expected duplicate delivery to be idempotent, got %v", err)
+		}
+	})
+}
+
 func gomockTime() (out time.Time) {
 	return time.Date(2026, 4, 16, 10, 0, 0, 0, time.UTC)
 }

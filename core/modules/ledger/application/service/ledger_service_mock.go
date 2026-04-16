@@ -41,6 +41,20 @@ func (m *MockLedgerService) EXPECT() *MockLedgerServiceMockRecorder {
 	return m.recorder
 }
 
+// RecordPaymentReversed mocks base method.
+func (m *MockLedgerService) RecordPaymentReversed(ctx context.Context, command RecordPaymentReversedCommand) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecordPaymentReversed", ctx, command)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecordPaymentReversed indicates an expected call of RecordPaymentReversed.
+func (mr *MockLedgerServiceMockRecorder) RecordPaymentReversed(ctx, command any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordPaymentReversed", reflect.TypeOf((*MockLedgerService)(nil).RecordPaymentReversed), ctx, command)
+}
+
 // RecordPaymentSucceeded mocks base method.
 func (m *MockLedgerService) RecordPaymentSucceeded(ctx context.Context, command RecordPaymentSucceededCommand) error {
 	m.ctrl.T.Helper()

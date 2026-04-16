@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	aggregate "go-socket/core/modules/ledger/domain/aggregate"
 	"go-socket/core/modules/ledger/domain/entity"
 	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
 	"go-socket/core/shared/utils"
@@ -108,4 +109,34 @@ func TestLedgerQueryServiceListTransactions(t *testing.T) {
 			t.Fatalf("expected invalid cursor error, got %v", err)
 		}
 	})
+}
+
+func TestLedgerQueryServiceGetAccountBalanceReadsCanonicalAggregate(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	baseRepo := ledgerrepos.NewMockRepos(ctrl)
+	accountRepo := ledgerrepos.NewMockLedgerAccountAggregateRepository(ctrl)
+
+	aggregate, err := aggregate.NewLedgerAccountAggregate("acc-1")
+	if err != nil {
+		t.Fatalf("NewLedgerAccountAggregate() error = %v", err)
+	}
+	aggregate.Balances["VND"] = 777
+
+	baseRepo.EXPECT().LedgerAccountAggregateRepository().Return(accountRepo)
+	accountRepo.EXPECT().Load(gomock.Any(), "acc-1").Return(aggregate, nil)
+
+	queryService := NewLedgerQueryService(baseRepo)
+	response, err := queryService.GetAccountBalance(context.Background(), " acc-1 ", " vnd ")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if response.AccountID != "acc-1" {
+		t.Fatalf("unexpected account id: %s", response.AccountID)
+	}
+	if response.Currency != "VND" {
+		t.Fatalf("unexpected currency: %s", response.Currency)
+	}
+	if response.Balance != 777 {
+		t.Fatalf("unexpected balance: %d", response.Balance)
+	}
 }

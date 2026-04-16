@@ -72,6 +72,35 @@ func (mr *MockServicesMockRecorder) GetTransaction(ctx, transactionID any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTransaction", reflect.TypeOf((*MockServices)(nil).GetTransaction), ctx, transactionID)
 }
 
+// ListTransactions mocks base method.
+func (m *MockServices) ListTransactions(ctx context.Context, accountID, cursor, currency string, limit int) (*out.ListTransactionResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTransactions", ctx, accountID, cursor, currency, limit)
+	ret0, _ := ret[0].(*out.ListTransactionResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTransactions indicates an expected call of ListTransactions.
+func (mr *MockServicesMockRecorder) ListTransactions(ctx, accountID, cursor, currency, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTransactions", reflect.TypeOf((*MockServices)(nil).ListTransactions), ctx, accountID, cursor, currency, limit)
+}
+
+// RecordPaymentReversed mocks base method.
+func (m *MockServices) RecordPaymentReversed(ctx context.Context, command RecordPaymentReversedCommand) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecordPaymentReversed", ctx, command)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecordPaymentReversed indicates an expected call of RecordPaymentReversed.
+func (mr *MockServicesMockRecorder) RecordPaymentReversed(ctx, command any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordPaymentReversed", reflect.TypeOf((*MockServices)(nil).RecordPaymentReversed), ctx, command)
+}
+
 // RecordPaymentSucceeded mocks base method.
 func (m *MockServices) RecordPaymentSucceeded(ctx context.Context, command RecordPaymentSucceededCommand) error {
 	m.ctrl.T.Helper()

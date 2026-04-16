@@ -4,6 +4,7 @@ import "time"
 
 type EventLedgerAccountPaymentBooked struct {
 	TransactionID         string    `json:"transaction_id"`
+	ReferenceType         string    `json:"reference_type,omitempty"`
 	PaymentID             string    `json:"payment_id"`
 	CounterpartyAccountID string    `json:"counterparty_account_id"`
 	Currency              string    `json:"currency"`
