@@ -54,6 +54,11 @@ type ledgerService struct {
 	baseRepo ledgerrepos.Repos
 }
 
+type expectedLedgerPosting struct {
+	accountID string
+	posting   ledgeraggregate.LedgerAccountPosting
+}
+
 func NewLedgerService(baseRepo ledgerrepos.Repos) *ledgerService {
 	return &ledgerService{baseRepo: baseRepo}
 }
@@ -74,7 +79,41 @@ func (s *ledgerService) TransferToAccount(ctx context.Context, command TransferT
 		return nil, stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
 	}
 
+	fromPosting, err := ledgeraggregate.NewLedgerAccountTransferOutPosting(
+		booking.FromAccountID,
+		transaction.TransactionID,
+		booking.ToAccountID,
+		transaction.Currency,
+		booking.Amount,
+		transaction.CreatedAt,
+	)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	toPosting, err := ledgeraggregate.NewLedgerAccountTransferInPosting(
+		booking.ToAccountID,
+		transaction.TransactionID,
+		booking.FromAccountID,
+		transaction.Currency,
+		booking.Amount,
+		transaction.CreatedAt,
+	)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
+		alreadyApplied, err := s.ensureLedgerPostingsState(ctx, txRepos, []expectedLedgerPosting{
+			{accountID: booking.FromAccountID, posting: fromPosting},
+			{accountID: booking.ToAccountID, posting: toPosting},
+		})
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		if alreadyApplied {
+			return nil
+		}
+
 		fromAgg, err := s.loadLedgerAccount(ctx, txRepos, booking.FromAccountID)
 		if err != nil {
 			return stackErr.Error(err)
@@ -114,11 +153,15 @@ func (s *ledgerService) TransferToAccount(ctx context.Context, command TransferT
 			return nil
 		}
 
-		if err := txRepos.LedgerAccountAggregateRepository().Save(ctx, fromAgg); err != nil {
+		if alreadyApplied, err := s.saveLedgerAccount(ctx, txRepos, fromAgg); err != nil {
 			return stackErr.Error(err)
+		} else if alreadyApplied {
+			return nil
 		}
-		if err := txRepos.LedgerAccountAggregateRepository().Save(ctx, toAgg); err != nil {
+		if alreadyApplied, err := s.saveLedgerAccount(ctx, txRepos, toAgg); err != nil {
 			return stackErr.Error(err)
+		} else if alreadyApplied {
+			return stackErr.Error(fmt.Errorf("ledger transfer duplicate state became inconsistent for transaction_id=%s", transaction.TransactionID))
 		}
 		if err := txRepos.LedgerOutboxEventsRepository().Append(ctx, newLedgerTransactionProjectedEvent(
 			transaction,
@@ -155,7 +198,45 @@ func (s *ledgerService) RecordPaymentSucceeded(ctx context.Context, command Reco
 		return stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
 	}
 
+	debitPosting, err := ledgeraggregate.NewLedgerAccountPaymentPosting(
+		booking.DebitAccountID,
+		transaction.TransactionID,
+		entity.PaymentReferenceSucceeded,
+		booking.PaymentID,
+		booking.CreditAccountID,
+		transaction.Currency,
+		-booking.Amount,
+		transaction.CreatedAt,
+	)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+	creditPosting, err := ledgeraggregate.NewLedgerAccountPaymentPosting(
+		booking.CreditAccountID,
+		transaction.TransactionID,
+		entity.PaymentReferenceSucceeded,
+		booking.PaymentID,
+		booking.DebitAccountID,
+		transaction.Currency,
+		booking.Amount,
+		transaction.CreatedAt,
+	)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
+		alreadyApplied, err := s.ensureLedgerPostingsState(ctx, txRepos, []expectedLedgerPosting{
+			{accountID: booking.DebitAccountID, posting: debitPosting},
+			{accountID: booking.CreditAccountID, posting: creditPosting},
+		})
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		if alreadyApplied {
+			return nil
+		}
+
 		debitAgg, err := s.loadLedgerAccount(ctx, txRepos, booking.DebitAccountID)
 		if err != nil {
 			return stackErr.Error(err)
@@ -194,11 +275,15 @@ func (s *ledgerService) RecordPaymentSucceeded(ctx context.Context, command Reco
 			return nil
 		}
 
-		if err := txRepos.LedgerAccountAggregateRepository().Save(ctx, debitAgg); err != nil {
+		if alreadyApplied, err := s.saveLedgerAccount(ctx, txRepos, debitAgg); err != nil {
 			return stackErr.Error(err)
+		} else if alreadyApplied {
+			return nil
 		}
-		if err := txRepos.LedgerAccountAggregateRepository().Save(ctx, creditAgg); err != nil {
+		if alreadyApplied, err := s.saveLedgerAccount(ctx, txRepos, creditAgg); err != nil {
 			return stackErr.Error(err)
+		} else if alreadyApplied {
+			return stackErr.Error(fmt.Errorf("ledger payment duplicate state became inconsistent for transaction_id=%s", transaction.TransactionID))
 		}
 		if err := txRepos.LedgerOutboxEventsRepository().Append(ctx, newLedgerTransactionProjectedEvent(
 			transaction,
@@ -236,7 +321,45 @@ func (s *ledgerService) RecordPaymentReversed(ctx context.Context, command Recor
 		return stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
 	}
 
+	debitPosting, err := ledgeraggregate.NewLedgerAccountPaymentPosting(
+		booking.DebitAccountID,
+		transaction.TransactionID,
+		booking.ReversalType,
+		booking.PaymentID,
+		booking.CreditAccountID,
+		transaction.Currency,
+		-booking.Amount,
+		transaction.CreatedAt,
+	)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+	creditPosting, err := ledgeraggregate.NewLedgerAccountPaymentPosting(
+		booking.CreditAccountID,
+		transaction.TransactionID,
+		booking.ReversalType,
+		booking.PaymentID,
+		booking.DebitAccountID,
+		transaction.Currency,
+		booking.Amount,
+		transaction.CreatedAt,
+	)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
+		alreadyApplied, err := s.ensureLedgerPostingsState(ctx, txRepos, []expectedLedgerPosting{
+			{accountID: booking.DebitAccountID, posting: debitPosting},
+			{accountID: booking.CreditAccountID, posting: creditPosting},
+		})
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		if alreadyApplied {
+			return nil
+		}
+
 		debitAgg, err := s.loadLedgerAccount(ctx, txRepos, booking.DebitAccountID)
 		if err != nil {
 			return stackErr.Error(err)
@@ -277,11 +400,15 @@ func (s *ledgerService) RecordPaymentReversed(ctx context.Context, command Recor
 			return nil
 		}
 
-		if err := txRepos.LedgerAccountAggregateRepository().Save(ctx, debitAgg); err != nil {
+		if alreadyApplied, err := s.saveLedgerAccount(ctx, txRepos, debitAgg); err != nil {
 			return stackErr.Error(err)
+		} else if alreadyApplied {
+			return nil
 		}
-		if err := txRepos.LedgerAccountAggregateRepository().Save(ctx, creditAgg); err != nil {
+		if alreadyApplied, err := s.saveLedgerAccount(ctx, txRepos, creditAgg); err != nil {
 			return stackErr.Error(err)
+		} else if alreadyApplied {
+			return stackErr.Error(fmt.Errorf("ledger payment reversal duplicate state became inconsistent for transaction_id=%s", transaction.TransactionID))
 		}
 		if err := txRepos.LedgerOutboxEventsRepository().Append(ctx, newLedgerTransactionProjectedEvent(
 			transaction,
@@ -317,6 +444,58 @@ func (s *ledgerService) loadLedgerAccount(
 		return nil, stackErr.Error(err)
 	}
 	return account, nil
+}
+
+func (s *ledgerService) ensureLedgerPostingsState(
+	ctx context.Context,
+	repos ledgerrepos.Repos,
+	expected []expectedLedgerPosting,
+) (bool, error) {
+	matchedCount := 0
+	for _, item := range expected {
+		existing, err := repos.LedgerAccountAggregateRepository().FindPostedTransaction(ctx, item.accountID, item.posting.TransactionID)
+		if err != nil {
+			return false, stackErr.Error(err)
+		}
+		if existing == nil {
+			continue
+		}
+		if !ledgeraggregate.SameLedgerAccountPosting(*existing, item.posting) {
+			return false, stackErr.Error(fmt.Errorf(
+				"existing ledger posting mismatch for account_id=%s transaction_id=%s",
+				item.accountID,
+				item.posting.TransactionID,
+			))
+		}
+		matchedCount++
+	}
+
+	if matchedCount == 0 {
+		return false, nil
+	}
+	if matchedCount != len(expected) {
+		return false, stackErr.Error(fmt.Errorf(
+			"ledger posting state became inconsistent for transaction_id=%s",
+			expected[0].posting.TransactionID,
+		))
+	}
+
+	return true, nil
+}
+
+func (s *ledgerService) saveLedgerAccount(
+	ctx context.Context,
+	repos ledgerrepos.Repos,
+	account *ledgeraggregate.LedgerAccountAggregate,
+) (bool, error) {
+	err := repos.LedgerAccountAggregateRepository().Save(ctx, account)
+	if err == nil {
+		return false, nil
+	}
+	if errors.Is(err, ledgerrepos.ErrAlreadyApplied) {
+		return true, nil
+	}
+	return false, stackErr.Error(err)
 }
 
 func newLedgerTransactionProjectedEvent(

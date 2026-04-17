@@ -115,7 +115,6 @@ func (r *providerPaymentRepoImpl) updateIntent(ctx context.Context, intent *enti
 			"clearing_account_key": intent.ClearingAccountKey,
 			"credit_account_id":    intent.CreditAccountID,
 			"status":               intent.Status,
-			"updated_at":           intent.UpdatedAt,
 		})
 	if result.Error != nil {
 		return mapError(result.Error)

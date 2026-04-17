@@ -49,6 +49,23 @@ func (r *ledgerAccountAggregateRepositoryImpl) Load(ctx context.Context, account
 	return agg, nil
 }
 
+func (r *ledgerAccountAggregateRepositoryImpl) FindPostedTransaction(
+	ctx context.Context,
+	accountID string,
+	transactionID string,
+) (*ledgeraggregate.LedgerAccountPosting, error) {
+	accountID = strings.TrimSpace(accountID)
+	if accountID == "" {
+		return nil, stackErr.Error(fmt.Errorf("account id is required"))
+	}
+	transactionID = strings.TrimSpace(transactionID)
+	if transactionID == "" {
+		return nil, stackErr.Error(fmt.Errorf("transaction id is required"))
+	}
+
+	return r.store.FindPostedTransaction(ctx, accountID, eventpkg.AggregateTypeName(&ledgeraggregate.LedgerAccountAggregate{}), transactionID)
+}
+
 func (r *ledgerAccountAggregateRepositoryImpl) Save(ctx context.Context, aggregate *ledgeraggregate.LedgerAccountAggregate) error {
 	if aggregate == nil {
 		return stackErr.Error(fmt.Errorf("ledger account aggregate is nil"))

@@ -2,10 +2,13 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
+	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
+	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
 	"go-socket/core/modules/ledger/infra/persistent/model"
 	eventpkg "go-socket/core/shared/pkg/event"
 	"go-socket/core/shared/pkg/stackErr"
@@ -21,6 +24,8 @@ type dbTX interface {
 type ledgerEventStore interface {
 	CreateIfNotExist(ctx context.Context, aggregateID, aggregateType string) error
 	CheckAndUpdateVersion(ctx context.Context, aggregateID, aggregateType string, baseVersion, newVersion int) (bool, error)
+	FindPostedTransaction(ctx context.Context, aggregateID, aggregateType, transactionID string) (*ledgeraggregate.LedgerAccountPosting, error)
+	ReservePostedTransaction(ctx context.Context, evt eventpkg.Event) error
 	Append(ctx context.Context, evt eventpkg.Event) error
 	Get(ctx context.Context, aggregateID, aggregateType string, afterVersion int, agg eventpkg.Aggregate) error
 	CreateSnapshot(ctx context.Context, agg eventpkg.Aggregate) error
@@ -86,6 +91,80 @@ func (s *ledgerEventStoreImpl) CheckAndUpdateVersion(
 		return false, mapError(result.Error)
 	}
 	return result.RowsAffected == 1, nil
+}
+
+func (s *ledgerEventStoreImpl) FindPostedTransaction(
+	ctx context.Context,
+	aggregateID string,
+	aggregateType string,
+	transactionID string,
+) (*ledgeraggregate.LedgerAccountPosting, error) {
+	var postingModel model.LedgerPostedTransactionModel
+	result := s.db.WithContext(ctx).
+		Where("aggregate_id = ? AND aggregate_type = ? AND transaction_id = ?", aggregateID, aggregateType, transactionID).
+		Limit(1).
+		Find(&postingModel)
+	if result.Error != nil {
+		return nil, stackErr.Error(mapError(result.Error))
+	}
+	if result.RowsAffected == 0 {
+		return nil, nil
+	}
+
+	return &ledgeraggregate.LedgerAccountPosting{
+		TransactionID:         postingModel.TransactionID,
+		ReferenceType:         postingModel.ReferenceType,
+		ReferenceID:           postingModel.ReferenceID,
+		CounterpartyAccountID: postingModel.CounterpartyAccountID,
+		Currency:              postingModel.Currency,
+		AmountDelta:           postingModel.AmountDelta,
+		BookedAt:              postingModel.BookedAt.UTC(),
+	}, nil
+}
+
+func (s *ledgerEventStoreImpl) ReservePostedTransaction(ctx context.Context, evt eventpkg.Event) error {
+	posting, ok, err := ledgeraggregate.NewLedgerAccountPostingFromEvent(evt.AggregateID, evt.EventData)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+	if !ok {
+		return nil
+	}
+
+	err = mapError(s.db.WithContext(ctx).Create(&model.LedgerPostedTransactionModel{
+		ID:                    uuid.NewString(),
+		AggregateID:           evt.AggregateID,
+		AggregateType:         evt.AggregateType,
+		TransactionID:         posting.TransactionID,
+		ReferenceType:         posting.ReferenceType,
+		ReferenceID:           posting.ReferenceID,
+		CounterpartyAccountID: posting.CounterpartyAccountID,
+		Currency:              posting.Currency,
+		AmountDelta:           posting.AmountDelta,
+		BookedAt:              posting.BookedAt.UTC(),
+		CreatedAt:             time.Now().UTC(),
+	}).Error)
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, ErrDuplicate) {
+		return stackErr.Error(err)
+	}
+
+	existing, loadErr := s.FindPostedTransaction(ctx, evt.AggregateID, evt.AggregateType, posting.TransactionID)
+	if loadErr != nil {
+		return stackErr.Error(loadErr)
+	}
+	if existing != nil && ledgeraggregate.SameLedgerAccountPosting(*existing, posting) {
+		return stackErr.Error(ledgerrepos.ErrAlreadyApplied)
+	}
+
+	return stackErr.Error(fmt.Errorf(
+		"existing ledger posting mismatch aggregate_id=%s aggregate_type=%s transaction_id=%s",
+		evt.AggregateID,
+		evt.AggregateType,
+		posting.TransactionID,
+	))
 }
 
 func (s *ledgerEventStoreImpl) Append(ctx context.Context, evt eventpkg.Event) error {
