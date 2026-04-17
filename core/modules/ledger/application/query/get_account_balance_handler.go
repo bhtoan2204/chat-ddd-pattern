@@ -3,10 +3,10 @@ package query
 import (
 	"context"
 
-	ledgerin "go-socket/core/modules/ledger/application/dto/in"
-	ledgerout "go-socket/core/modules/ledger/application/dto/out"
-	ledgerservice "go-socket/core/modules/ledger/application/service"
-	"go-socket/core/shared/pkg/cqrs"
+	ledgerin "wechat-clone/core/modules/ledger/application/dto/in"
+	ledgerout "wechat-clone/core/modules/ledger/application/dto/out"
+	ledgerservice "wechat-clone/core/modules/ledger/application/service"
+	"wechat-clone/core/shared/pkg/cqrs"
 )
 
 type getAccountBalanceHandler struct {

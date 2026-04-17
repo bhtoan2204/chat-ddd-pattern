@@ -2,9 +2,9 @@ package webpush
 
 import (
 	"context"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
 	"net/http"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	lib "github.com/SherClockHolmes/webpush-go"
 )

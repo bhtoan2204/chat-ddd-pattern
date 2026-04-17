@@ -1,11 +1,11 @@
 package aggregate
 
 import (
-	"go-socket/core/modules/room/domain/valueobject"
-	roomtypes "go-socket/core/modules/room/types"
-	"go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
 	"time"
+	"wechat-clone/core/modules/room/domain/valueobject"
+	roomtypes "wechat-clone/core/modules/room/types"
+	"wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func NewRoomAggregate(roomID string) (*RoomAggregate, error) {

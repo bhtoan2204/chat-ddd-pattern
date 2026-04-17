@@ -4,11 +4,11 @@ package server
 import (
 	"context"
 
-	"go-socket/core/modules/payment/application/dto/in"
-	"go-socket/core/modules/payment/application/dto/out"
-	paymenthttp "go-socket/core/modules/payment/transport/http"
-	"go-socket/core/shared/pkg/cqrs"
-	infrahttp "go-socket/core/shared/transport/http"
+	"wechat-clone/core/modules/payment/application/dto/in"
+	"wechat-clone/core/modules/payment/application/dto/out"
+	paymenthttp "wechat-clone/core/modules/payment/transport/http"
+	"wechat-clone/core/shared/pkg/cqrs"
+	infrahttp "wechat-clone/core/shared/transport/http"
 
 	"github.com/gin-gonic/gin"
 )

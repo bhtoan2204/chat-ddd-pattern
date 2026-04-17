@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"go-socket/core/shared/pkg/contxt"
+	"wechat-clone/core/shared/pkg/contxt"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

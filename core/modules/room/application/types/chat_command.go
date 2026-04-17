@@ -1,6 +1,6 @@
 package types
 
-import roomtypes "go-socket/core/modules/room/types"
+import roomtypes "wechat-clone/core/modules/room/types"
 
 type CreateDirectConversationCommand struct {
 	PeerAccountID string

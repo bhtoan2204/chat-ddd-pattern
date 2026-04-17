@@ -1,8 +1,8 @@
 package aggregate
 
 import (
-	"go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func NewAccountAggregate(accountID string) (*AccountAggregate, error) {

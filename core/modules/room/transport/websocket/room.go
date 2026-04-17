@@ -2,8 +2,8 @@ package socket
 
 import (
 	"context"
-	"go-socket/core/shared/pkg/logging"
 	"sync"
+	"wechat-clone/core/shared/pkg/logging"
 )
 
 var _ IRoom = (*Room)(nil)

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/goccy/go-yaml"
 )

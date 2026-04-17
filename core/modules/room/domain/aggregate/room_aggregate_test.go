@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	roomtypes "go-socket/core/modules/room/types"
+	roomtypes "wechat-clone/core/modules/room/types"
 )
 
 func TestRoomAggregateRecordMemberAddedBindsRoomID(t *testing.T) {

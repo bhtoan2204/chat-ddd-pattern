@@ -1,8 +1,8 @@
 package support
 
 import (
-	"go-socket/core/modules/room/application/dto/out"
-	apptypes "go-socket/core/modules/room/application/types"
+	"wechat-clone/core/modules/room/application/dto/out"
+	apptypes "wechat-clone/core/modules/room/application/types"
 
 	"github.com/samber/lo"
 )

@@ -3,9 +3,9 @@ package processor
 import (
 	"context"
 	"encoding/json"
-	roomprojection "go-socket/core/modules/room/application/projection"
 	"strings"
 	"testing"
+	roomprojection "wechat-clone/core/modules/room/application/projection"
 
 	"go.uber.org/mock/gomock"
 )

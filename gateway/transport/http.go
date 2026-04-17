@@ -48,7 +48,7 @@ func (t *HTTPTransport) Start() error {
 	// For now, we don't have mesh networking, so we need to proxy the request to the target service
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {
-			services, _, err := t.consulClient.Health().Service("go-socket", "", true, nil)
+			services, _, err := t.consulClient.Health().Service("wechat-clone", "", true, nil)
 			if err != nil || len(services) == 0 {
 				// Cố tình trỏ đến một host lỗi để ErrorHandler phía dưới bắt được
 				req.URL.Scheme = "http"
@@ -63,7 +63,7 @@ func (t *HTTPTransport) Start() error {
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			w.WriteHeader(http.StatusBadGateway)
-			w.Write([]byte(`{"error": "Bad Gateway: Service 'go-socket' is currently unavailable or not found in Consul"}`))
+			w.Write([]byte(`{"error": "Bad Gateway: Service 'wechat-clone' is currently unavailable or not found in Consul"}`))
 		},
 	}
 	t.server = &http.Server{

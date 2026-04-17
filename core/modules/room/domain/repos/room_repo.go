@@ -2,8 +2,8 @@ package repos
 
 import (
 	"context"
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/shared/utils"
 )
 
 //go:generate mockgen -package=repos -destination=room_repo_mock.go -source=room_repo.go

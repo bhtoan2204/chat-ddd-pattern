@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	ledgerprojection "go-socket/core/modules/ledger/application/projection"
-	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
+	ledgerprojection "wechat-clone/core/modules/ledger/application/projection"
+	ledgeraggregate "wechat-clone/core/modules/ledger/domain/aggregate"
 
 	"go.uber.org/mock/gomock"
 )

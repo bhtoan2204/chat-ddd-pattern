@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	"go-socket/core/shared/pkg/actorctx"
 	"net/http"
 	"strings"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/shared/pkg/actorctx"
 
 	"github.com/gin-gonic/gin"
 )

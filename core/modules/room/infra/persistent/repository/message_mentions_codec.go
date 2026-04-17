@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func marshalMessageMentions(mentions []entity.MessageMention) (string, error) {

@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	paymentaggregate "go-socket/core/modules/payment/domain/aggregate"
-	"go-socket/core/modules/payment/domain/entity"
-	paymentrepos "go-socket/core/modules/payment/domain/repos"
-	"go-socket/core/modules/payment/infra/persistent/model"
-	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
+	paymentaggregate "wechat-clone/core/modules/payment/domain/aggregate"
+	"wechat-clone/core/modules/payment/domain/entity"
+	paymentrepos "wechat-clone/core/modules/payment/domain/repos"
+	"wechat-clone/core/modules/payment/infra/persistent/model"
+	eventpkg "wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )

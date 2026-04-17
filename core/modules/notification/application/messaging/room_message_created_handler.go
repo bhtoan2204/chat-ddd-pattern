@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"go-socket/core/modules/notification/domain/aggregate"
-	"go-socket/core/modules/notification/types"
-	"go-socket/core/shared/contracts"
-	sharedevents "go-socket/core/shared/contracts/events"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/notification/domain/aggregate"
+	"wechat-clone/core/modules/notification/types"
+	"wechat-clone/core/shared/contracts"
+	sharedevents "wechat-clone/core/shared/contracts/events"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )

@@ -2,10 +2,10 @@ package repos
 
 import (
 	"context"
-	"go-socket/core/modules/account/domain/repos"
-	sharedcache "go-socket/core/shared/infra/cache"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/account/domain/repos"
+	sharedcache "wechat-clone/core/shared/infra/cache"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

@@ -5,14 +5,14 @@ import (
 {{- if .UsesContext }}
 	"context"
 {{- end }}
-	appCtx "go-socket/core/context"
+	appCtx "wechat-clone/core/context"
 {{- if .UsesConfig }}
-	"go-socket/core/shared/config"
+	"wechat-clone/core/shared/config"
 {{- end }}
 {{- if .IsHTTP }}
-	infrahttp "go-socket/core/shared/transport/http"
+	infrahttp "wechat-clone/core/shared/transport/http"
 {{- else }}
-	modruntime "go-socket/core/shared/runtime"
+	modruntime "wechat-clone/core/shared/runtime"
 {{- end }}
 )
 

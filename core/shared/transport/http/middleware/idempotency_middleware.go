@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	"go-socket/core/shared/infra/idempotency"
+	"wechat-clone/core/shared/infra/idempotency"
 
 	"github.com/gin-gonic/gin"
 )

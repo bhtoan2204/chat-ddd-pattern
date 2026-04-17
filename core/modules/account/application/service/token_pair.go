@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"go-socket/core/modules/account/domain/entity"
-	"go-socket/core/shared/infra/xpaseto"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/account/domain/entity"
+	"wechat-clone/core/shared/infra/xpaseto"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func issueTokenPair(

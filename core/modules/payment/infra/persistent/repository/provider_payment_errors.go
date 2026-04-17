@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	paymentrepos "go-socket/core/modules/payment/domain/repos"
-	"go-socket/core/shared/pkg/stackErr"
+	paymentrepos "wechat-clone/core/modules/payment/domain/repos"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )

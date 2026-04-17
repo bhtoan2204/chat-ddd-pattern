@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	roomprojection "go-socket/core/modules/room/application/projection"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/contracts"
-	infraMessaging "go-socket/core/shared/infra/messaging"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	roomprojection "wechat-clone/core/modules/room/application/projection"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/contracts"
+	infraMessaging "wechat-clone/core/shared/infra/messaging"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )

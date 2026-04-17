@@ -5,15 +5,15 @@ import (
 	"reflect"
 	"time"
 
-	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/dto/out"
-	"go-socket/core/modules/room/application/service"
-	roomsupport "go-socket/core/modules/room/application/support"
-	"go-socket/core/modules/room/domain/aggregate"
-	roomrepos "go-socket/core/modules/room/domain/repos"
-	"go-socket/core/modules/room/types"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/application/dto/in"
+	"wechat-clone/core/modules/room/application/dto/out"
+	"wechat-clone/core/modules/room/application/service"
+	roomsupport "wechat-clone/core/modules/room/application/support"
+	"wechat-clone/core/modules/room/domain/aggregate"
+	roomrepos "wechat-clone/core/modules/room/domain/repos"
+	"wechat-clone/core/modules/room/types"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type updateGroupChatHandler struct {

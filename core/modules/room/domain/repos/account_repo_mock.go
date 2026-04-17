@@ -11,8 +11,8 @@ package repos
 
 import (
 	context "context"
-	entity "go-socket/core/modules/room/domain/entity"
 	reflect "reflect"
+	entity "wechat-clone/core/modules/room/domain/entity"
 
 	gomock "go.uber.org/mock/gomock"
 )

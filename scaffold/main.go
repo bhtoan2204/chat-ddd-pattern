@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"go-socket/scaffold/generator"
-	"go-socket/scaffold/models"
-	scaffoldswagger "go-socket/scaffold/swagger"
 	"log"
+	"wechat-clone/scaffold/generator"
+	"wechat-clone/scaffold/models"
+	scaffoldswagger "wechat-clone/scaffold/swagger"
 )
 
 const API_SPEC_DIR = "scaffold/api"

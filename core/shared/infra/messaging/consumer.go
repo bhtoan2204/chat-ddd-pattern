@@ -3,12 +3,12 @@ package messaging
 import (
 	"context"
 	"fmt"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"

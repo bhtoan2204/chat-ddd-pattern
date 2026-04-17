@@ -2,8 +2,8 @@ package repos
 
 import (
 	"context"
-	"go-socket/core/modules/notification/domain/aggregate"
-	"go-socket/core/modules/notification/domain/entity"
+	"wechat-clone/core/modules/notification/domain/aggregate"
+	"wechat-clone/core/modules/notification/domain/entity"
 )
 
 //go:generate mockgen -package=repos -destination=notification_repo_mock.go -source=notification_repo.go

@@ -3,7 +3,7 @@ package repos
 import (
 	"context"
 
-	"go-socket/core/modules/room/domain/aggregate"
+	"wechat-clone/core/modules/room/domain/aggregate"
 )
 
 //go:generate mockgen -package=repos -destination=message_aggregate_repo_mock.go -source=message_aggregate_repo.go

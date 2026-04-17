@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	accounttypes "go-socket/core/modules/account/types"
+	accounttypes "wechat-clone/core/modules/account/types"
 )
 
 var (

@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"time"
 
-	"go-socket/core/modules/account/domain/entity"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/account/domain/entity"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/o1egl/paseto"
 	"go.uber.org/zap"

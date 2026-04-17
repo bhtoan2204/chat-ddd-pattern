@@ -1,6 +1,6 @@
 package valueobject
 
-import "go-socket/core/shared/pkg/stackErr"
+import "wechat-clone/core/shared/pkg/stackErr"
 
 type PlainPassword struct {
 	value string

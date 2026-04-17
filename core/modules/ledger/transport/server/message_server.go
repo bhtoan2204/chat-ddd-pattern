@@ -3,8 +3,8 @@ package server
 import (
 	"fmt"
 
-	ledgermessaging "go-socket/core/modules/ledger/application/messaging"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgermessaging "wechat-clone/core/modules/ledger/application/messaging"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 //go:generate mockgen -package=server -destination=message_server_mock.go -source=message_server.go

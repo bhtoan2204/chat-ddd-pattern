@@ -3,11 +3,11 @@ package repository
 import (
 	"context"
 	"errors"
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/modules/room/domain/repos"
-	"go-socket/core/modules/room/infra/persistent/models"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/modules/room/domain/repos"
+	"wechat-clone/core/modules/room/infra/persistent/models"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"gorm.io/gorm"
 )

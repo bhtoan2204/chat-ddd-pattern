@@ -5,10 +5,10 @@ import (
 	"errors"
 	"time"
 
-	apptypes "go-socket/core/modules/room/application/types"
-	"go-socket/core/modules/room/domain/entity"
-	roomrepos "go-socket/core/modules/room/domain/repos"
-	"go-socket/core/shared/pkg/stackErr"
+	apptypes "wechat-clone/core/modules/room/application/types"
+	"wechat-clone/core/modules/room/domain/entity"
+	roomrepos "wechat-clone/core/modules/room/domain/repos"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/samber/lo"
 )

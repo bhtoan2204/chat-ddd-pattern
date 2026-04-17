@@ -3,8 +3,8 @@ package messaging
 import (
 	"context"
 	"fmt"
-	"go-socket/core/shared/infra/xtracer"
 	"strconv"
+	"wechat-clone/core/shared/infra/xtracer"
 
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"go.opentelemetry.io/otel"

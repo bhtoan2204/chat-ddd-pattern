@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"go-socket/scaffold/models"
+	"wechat-clone/scaffold/models"
 )
 
 func GenerateRegistry(spec *models.APISpec) (string, error) {
@@ -96,8 +96,8 @@ func buildRegistryTemplateData(group moduleEndpoints) registryTemplateData {
 		ResponseDtoImport:  group.Module.ImportRoot + "/application/dto/out",
 		ModuleHTTPImport:   group.Module.ImportRoot + "/transport/http",
 		ModuleSocketImport: group.Module.ImportRoot + "/transport/websocket",
-		DispatcherImport:   "go-socket/core/shared/pkg/cqrs",
-		HTTPImport:         "go-socket/core/shared/transport/http",
+		DispatcherImport:   "wechat-clone/core/shared/pkg/cqrs",
+		HTTPImport:         "wechat-clone/core/shared/transport/http",
 		HasSocketTransport: hasSocketTransport(group.Module),
 	}
 

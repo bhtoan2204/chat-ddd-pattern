@@ -3,10 +3,10 @@ package lock
 import (
 	"context"
 	"fmt"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
 	"sort"
 	"time"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"

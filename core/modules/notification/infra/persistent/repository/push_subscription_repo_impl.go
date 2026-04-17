@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"go-socket/core/modules/notification/domain/aggregate"
-	"go-socket/core/modules/notification/domain/entity"
-	notificationrepos "go-socket/core/modules/notification/domain/repos"
-	"go-socket/core/modules/notification/infra/persistent/models"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/notification/domain/aggregate"
+	"wechat-clone/core/modules/notification/domain/entity"
+	notificationrepos "wechat-clone/core/modules/notification/domain/repos"
+	"wechat-clone/core/modules/notification/infra/persistent/models"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

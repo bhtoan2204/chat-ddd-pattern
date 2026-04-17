@@ -1,8 +1,8 @@
 package service
 
 import (
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/account/domain/repos"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/account/domain/repos"
 )
 
 //go:generate mockgen -package=service -destination=services_mock.go -source=services.go

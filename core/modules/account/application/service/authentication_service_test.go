@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"go-socket/core/modules/account/domain/aggregate"
-	"go-socket/core/modules/account/domain/entity"
-	"go-socket/core/modules/account/domain/repos"
-	valueobject "go-socket/core/modules/account/domain/value_object"
-	"go-socket/core/shared/infra/xpaseto"
-	"go-socket/core/shared/pkg/hasher"
+	"wechat-clone/core/modules/account/domain/aggregate"
+	"wechat-clone/core/modules/account/domain/entity"
+	"wechat-clone/core/modules/account/domain/repos"
+	valueobject "wechat-clone/core/modules/account/domain/value_object"
+	"wechat-clone/core/shared/infra/xpaseto"
+	"wechat-clone/core/shared/pkg/hasher"
 
 	"go.uber.org/mock/gomock"
 	"gorm.io/gorm"

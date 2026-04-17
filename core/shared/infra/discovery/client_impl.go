@@ -3,8 +3,8 @@ package discovery
 import (
 	"context"
 	"fmt"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/hashicorp/consul/api"
 	"go.uber.org/zap"

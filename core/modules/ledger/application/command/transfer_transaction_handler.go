@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"time"
 
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/ledger/application/dto/in"
-	"go-socket/core/modules/ledger/application/dto/out"
-	ledgerservice "go-socket/core/modules/ledger/application/service"
-	"go-socket/core/shared/infra/lock"
-	"go-socket/core/shared/pkg/actorctx"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/ledger/application/dto/in"
+	"wechat-clone/core/modules/ledger/application/dto/out"
+	ledgerservice "wechat-clone/core/modules/ledger/application/service"
+	"wechat-clone/core/shared/infra/lock"
+	"wechat-clone/core/shared/pkg/actorctx"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 )

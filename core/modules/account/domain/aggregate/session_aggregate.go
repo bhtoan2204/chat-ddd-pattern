@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/account/domain/entity"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/account/domain/entity"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 )
 
 var ErrSessionAggregateNotInitialized = errors.New("session aggregate is not initialized")

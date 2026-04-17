@@ -3,7 +3,7 @@ package messaging
 import (
 	"fmt"
 
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type Config struct {

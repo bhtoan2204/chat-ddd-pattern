@@ -7,14 +7,14 @@ import (
 	"reflect"
 	"time"
 
-	"go-socket/core/modules/account/domain/aggregate"
-	"go-socket/core/modules/account/domain/entity"
-	accountrepos "go-socket/core/modules/account/domain/repos"
-	accountcache "go-socket/core/modules/account/infra/cache"
-	"go-socket/core/modules/account/infra/persistent/models"
-	sharedcache "go-socket/core/shared/infra/cache"
-	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/account/domain/aggregate"
+	"wechat-clone/core/modules/account/domain/entity"
+	accountrepos "wechat-clone/core/modules/account/domain/repos"
+	accountcache "wechat-clone/core/modules/account/infra/cache"
+	"wechat-clone/core/modules/account/infra/persistent/models"
+	sharedcache "wechat-clone/core/shared/infra/cache"
+	eventpkg "wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )

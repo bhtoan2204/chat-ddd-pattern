@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	ledgerout "go-socket/core/modules/ledger/application/dto/out"
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	ledgerout "wechat-clone/core/modules/ledger/application/dto/out"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 )
 
 type LedgerQueryService interface {

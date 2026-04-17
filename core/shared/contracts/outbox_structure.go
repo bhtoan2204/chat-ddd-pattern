@@ -3,8 +3,8 @@ package contracts
 import (
 	"encoding/json"
 	"errors"
-	"go-socket/core/shared/pkg/stackErr"
 	"strings"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type OutboxMessage struct {

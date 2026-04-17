@@ -1,4 +1,4 @@
-module go-socket
+module wechat-clone
 
 go 1.24.1
 

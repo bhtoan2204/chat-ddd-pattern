@@ -1,11 +1,11 @@
 package entity
 
 import (
-	"go-socket/core/modules/account/domain/rules"
-	valueobject "go-socket/core/modules/account/domain/value_object"
-	accounttypes "go-socket/core/modules/account/types"
-	"go-socket/core/shared/pkg/stackErr"
 	"time"
+	"wechat-clone/core/modules/account/domain/rules"
+	valueobject "wechat-clone/core/modules/account/domain/value_object"
+	accounttypes "wechat-clone/core/modules/account/types"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type Account struct {

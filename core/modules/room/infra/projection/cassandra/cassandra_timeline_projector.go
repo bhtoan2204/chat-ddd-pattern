@@ -1,9 +1,9 @@
 package projection
 
 import (
-	roomprojection "go-socket/core/modules/room/application/projection"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
+	roomprojection "wechat-clone/core/modules/room/application/projection"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/gocql/gocql"
 )

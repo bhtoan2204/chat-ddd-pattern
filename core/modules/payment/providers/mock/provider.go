@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"go-socket/core/modules/payment/domain/entity"
-	"go-socket/core/modules/payment/providers"
+	"wechat-clone/core/modules/payment/domain/entity"
+	"wechat-clone/core/modules/payment/providers"
 )
 
 var _ providers.PaymentProvider = (*Provider)(nil)

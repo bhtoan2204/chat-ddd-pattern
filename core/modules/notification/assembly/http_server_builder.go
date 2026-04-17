@@ -2,14 +2,14 @@ package assembly
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	notificationcommand "go-socket/core/modules/notification/application/command"
-	notificationquery "go-socket/core/modules/notification/application/query"
-	notificationrepo "go-socket/core/modules/notification/infra/persistent/repository"
-	notificationserver "go-socket/core/modules/notification/transport/server"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/transport/http"
+	appCtx "wechat-clone/core/context"
+	notificationcommand "wechat-clone/core/modules/notification/application/command"
+	notificationquery "wechat-clone/core/modules/notification/application/query"
+	notificationrepo "wechat-clone/core/modules/notification/infra/persistent/repository"
+	notificationserver "wechat-clone/core/modules/notification/transport/server"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/transport/http"
 )
 
 func buildHTTPServer(_ context.Context, appCtx *appCtx.AppContext) (http.HTTPServer, error) {

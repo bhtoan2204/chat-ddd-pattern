@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"strings"
 
-	appCtx "go-socket/core/context"
-	ledgerprojection "go-socket/core/modules/ledger/application/projection"
-	"go-socket/core/modules/ledger/application/service"
-	ledgerrepo "go-socket/core/modules/ledger/infra/persistent/repository"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/infra/lock"
-	infraMessaging "go-socket/core/shared/infra/messaging"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	ledgerprojection "wechat-clone/core/modules/ledger/application/projection"
+	"wechat-clone/core/modules/ledger/application/service"
+	ledgerrepo "wechat-clone/core/modules/ledger/infra/persistent/repository"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/infra/lock"
+	infraMessaging "wechat-clone/core/shared/infra/messaging"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 //go:generate mockgen -package=messaging -destination=message_handler_mock.go -source=message_handler.go

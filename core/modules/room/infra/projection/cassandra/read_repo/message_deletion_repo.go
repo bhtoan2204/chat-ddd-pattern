@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	roomprojection "go-socket/core/modules/room/application/projection"
-	"go-socket/core/modules/room/infra/projection/cassandra/views"
-	"go-socket/core/shared/pkg/stackErr"
+	roomprojection "wechat-clone/core/modules/room/application/projection"
+	"wechat-clone/core/modules/room/infra/projection/cassandra/views"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/gocql/gocql"
 )

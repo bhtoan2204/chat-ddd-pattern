@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strings"
 
-	"go-socket/core/modules/room/application/projection"
-	apptypes "go-socket/core/modules/room/application/types"
-	"go-socket/core/modules/room/infra/projection/cassandra/views"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/application/projection"
+	apptypes "wechat-clone/core/modules/room/application/types"
+	"wechat-clone/core/modules/room/infra/projection/cassandra/views"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/samber/lo"
 )

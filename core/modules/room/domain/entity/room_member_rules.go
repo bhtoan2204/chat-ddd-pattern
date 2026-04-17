@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	roomtypes "go-socket/core/modules/room/types"
-	"go-socket/core/shared/pkg/stackErr"
+	roomtypes "wechat-clone/core/modules/room/types"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 var (

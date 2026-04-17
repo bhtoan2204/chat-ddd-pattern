@@ -3,7 +3,7 @@ package hasher
 import (
 	"crypto/rand"
 	"fmt"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func genSalt(keyLen uint32) ([]byte, error) {

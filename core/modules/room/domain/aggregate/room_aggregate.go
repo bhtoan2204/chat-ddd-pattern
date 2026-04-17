@@ -2,11 +2,11 @@ package aggregate
 
 import (
 	"errors"
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/modules/room/types"
-	"go-socket/core/shared/pkg/event"
 	"strings"
 	"time"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/modules/room/types"
+	"wechat-clone/core/shared/pkg/event"
 )
 
 var (

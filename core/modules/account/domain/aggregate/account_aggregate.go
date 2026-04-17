@@ -2,15 +2,15 @@ package aggregate
 
 import (
 	"errors"
-	"go-socket/core/modules/account/domain/entity"
-	"go-socket/core/modules/account/domain/rules"
-	valueobject "go-socket/core/modules/account/domain/value_object"
-	accounttypes "go-socket/core/modules/account/types"
-	"go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
 	"strings"
 	"time"
+	"wechat-clone/core/modules/account/domain/entity"
+	"wechat-clone/core/modules/account/domain/rules"
+	valueobject "wechat-clone/core/modules/account/domain/value_object"
+	accounttypes "wechat-clone/core/modules/account/types"
+	"wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"github.com/google/uuid"
 )

@@ -1,9 +1,9 @@
 package aggregate
 
 import (
-	"go-socket/core/modules/room/types"
-	sharedevents "go-socket/core/shared/contracts/events"
 	"time"
+	"wechat-clone/core/modules/room/types"
+	sharedevents "wechat-clone/core/shared/contracts/events"
 )
 
 type EventRoomCreated struct {

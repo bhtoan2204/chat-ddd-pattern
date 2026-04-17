@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	ledgerservice "go-socket/core/modules/ledger/application/service"
-	sharedevents "go-socket/core/shared/contracts/events"
-	sharedlock "go-socket/core/shared/infra/lock"
+	ledgerservice "wechat-clone/core/modules/ledger/application/service"
+	sharedevents "wechat-clone/core/shared/contracts/events"
+	sharedlock "wechat-clone/core/shared/infra/lock"
 
 	"go.uber.org/mock/gomock"
 )

@@ -3,8 +3,8 @@ package event
 import (
 	"errors"
 	"fmt"
-	"go-socket/core/shared/pkg/stackErr"
 	"reflect"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 var (

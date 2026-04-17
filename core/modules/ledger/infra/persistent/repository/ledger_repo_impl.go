@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/ledger/domain/entity"
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	"go-socket/core/modules/ledger/infra/persistent/model"
+	"wechat-clone/core/modules/ledger/domain/entity"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	"wechat-clone/core/modules/ledger/infra/persistent/model"
 
 	"gorm.io/gorm"
 )

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 )
 
 type DeviceType string

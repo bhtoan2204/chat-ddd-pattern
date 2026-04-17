@@ -4,15 +4,15 @@ import (
 	"context"
 	"reflect"
 
-	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/dto/out"
-	"go-socket/core/modules/room/application/service"
-	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
-	roomrepos "go-socket/core/modules/room/domain/repos"
-	"go-socket/core/modules/room/types"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/application/dto/in"
+	"wechat-clone/core/modules/room/application/dto/out"
+	"wechat-clone/core/modules/room/application/service"
+	roomsupport "wechat-clone/core/modules/room/application/support"
+	apptypes "wechat-clone/core/modules/room/application/types"
+	roomrepos "wechat-clone/core/modules/room/domain/repos"
+	"wechat-clone/core/modules/room/types"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type forwardChatMessageHandler struct {

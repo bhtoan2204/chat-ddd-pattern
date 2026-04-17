@@ -3,7 +3,7 @@ package valueobject
 import (
 	"encoding/json"
 
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type HashedPassword struct {

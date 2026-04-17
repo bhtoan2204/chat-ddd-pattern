@@ -3,7 +3,7 @@ package repos
 import (
 	"context"
 
-	paymentaggregate "go-socket/core/modules/payment/domain/aggregate"
+	paymentaggregate "wechat-clone/core/modules/payment/domain/aggregate"
 )
 
 //go:generate mockgen -package=repos -destination=provider_payment_repo_mock.go -source=provider_payment_repo.go

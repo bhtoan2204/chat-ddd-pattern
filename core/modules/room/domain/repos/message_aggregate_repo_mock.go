@@ -11,8 +11,8 @@ package repos
 
 import (
 	context "context"
-	aggregate "go-socket/core/modules/room/domain/aggregate"
 	reflect "reflect"
+	aggregate "wechat-clone/core/modules/room/domain/aggregate"
 
 	gomock "go.uber.org/mock/gomock"
 )

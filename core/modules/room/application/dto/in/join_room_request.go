@@ -3,7 +3,7 @@ package in
 import (
 	"errors"
 
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type JoinRoomRequest struct {

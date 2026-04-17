@@ -1,9 +1,9 @@
 package service
 
 import (
-	appCtx "go-socket/core/context"
-	repos "go-socket/core/modules/payment/domain/repos"
-	domainservice "go-socket/core/modules/payment/domain/service"
+	appCtx "wechat-clone/core/context"
+	repos "wechat-clone/core/modules/payment/domain/repos"
+	domainservice "wechat-clone/core/modules/payment/domain/service"
 )
 
 //go:generate mockgen -package=service -destination=services_mock.go -source=services.go

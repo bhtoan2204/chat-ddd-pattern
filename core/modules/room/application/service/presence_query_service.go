@@ -4,9 +4,9 @@ import (
 	"context"
 	"strings"
 
-	appCtx "go-socket/core/context"
-	apptypes "go-socket/core/modules/room/application/types"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	apptypes "wechat-clone/core/modules/room/application/types"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/redis/go-redis/v9"
 )

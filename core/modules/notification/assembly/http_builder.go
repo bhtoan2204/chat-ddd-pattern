@@ -3,8 +3,8 @@ package assembly
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	infrahttp "go-socket/core/shared/transport/http"
+	appCtx "wechat-clone/core/context"
+	infrahttp "wechat-clone/core/shared/transport/http"
 )
 
 func BuildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (infrahttp.HTTPServer, error) {

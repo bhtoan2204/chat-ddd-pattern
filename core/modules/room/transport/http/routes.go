@@ -2,11 +2,11 @@
 package http
 
 import (
-	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/dto/out"
-	"go-socket/core/modules/room/transport/http/handler"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/transport/httpx"
+	"wechat-clone/core/modules/room/application/dto/in"
+	"wechat-clone/core/modules/room/application/dto/out"
+	"wechat-clone/core/modules/room/transport/http/handler"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/transport/httpx"
 
 	"github.com/gin-gonic/gin"
 )

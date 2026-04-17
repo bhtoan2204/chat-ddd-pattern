@@ -3,9 +3,9 @@ package support
 import (
 	"time"
 
-	"go-socket/core/modules/account/application/dto/out"
-	"go-socket/core/modules/account/domain/entity"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/account/application/dto/out"
+	"wechat-clone/core/modules/account/domain/entity"
+	"wechat-clone/core/shared/utils"
 )
 
 func ToGetProfileResponse(account *entity.Account) *out.GetProfileResponse {

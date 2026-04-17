@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	"go-socket/core/modules/ledger/infra/persistent/model"
-	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	"wechat-clone/core/modules/ledger/infra/persistent/model"
+	eventpkg "wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type ledgerOutboxEventsRepoImpl struct {

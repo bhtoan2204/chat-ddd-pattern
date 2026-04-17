@@ -11,9 +11,9 @@ package query
 
 import (
 	context "context"
-	out "go-socket/core/modules/notification/application/dto/out"
-	utils "go-socket/core/shared/utils"
 	reflect "reflect"
+	out "wechat-clone/core/modules/notification/application/dto/out"
+	utils "wechat-clone/core/shared/utils"
 
 	gomock "go.uber.org/mock/gomock"
 )

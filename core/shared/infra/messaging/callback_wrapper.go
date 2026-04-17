@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"go-socket/core/shared/pkg/contxt"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/contxt"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )

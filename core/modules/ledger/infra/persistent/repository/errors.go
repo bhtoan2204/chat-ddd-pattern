@@ -4,8 +4,8 @@ import (
 	"errors"
 	"strings"
 
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )

@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
-	roomsupport "go-socket/core/modules/room/application/support"
-	"go-socket/core/modules/room/domain/aggregate"
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/modules/room/domain/repos"
-	"go-socket/core/modules/room/types"
-	sharedevents "go-socket/core/shared/contracts/events"
-	"go-socket/core/shared/pkg/stackErr"
+	roomsupport "wechat-clone/core/modules/room/application/support"
+	"wechat-clone/core/modules/room/domain/aggregate"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/modules/room/domain/repos"
+	"wechat-clone/core/modules/room/types"
+	sharedevents "wechat-clone/core/shared/contracts/events"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 )

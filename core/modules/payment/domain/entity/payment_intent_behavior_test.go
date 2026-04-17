@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	sharedevents "go-socket/core/shared/contracts/events"
+	sharedevents "wechat-clone/core/shared/contracts/events"
 )
 
 func TestNewPaymentIntentNormalizesFields(t *testing.T) {

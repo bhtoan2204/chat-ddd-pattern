@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"go-socket/core/shared/pkg/logging"
-	scaffoldswagger "go-socket/scaffold/swagger"
+	"wechat-clone/core/shared/pkg/logging"
+	scaffoldswagger "wechat-clone/scaffold/swagger"
 
 	"github.com/gin-gonic/gin"
 )

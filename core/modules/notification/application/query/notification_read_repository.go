@@ -3,8 +3,8 @@ package query
 import (
 	"context"
 
-	"go-socket/core/modules/notification/application/dto/out"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/notification/application/dto/out"
+	"wechat-clone/core/shared/utils"
 )
 
 //go:generate mockgen -package=query -destination=notification_read_repository_mock.go -source=notification_read_repository.go

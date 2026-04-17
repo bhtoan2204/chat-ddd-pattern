@@ -11,9 +11,9 @@ package service
 
 import (
 	context "context"
-	in "go-socket/core/modules/payment/application/dto/in"
-	out "go-socket/core/modules/payment/application/dto/out"
 	reflect "reflect"
+	in "wechat-clone/core/modules/payment/application/dto/in"
+	out "wechat-clone/core/modules/payment/application/dto/out"
 
 	gomock "go.uber.org/mock/gomock"
 )

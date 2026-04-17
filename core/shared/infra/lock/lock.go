@@ -3,10 +3,10 @@ package lock
 import (
 	"context"
 	"errors"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
 	"math/rand"
 	"time"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"

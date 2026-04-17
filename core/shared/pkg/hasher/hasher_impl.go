@@ -5,8 +5,8 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
-	"go-socket/core/shared/pkg/stackErr"
 	"strings"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"golang.org/x/crypto/argon2"
 )

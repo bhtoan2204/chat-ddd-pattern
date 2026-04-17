@@ -3,7 +3,7 @@ package projection
 import (
 	"time"
 
-	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
+	ledgeraggregate "wechat-clone/core/modules/ledger/domain/aggregate"
 )
 
 const (

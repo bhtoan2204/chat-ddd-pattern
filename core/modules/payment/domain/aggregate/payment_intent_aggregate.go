@@ -4,10 +4,10 @@ import (
 	"errors"
 	"time"
 
-	paymententity "go-socket/core/modules/payment/domain/entity"
-	sharedevents "go-socket/core/shared/contracts/events"
-	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
+	paymententity "wechat-clone/core/modules/payment/domain/entity"
+	sharedevents "wechat-clone/core/shared/contracts/events"
+	eventpkg "wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 var ErrPaymentIntentOccurredAtRequired = errors.New("occurred_at is required")

@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/notification/domain/entity"
-	"go-socket/core/modules/notification/types"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/notification/domain/entity"
+	"wechat-clone/core/modules/notification/types"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"github.com/google/uuid"
 )

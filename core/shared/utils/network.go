@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func GetInternalIP() (string, error) {

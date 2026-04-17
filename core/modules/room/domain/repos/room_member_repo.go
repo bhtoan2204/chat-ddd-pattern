@@ -2,7 +2,7 @@ package repos
 
 import (
 	"context"
-	"go-socket/core/modules/room/domain/entity"
+	"wechat-clone/core/modules/room/domain/entity"
 )
 
 //go:generate mockgen -package=repos -destination=room_member_repo_mock.go -source=room_member_repo.go

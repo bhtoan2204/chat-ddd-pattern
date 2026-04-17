@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"go-socket/core/shared/infra/cache"
-	"go-socket/core/shared/infra/ratelimit"
+	"wechat-clone/core/shared/infra/cache"
+	"wechat-clone/core/shared/infra/ratelimit"
 
 	"github.com/gin-gonic/gin"
 )

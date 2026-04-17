@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net/http"
 
-	"go-socket/core/modules/ledger/application/service"
+	"wechat-clone/core/modules/ledger/application/service"
 
 	"github.com/gin-gonic/gin"
 )

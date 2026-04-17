@@ -11,8 +11,8 @@ package repos
 
 import (
 	context "context"
-	event "go-socket/core/shared/pkg/event"
 	reflect "reflect"
+	event "wechat-clone/core/shared/pkg/event"
 
 	gomock "go.uber.org/mock/gomock"
 )

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"go-socket/core/shared/pkg/pubsub"
+	"wechat-clone/core/shared/pkg/pubsub"
 
 	"go.uber.org/mock/gomock"
 )

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/scaffold/models"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/scaffold/models"
 )
 
 func fileExists(path string) bool {

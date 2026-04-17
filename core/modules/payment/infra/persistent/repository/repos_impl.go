@@ -2,10 +2,10 @@ package repository
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/payment/domain/repos"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/payment/domain/repos"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

@@ -6,10 +6,10 @@ import (
 	"sort"
 	"time"
 
-	"go-socket/core/modules/room/domain/aggregate"
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/modules/room/domain/repos"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/domain/aggregate"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/modules/room/domain/repos"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/samber/lo"
 	"gorm.io/gorm"

@@ -6,10 +6,10 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/room/domain/entity"
-	roomtypes "go-socket/core/modules/room/types"
-	sharedevents "go-socket/core/shared/contracts/events"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/domain/entity"
+	roomtypes "wechat-clone/core/modules/room/types"
+	sharedevents "wechat-clone/core/shared/contracts/events"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 var ErrRoomAggregateNil = errors.New("room aggregate is nil")

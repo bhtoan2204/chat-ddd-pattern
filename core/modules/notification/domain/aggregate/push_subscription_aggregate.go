@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/notification/domain/entity"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/notification/domain/entity"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 var (

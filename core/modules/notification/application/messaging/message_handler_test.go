@@ -2,13 +2,13 @@ package messaging
 
 import (
 	"context"
-	"go-socket/core/modules/notification/application/adapter"
-	"go-socket/core/modules/notification/domain/aggregate"
-	"go-socket/core/modules/notification/domain/repos"
-	"go-socket/core/modules/notification/types"
-	sharedevents "go-socket/core/shared/contracts/events"
 	"testing"
 	"time"
+	"wechat-clone/core/modules/notification/application/adapter"
+	"wechat-clone/core/modules/notification/domain/aggregate"
+	"wechat-clone/core/modules/notification/domain/repos"
+	"wechat-clone/core/modules/notification/types"
+	sharedevents "wechat-clone/core/shared/contracts/events"
 
 	"go.uber.org/mock/gomock"
 )

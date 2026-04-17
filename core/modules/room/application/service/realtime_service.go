@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/room/constant"
-	"go-socket/core/modules/room/types"
-	"go-socket/core/shared/pkg/pubsub"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/room/constant"
+	"wechat-clone/core/modules/room/types"
+	"wechat-clone/core/shared/pkg/pubsub"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type RealtimeService interface {

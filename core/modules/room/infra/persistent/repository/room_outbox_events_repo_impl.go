@@ -3,11 +3,11 @@ package repository
 import (
 	"context"
 	"fmt"
-	"go-socket/core/modules/room/domain/repos"
-	"go-socket/core/modules/room/infra/persistent/models"
-	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
 	"time"
+	"wechat-clone/core/modules/room/domain/repos"
+	"wechat-clone/core/modules/room/infra/persistent/models"
+	eventpkg "wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )

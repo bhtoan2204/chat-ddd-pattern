@@ -1,13 +1,13 @@
 package assembly
 
 import (
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/room/application/projection/processor"
-	roomCassandra "go-socket/core/modules/room/infra/projection/cassandra"
-	roomElasticsearch "go-socket/core/modules/room/infra/projection/elasticsearch"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
-	modruntime "go-socket/core/shared/runtime"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/room/application/projection/processor"
+	roomCassandra "wechat-clone/core/modules/room/infra/projection/cassandra"
+	roomElasticsearch "wechat-clone/core/modules/room/infra/projection/elasticsearch"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
+	modruntime "wechat-clone/core/shared/runtime"
 )
 
 func buildServingProjectionProcessor(cfg *config.Config, appCtx *appCtx.AppContext) (modruntime.Module, error) {

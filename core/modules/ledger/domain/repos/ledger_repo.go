@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"go-socket/core/modules/ledger/domain/entity"
+	"wechat-clone/core/modules/ledger/domain/entity"
 )
 
 type ListTransactionsFilter struct {

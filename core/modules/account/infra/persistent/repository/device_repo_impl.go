@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"go-socket/core/modules/account/domain/aggregate"
-	"go-socket/core/modules/account/domain/entity"
-	accountrepos "go-socket/core/modules/account/domain/repos"
-	"go-socket/core/modules/account/infra/persistent/models"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/account/domain/aggregate"
+	"wechat-clone/core/modules/account/domain/entity"
+	accountrepos "wechat-clone/core/modules/account/domain/repos"
+	"wechat-clone/core/modules/account/infra/persistent/models"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"gorm.io/gorm"
 )

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/payment/domain/entity"
-	"go-socket/core/modules/payment/providers"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/infra/xtracer"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/payment/domain/entity"
+	"wechat-clone/core/modules/payment/providers"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/infra/xtracer"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	stripe "github.com/stripe/stripe-go/v75"
 	stripeclient "github.com/stripe/stripe-go/v75/client"

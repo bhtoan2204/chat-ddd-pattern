@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"go-socket/core/modules/room/domain/entity"
-	reposmock "go-socket/core/modules/room/domain/repos"
+	"wechat-clone/core/modules/room/domain/entity"
+	reposmock "wechat-clone/core/modules/room/domain/repos"
 
 	"go.uber.org/mock/gomock"
 )

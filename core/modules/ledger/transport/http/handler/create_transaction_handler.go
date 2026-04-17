@@ -4,11 +4,11 @@ package handler
 import (
 	"net/http"
 
-	"go-socket/core/modules/ledger/application/dto/in"
-	"go-socket/core/modules/ledger/application/dto/out"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/ledger/application/dto/in"
+	"wechat-clone/core/modules/ledger/application/dto/out"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"

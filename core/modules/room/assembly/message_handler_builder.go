@@ -1,13 +1,13 @@
 package assembly
 
 import (
-	appCtx "go-socket/core/context"
-	roomprojection "go-socket/core/modules/room/application/messaging"
-	roomservice "go-socket/core/modules/room/application/service"
-	roomrepo "go-socket/core/modules/room/infra/persistent/repository"
-	roomCassandra "go-socket/core/modules/room/infra/projection/cassandra"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	roomprojection "wechat-clone/core/modules/room/application/messaging"
+	roomservice "wechat-clone/core/modules/room/application/service"
+	roomrepo "wechat-clone/core/modules/room/infra/persistent/repository"
+	roomCassandra "wechat-clone/core/modules/room/infra/projection/cassandra"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func buildProjectionHandler(cfg *config.Config, appCtx *appCtx.AppContext) (roomprojection.MessageHandler, error) {

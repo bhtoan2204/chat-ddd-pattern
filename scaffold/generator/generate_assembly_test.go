@@ -8,7 +8,7 @@ import (
 	"testing"
 	"text/template"
 
-	"go-socket/scaffold/models"
+	"wechat-clone/scaffold/models"
 )
 
 func TestAssemblyBuilderTemplateFormats(t *testing.T) {
@@ -29,21 +29,21 @@ func TestAssemblyBuilderTemplateFormats(t *testing.T) {
 			kind:     models.AssemblyKindHTTP,
 			function: "BuildHTTPServer",
 			calls:    "buildHTTPServer(ctx, appContext)",
-			imported: `"go-socket/core/shared/transport/http"`,
+			imported: `"wechat-clone/core/shared/transport/http"`,
 		},
 		{
 			name:     "messaging",
 			kind:     models.AssemblyKindMessaging,
 			function: "BuildMessagingRuntime",
 			calls:    "buildMessagingRuntime(cfg, appContext)",
-			imported: `"go-socket/core/shared/runtime"`,
+			imported: `"wechat-clone/core/shared/runtime"`,
 		},
 		{
 			name:     "projection",
 			kind:     models.AssemblyKindProjection,
 			function: "BuildProjectionRuntime",
 			calls:    "buildProjectionRuntime(cfg, appContext)",
-			imported: `"go-socket/core/shared/runtime"`,
+			imported: `"wechat-clone/core/shared/runtime"`,
 		},
 	}
 

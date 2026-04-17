@@ -3,9 +3,9 @@ package socket
 import (
 	"context"
 	"encoding/json"
-	"go-socket/core/shared/pkg/logging"
 	"sync"
 	"time"
+	"wechat-clone/core/shared/pkg/logging"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"

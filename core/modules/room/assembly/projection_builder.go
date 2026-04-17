@@ -2,9 +2,9 @@
 package assembly
 
 import (
-	appCtx "go-socket/core/context"
-	"go-socket/core/shared/config"
-	modruntime "go-socket/core/shared/runtime"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/shared/config"
+	modruntime "wechat-clone/core/shared/runtime"
 )
 
 func BuildProjectionRuntime(cfg *config.Config, appContext *appCtx.AppContext) (modruntime.Module, error) {

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type compositeModule struct {

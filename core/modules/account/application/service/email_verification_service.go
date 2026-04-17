@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/account/domain/entity"
-	sharedcache "go-socket/core/shared/infra/cache"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/account/domain/entity"
+	sharedcache "wechat-clone/core/shared/infra/cache"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"github.com/google/uuid"
 )

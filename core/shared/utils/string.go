@@ -3,9 +3,9 @@ package utils
 import (
 	"encoding/base64"
 	"errors"
-	"go-socket/core/shared/pkg/stackErr"
 	"strings"
 	"time"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func EncodeCursor(createdAt string, id string) string {

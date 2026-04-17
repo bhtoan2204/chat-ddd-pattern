@@ -2,13 +2,13 @@ package query
 
 import (
 	"context"
-	"go-socket/core/modules/notification/application/dto/in"
-	"go-socket/core/modules/notification/application/dto/out"
-	"go-socket/core/shared/pkg/actorctx"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/notification/application/dto/in"
+	"wechat-clone/core/modules/notification/application/dto/out"
+	"wechat-clone/core/shared/pkg/actorctx"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"go.uber.org/zap"
 )

@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	valueobject "go-socket/core/modules/account/domain/value_object"
-	"go-socket/core/shared/pkg/stackErr"
+	valueobject "wechat-clone/core/modules/account/domain/value_object"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 var ErrAccountEmailAlreadyExists = errors.New("account email already exists")

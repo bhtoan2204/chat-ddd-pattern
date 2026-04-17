@@ -7,6 +7,6 @@ const (
 	DefaultUIPath      = "/swagger"
 	DefaultJSONPath    = "/swagger/openapi.json"
 	defaultOpenAPIVer  = "3.0.3"
-	defaultTitle       = "go-socket API"
+	defaultTitle       = "Wechat Clone API"
 	defaultDescription = "Generated automatically from scaffold/api YAML specs."
 )

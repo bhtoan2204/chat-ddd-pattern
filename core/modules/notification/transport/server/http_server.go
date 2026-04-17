@@ -4,11 +4,11 @@ package server
 import (
 	"context"
 
-	"go-socket/core/modules/notification/application/dto/in"
-	"go-socket/core/modules/notification/application/dto/out"
-	notificationhttp "go-socket/core/modules/notification/transport/http"
-	"go-socket/core/shared/pkg/cqrs"
-	infrahttp "go-socket/core/shared/transport/http"
+	"wechat-clone/core/modules/notification/application/dto/in"
+	"wechat-clone/core/modules/notification/application/dto/out"
+	notificationhttp "wechat-clone/core/modules/notification/transport/http"
+	"wechat-clone/core/shared/pkg/cqrs"
+	infrahttp "wechat-clone/core/shared/transport/http"
 
 	"github.com/gin-gonic/gin"
 )

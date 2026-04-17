@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"strings"
 
-	ledgerservice "go-socket/core/modules/ledger/application/service"
-	ledgerentity "go-socket/core/modules/ledger/domain/entity"
-	"go-socket/core/shared/contracts"
-	sharedevents "go-socket/core/shared/contracts/events"
-	sharedlock "go-socket/core/shared/infra/lock"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgerservice "wechat-clone/core/modules/ledger/application/service"
+	ledgerentity "wechat-clone/core/modules/ledger/domain/entity"
+	"wechat-clone/core/shared/contracts"
+	sharedevents "wechat-clone/core/shared/contracts/events"
+	sharedlock "wechat-clone/core/shared/infra/lock"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )

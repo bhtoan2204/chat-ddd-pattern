@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	sharedevents "go-socket/core/shared/contracts/events"
-	"go-socket/core/shared/pkg/stackErr"
+	sharedevents "wechat-clone/core/shared/contracts/events"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 var (

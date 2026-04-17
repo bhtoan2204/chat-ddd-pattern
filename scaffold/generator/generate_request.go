@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/template"
 
-	"go-socket/scaffold/models"
-	"go-socket/scaffold/utils"
+	"wechat-clone/scaffold/models"
+	"wechat-clone/scaffold/utils"
 )
 
 func GenerateRequest(endpoints []models.Endpoint) (string, error) {

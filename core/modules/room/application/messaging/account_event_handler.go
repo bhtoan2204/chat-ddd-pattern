@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"go-socket/core/modules/room/domain/entity"
-	sharedevents "go-socket/core/shared/contracts/events"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/room/domain/entity"
+	sharedevents "wechat-clone/core/shared/contracts/events"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 )
 
 func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json.RawMessage) error {

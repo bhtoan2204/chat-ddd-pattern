@@ -4,12 +4,12 @@ package server
 import (
 	"context"
 
-	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/dto/out"
-	roomhttp "go-socket/core/modules/room/transport/http"
-	roomsocket "go-socket/core/modules/room/transport/websocket"
-	"go-socket/core/shared/pkg/cqrs"
-	infrahttp "go-socket/core/shared/transport/http"
+	"wechat-clone/core/modules/room/application/dto/in"
+	"wechat-clone/core/modules/room/application/dto/out"
+	roomhttp "wechat-clone/core/modules/room/transport/http"
+	roomsocket "wechat-clone/core/modules/room/transport/websocket"
+	"wechat-clone/core/shared/pkg/cqrs"
+	infrahttp "wechat-clone/core/shared/transport/http"
 
 	"github.com/gin-gonic/gin"
 )

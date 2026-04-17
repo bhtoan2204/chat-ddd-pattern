@@ -2,8 +2,8 @@ package google
 
 import (
 	"context"
-	"go-socket/core/shared/config"
 	"testing"
+	"wechat-clone/core/shared/config"
 )
 
 func TestUrlLogin(t *testing.T) {

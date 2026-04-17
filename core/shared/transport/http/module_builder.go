@@ -3,8 +3,8 @@ package http
 import (
 	"context"
 	"fmt"
-	appCtx "go-socket/core/context"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 // ModuleBuilder builds a module HTTP server.

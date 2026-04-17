@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/template"
 
-	"go-socket/scaffold/models"
+	"wechat-clone/scaffold/models"
 )
 
 func GenerateRouting(spec *models.APISpec) (string, error) {
@@ -95,8 +95,8 @@ func buildRoutingTemplateData(group moduleEndpoints) routingTemplateData {
 		RequestDtoImport:  group.Module.ImportRoot + "/application/dto/in",
 		ResponseDtoImport: group.Module.ImportRoot + "/application/dto/out",
 		HandlerImport:     group.Module.ImportRoot + "/transport/http/handler",
-		DispatcherImport:  "go-socket/core/shared/pkg/cqrs",
-		WrapperImport:     "go-socket/core/shared/transport/httpx",
+		DispatcherImport:  "wechat-clone/core/shared/pkg/cqrs",
+		WrapperImport:     "wechat-clone/core/shared/transport/httpx",
 	}
 
 	publicSeen := make(map[string]bool)

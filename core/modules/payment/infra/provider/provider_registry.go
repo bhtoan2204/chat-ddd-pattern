@@ -5,10 +5,10 @@ import (
 	"errors"
 	"strings"
 
-	"go-socket/core/modules/payment/domain/entity"
-	domainservice "go-socket/core/modules/payment/domain/service"
-	"go-socket/core/modules/payment/providers"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/payment/domain/entity"
+	domainservice "wechat-clone/core/modules/payment/domain/service"
+	"wechat-clone/core/modules/payment/providers"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type paymentProviderRegistry struct {

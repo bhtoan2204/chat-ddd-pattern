@@ -2,9 +2,9 @@ package xpaseto
 
 import (
 	"context"
-	"go-socket/core/modules/account/domain/entity"
-	"go-socket/core/shared/config"
 	"testing"
+	"wechat-clone/core/modules/account/domain/entity"
+	"wechat-clone/core/shared/config"
 )
 
 func TestPaseto(t *testing.T) {

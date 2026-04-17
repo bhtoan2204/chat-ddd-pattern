@@ -2,19 +2,19 @@ package assembly
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	roomcommand "go-socket/core/modules/room/application/command"
-	roomquery "go-socket/core/modules/room/application/query"
-	roomservice "go-socket/core/modules/room/application/service"
-	roomrepo "go-socket/core/modules/room/infra/persistent/repository"
-	roomprojection "go-socket/core/modules/room/infra/projection/cassandra"
-	roomserver "go-socket/core/modules/room/transport/server"
-	roomsocket "go-socket/core/modules/room/transport/websocket"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
-	modruntime "go-socket/core/shared/runtime"
-	"go-socket/core/shared/transport/http"
+	appCtx "wechat-clone/core/context"
+	roomcommand "wechat-clone/core/modules/room/application/command"
+	roomquery "wechat-clone/core/modules/room/application/query"
+	roomservice "wechat-clone/core/modules/room/application/service"
+	roomrepo "wechat-clone/core/modules/room/infra/persistent/repository"
+	roomprojection "wechat-clone/core/modules/room/infra/projection/cassandra"
+	roomserver "wechat-clone/core/modules/room/transport/server"
+	roomsocket "wechat-clone/core/modules/room/transport/websocket"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
+	modruntime "wechat-clone/core/shared/runtime"
+	"wechat-clone/core/shared/transport/http"
 )
 
 func buildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {

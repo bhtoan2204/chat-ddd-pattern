@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	es8 "github.com/elastic/go-elasticsearch/v8"
 )

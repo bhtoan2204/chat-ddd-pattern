@@ -11,8 +11,8 @@ import (
 	"strings"
 	"text/template"
 
-	"go-socket/scaffold/models"
-	"go-socket/scaffold/utils"
+	"wechat-clone/scaffold/models"
+	"wechat-clone/scaffold/utils"
 )
 
 func GenerateHandler(endpoints []models.Endpoint) (string, error) {
@@ -77,7 +77,7 @@ func writeHandlerFile(tmpl *template.Template, module modulePaths, ep models.End
 		ResponseType:      responseType(ep.Response),
 		RequestDtoImport:  module.ImportRoot + "/application/dto/in",
 		ResponseDtoImport: module.ImportRoot + "/application/dto/out",
-		DispatcherImport:  "go-socket/core/shared/pkg/cqrs",
+		DispatcherImport:  "wechat-clone/core/shared/pkg/cqrs",
 		DispatcherPackage: "cqrs",
 		DispatcherField:   dispatcherField,
 		RequestSetup:      buildRequestSetup(ep),

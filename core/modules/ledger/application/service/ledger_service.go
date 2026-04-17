@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	ledgerprojection "go-socket/core/modules/ledger/application/projection"
-	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
-	"go-socket/core/modules/ledger/domain/entity"
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgerprojection "wechat-clone/core/modules/ledger/application/projection"
+	ledgeraggregate "wechat-clone/core/modules/ledger/domain/aggregate"
+	"wechat-clone/core/modules/ledger/domain/entity"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	eventpkg "wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type TransferToAccountCommand struct {

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"text/template"
 
-	"go-socket/scaffold/models"
+	"wechat-clone/scaffold/models"
 )
 
 func TestRegistryTemplateIncludesSocketHookWhenWebsocketTransportExists(t *testing.T) {
@@ -21,7 +21,7 @@ func TestRegistryTemplateIncludesSocketHookWhenWebsocketTransportExists(t *testi
 	group := moduleEndpoints{
 		Module: modulePaths{
 			FsRoot:     moduleRoot,
-			ImportRoot: "go-socket/core/modules/room",
+			ImportRoot: "wechat-clone/core/modules/room",
 		},
 		Endpoints: []models.Endpoint{
 			{
@@ -54,7 +54,7 @@ func TestRegistryTemplateIncludesSocketHookWhenWebsocketTransportExists(t *testi
 	}
 
 	output := string(formatted)
-	if !strings.Contains(output, `"go-socket/core/modules/room/transport/websocket"`) {
+	if !strings.Contains(output, `"wechat-clone/core/modules/room/transport/websocket"`) {
 		t.Fatalf("expected websocket transport import, got:\n%s", output)
 	}
 	if !strings.Contains(output, "func (s *roomHTTPServer) RegisterSocketRoutes(") {

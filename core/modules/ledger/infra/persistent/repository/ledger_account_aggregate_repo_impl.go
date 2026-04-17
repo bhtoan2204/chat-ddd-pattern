@@ -7,10 +7,10 @@ import (
 	"reflect"
 	"strings"
 
-	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgeraggregate "wechat-clone/core/modules/ledger/domain/aggregate"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	eventpkg "wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type ledgerAccountAggregateRepositoryImpl struct {

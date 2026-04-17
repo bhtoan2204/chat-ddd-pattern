@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 var ErrMessageAggregateNil = errors.New("message aggregate is nil")

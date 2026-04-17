@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/room/infra/projection/cassandra/views"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/room/infra/projection/cassandra/views"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"github.com/gocql/gocql"
 )

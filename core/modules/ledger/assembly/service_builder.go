@@ -1,9 +1,9 @@
 package assembly
 
 import (
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/ledger/application/service"
-	ledgerrepo "go-socket/core/modules/ledger/infra/persistent/repository"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/ledger/application/service"
+	ledgerrepo "wechat-clone/core/modules/ledger/infra/persistent/repository"
 )
 
 func BuildService(appContext *appCtx.AppContext) service.LedgerService {

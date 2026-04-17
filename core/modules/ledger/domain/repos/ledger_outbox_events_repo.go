@@ -3,7 +3,7 @@ package repos
 import (
 	"context"
 
-	eventpkg "go-socket/core/shared/pkg/event"
+	eventpkg "wechat-clone/core/shared/pkg/event"
 )
 
 //go:generate mockgen -package=repos -destination=ledger_outbox_events_repo_mock.go -source=ledger_outbox_events_repo.go

@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"go-socket/core/modules/payment/application/dto/in"
-	paymentaggregate "go-socket/core/modules/payment/domain/aggregate"
-	"go-socket/core/modules/payment/domain/entity"
-	repos "go-socket/core/modules/payment/domain/repos"
-	domainservice "go-socket/core/modules/payment/domain/service"
-	sharedlock "go-socket/core/shared/infra/lock"
-	"go-socket/core/shared/pkg/actorctx"
+	"wechat-clone/core/modules/payment/application/dto/in"
+	paymentaggregate "wechat-clone/core/modules/payment/domain/aggregate"
+	"wechat-clone/core/modules/payment/domain/entity"
+	repos "wechat-clone/core/modules/payment/domain/repos"
+	domainservice "wechat-clone/core/modules/payment/domain/service"
+	sharedlock "wechat-clone/core/shared/infra/lock"
+	"wechat-clone/core/shared/pkg/actorctx"
 
 	"go.uber.org/mock/gomock"
 )

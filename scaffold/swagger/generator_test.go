@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"go-socket/scaffold/models"
+	"wechat-clone/scaffold/models"
 )
 
 func TestBuildDocument(t *testing.T) {

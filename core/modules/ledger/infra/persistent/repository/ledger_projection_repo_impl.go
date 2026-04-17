@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	ledgerprojection "go-socket/core/modules/ledger/application/projection"
-	"go-socket/core/modules/ledger/domain/entity"
-	"go-socket/core/modules/ledger/infra/persistent/model"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgerprojection "wechat-clone/core/modules/ledger/application/projection"
+	"wechat-clone/core/modules/ledger/domain/entity"
+	"wechat-clone/core/modules/ledger/infra/persistent/model"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
 )

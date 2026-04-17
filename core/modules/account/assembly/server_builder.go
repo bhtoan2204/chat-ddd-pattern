@@ -2,17 +2,17 @@ package assembly
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/account/application/command"
-	"go-socket/core/modules/account/application/provider"
-	"go-socket/core/modules/account/application/provider/google"
-	"go-socket/core/modules/account/application/query"
-	accountservice "go-socket/core/modules/account/application/service"
-	accountrepo "go-socket/core/modules/account/infra/persistent/repository"
-	accountserver "go-socket/core/modules/account/transport/server"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/transport/http"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/account/application/command"
+	"wechat-clone/core/modules/account/application/provider"
+	"wechat-clone/core/modules/account/application/provider/google"
+	"wechat-clone/core/modules/account/application/query"
+	accountservice "wechat-clone/core/modules/account/application/service"
+	accountrepo "wechat-clone/core/modules/account/infra/persistent/repository"
+	accountserver "wechat-clone/core/modules/account/transport/server"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/transport/http"
 )
 
 func buildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {

@@ -4,15 +4,15 @@ package query
 import (
 	"context"
 	"fmt"
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/account/application/dto/in"
-	"go-socket/core/modules/account/application/dto/out"
-	"go-socket/core/modules/account/application/service"
-	"go-socket/core/modules/account/domain/entity"
-	repos "go-socket/core/modules/account/domain/repos"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
 	"strings"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/account/application/dto/in"
+	"wechat-clone/core/modules/account/application/dto/out"
+	"wechat-clone/core/modules/account/application/service"
+	"wechat-clone/core/modules/account/domain/entity"
+	repos "wechat-clone/core/modules/account/domain/repos"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/samber/lo"
 )

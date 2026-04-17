@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"go-socket/core/modules/payment/domain/entity"
-	sharedevents "go-socket/core/shared/contracts/events"
+	"wechat-clone/core/modules/payment/domain/entity"
+	sharedevents "wechat-clone/core/shared/contracts/events"
 )
 
 func TestNewProviderTopUpAggregateQueuesCreatedEvent(t *testing.T) {

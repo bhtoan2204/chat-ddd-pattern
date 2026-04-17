@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 
-	"go-socket/core/modules/account/domain/rules"
-	valueobject "go-socket/core/modules/account/domain/value_object"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/account/domain/rules"
+	valueobject "wechat-clone/core/modules/account/domain/value_object"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 //go:generate mockgen -package=service -destination=password_reuse_mock.go -source=password_reuse.go

@@ -3,17 +3,17 @@ package command
 import (
 	"context"
 	"fmt"
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/account/application/dto/in"
-	"go-socket/core/modules/account/application/dto/out"
-	"go-socket/core/modules/account/application/service"
-	"go-socket/core/modules/account/application/support"
-	repos "go-socket/core/modules/account/domain/repos"
-	"go-socket/core/shared/infra/storage"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
 	"net/http"
 	"time"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/account/application/dto/in"
+	"wechat-clone/core/modules/account/application/dto/out"
+	"wechat-clone/core/modules/account/application/service"
+	"wechat-clone/core/modules/account/application/support"
+	repos "wechat-clone/core/modules/account/domain/repos"
+	"wechat-clone/core/shared/infra/storage"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type createPresignedURLHandler struct {

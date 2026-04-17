@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/template"
 
-	"go-socket/scaffold/models"
-	"go-socket/scaffold/utils"
+	"wechat-clone/scaffold/models"
+	"wechat-clone/scaffold/utils"
 )
 
 func GenerateApplicationHandler(endpoints []models.Endpoint) (string, error) {
@@ -112,7 +112,7 @@ func writeApplicationHandlerFile(tmpl *template.Template, module modulePaths, ep
 		ResponseType:      responseType(ep.Response),
 		RequestDtoImport:  module.ImportRoot + "/application/dto/in",
 		ResponseDtoImport: module.ImportRoot + "/application/dto/out",
-		CQRSImport:        "go-socket/core/shared/pkg/cqrs",
+		CQRSImport:        "wechat-clone/core/shared/pkg/cqrs",
 		Imports:           config.Imports,
 		Params:            config.Params,
 	}
@@ -174,7 +174,7 @@ func applicationHandlerKind(ep models.Endpoint) string {
 
 func applicationHandlerConfigForEndpoint(module modulePaths, ep models.Endpoint) (applicationHandlerConfig, error) {
 	switch module.ImportRoot {
-	case "go-socket/core/modules/account":
+	case "wechat-clone/core/modules/account":
 		return applicationHandlerConfig{
 			Imports: append(commonApplicationHandlerImports(module),
 				applicationHandlerImport{Path: module.ImportRoot + "/application/service"},
@@ -183,12 +183,12 @@ func applicationHandlerConfigForEndpoint(module modulePaths, ep models.Endpoint)
 				applicationHandlerParam{Name: "services", Type: "service.Services"},
 			),
 		}, nil
-	case "go-socket/core/modules/notification":
+	case "wechat-clone/core/modules/notification":
 		return applicationHandlerConfig{
 			Imports: commonApplicationHandlerImports(module),
 			Params:  commonApplicationHandlerParams(),
 		}, nil
-	case "go-socket/core/modules/ledger":
+	case "wechat-clone/core/modules/ledger":
 		return applicationHandlerConfig{
 			Imports: append(commonApplicationHandlerImports(module),
 				applicationHandlerImport{Path: module.ImportRoot + "/application/service"},
@@ -197,9 +197,9 @@ func applicationHandlerConfigForEndpoint(module modulePaths, ep models.Endpoint)
 				applicationHandlerParam{Name: "service", Type: "*service.LedgerService"},
 			),
 		}, nil
-	case "go-socket/core/modules/payment":
+	case "wechat-clone/core/modules/payment":
 		return paymentApplicationHandlerConfig(module, ep), nil
-	case "go-socket/core/modules/room":
+	case "wechat-clone/core/modules/room":
 		return roomApplicationHandlerConfig(module, ep), nil
 	default:
 		return applicationHandlerConfig{}, fmt.Errorf("unsupported module import root: %s", module.ImportRoot)
@@ -257,7 +257,7 @@ func roomApplicationHandlerConfig(module modulePaths, ep models.Endpoint) applic
 
 func commonApplicationHandlerImports(module modulePaths) []applicationHandlerImport {
 	return []applicationHandlerImport{
-		{Alias: "appCtx", Path: "go-socket/core/context"},
+		{Alias: "appCtx", Path: "wechat-clone/core/context"},
 		{Alias: "repos", Path: module.ImportRoot + "/domain/repos"},
 	}
 }

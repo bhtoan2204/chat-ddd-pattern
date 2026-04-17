@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"reflect"
 
-	roomprojection "go-socket/core/modules/room/application/projection"
-	"go-socket/core/shared/contracts"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	roomprojection "wechat-clone/core/modules/room/application/projection"
+	"wechat-clone/core/shared/contracts"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )

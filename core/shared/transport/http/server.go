@@ -2,15 +2,15 @@ package http
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/constant"
-	"go-socket/core/shared/infra/idempotency"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/server"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/transport/http/middleware"
 	"net/http"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/constant"
+	"wechat-clone/core/shared/infra/idempotency"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/server"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/transport/http/middleware"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

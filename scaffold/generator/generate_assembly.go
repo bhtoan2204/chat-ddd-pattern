@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"text/template"
 
-	"go-socket/scaffold/models"
+	"wechat-clone/scaffold/models"
 )
 
 type assemblyTemplateData struct {

@@ -3,10 +3,10 @@ package repository
 import (
 	"context"
 
-	appCtx "go-socket/core/context"
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"

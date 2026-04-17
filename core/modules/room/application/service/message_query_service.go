@@ -5,10 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/modules/room/application/projection"
-	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/application/projection"
+	roomsupport "wechat-clone/core/modules/room/application/support"
+	apptypes "wechat-clone/core/modules/room/application/types"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type MessageQueryService interface {

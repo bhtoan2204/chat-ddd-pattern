@@ -3,13 +3,13 @@ package command
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/account/application/dto/in"
-	"go-socket/core/modules/account/application/dto/out"
-	"go-socket/core/modules/account/application/service"
-	repos "go-socket/core/modules/account/domain/repos"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/account/application/dto/in"
+	"wechat-clone/core/modules/account/application/dto/out"
+	"wechat-clone/core/modules/account/application/service"
+	repos "wechat-clone/core/modules/account/domain/repos"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type refreshHandler struct {

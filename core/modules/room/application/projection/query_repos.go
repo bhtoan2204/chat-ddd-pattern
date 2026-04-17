@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"go-socket/core/modules/room/infra/projection/cassandra/views"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/room/infra/projection/cassandra/views"
+	"wechat-clone/core/shared/utils"
 )
 
 //go:generate mockgen -package=projection -destination=query_repos_mock.go -source=query_repos.go

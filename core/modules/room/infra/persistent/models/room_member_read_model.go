@@ -1,8 +1,8 @@
 package models
 
 import (
-	"go-socket/core/modules/room/types"
 	"time"
+	"wechat-clone/core/modules/room/types"
 )
 
 type RoomMemberReadModel struct {

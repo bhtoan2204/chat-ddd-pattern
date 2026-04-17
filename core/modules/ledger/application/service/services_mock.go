@@ -11,9 +11,9 @@ package service
 
 import (
 	context "context"
-	out "go-socket/core/modules/ledger/application/dto/out"
-	entity "go-socket/core/modules/ledger/domain/entity"
 	reflect "reflect"
+	out "wechat-clone/core/modules/ledger/application/dto/out"
+	entity "wechat-clone/core/modules/ledger/domain/entity"
 
 	gomock "go.uber.org/mock/gomock"
 )

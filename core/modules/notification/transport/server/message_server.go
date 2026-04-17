@@ -2,8 +2,8 @@ package server
 
 import (
 	"fmt"
-	notificationmessaging "go-socket/core/modules/notification/application/messaging"
-	"go-socket/core/shared/pkg/stackErr"
+	notificationmessaging "wechat-clone/core/modules/notification/application/messaging"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 //go:generate mockgen -package=server -destination=message_server_mock.go -source=message_server.go

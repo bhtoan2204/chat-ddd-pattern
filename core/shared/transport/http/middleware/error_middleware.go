@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/gin-gonic/gin"
 )

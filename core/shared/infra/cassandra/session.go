@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/gocql/gocql"
 )

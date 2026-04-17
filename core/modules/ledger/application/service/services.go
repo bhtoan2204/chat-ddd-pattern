@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 
-	ledgerout "go-socket/core/modules/ledger/application/dto/out"
-	"go-socket/core/modules/ledger/domain/entity"
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
+	ledgerout "wechat-clone/core/modules/ledger/application/dto/out"
+	"wechat-clone/core/modules/ledger/domain/entity"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
 )
 
 //go:generate mockgen -package=service -destination=services_mock.go -source=services.go

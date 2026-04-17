@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"go-socket/core/modules/notification/types"
+	"wechat-clone/core/modules/notification/types"
 )
 
 func TestNotificationAggregateCreateAndMarkRead(t *testing.T) {

@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/dto/out"
-	roomsupport "go-socket/core/modules/room/application/support"
-	roomrepos "go-socket/core/modules/room/domain/repos"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/application/dto/in"
+	"wechat-clone/core/modules/room/application/dto/out"
+	roomsupport "wechat-clone/core/modules/room/application/support"
+	roomrepos "wechat-clone/core/modules/room/domain/repos"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type joinRoomHandler struct {

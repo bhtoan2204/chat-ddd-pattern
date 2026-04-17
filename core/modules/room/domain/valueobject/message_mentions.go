@@ -1,7 +1,7 @@
 package valueobject
 
 import (
-	sharedevents "go-socket/core/shared/contracts/events"
+	sharedevents "wechat-clone/core/shared/contracts/events"
 )
 
 type MessageMentions struct {

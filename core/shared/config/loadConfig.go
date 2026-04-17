@@ -3,7 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/sethvargo/go-envconfig"
 )

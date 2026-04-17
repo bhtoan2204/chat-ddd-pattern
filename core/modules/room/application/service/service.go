@@ -3,10 +3,10 @@ package service
 import (
 	"context"
 
-	appCtx "go-socket/core/context"
-	"go-socket/core/modules/room/application/projection"
-	apptypes "go-socket/core/modules/room/application/types"
-	"go-socket/core/modules/room/types"
+	appCtx "wechat-clone/core/context"
+	"wechat-clone/core/modules/room/application/projection"
+	apptypes "wechat-clone/core/modules/room/application/types"
+	"wechat-clone/core/modules/room/types"
 )
 
 //go:generate mockgen -package=service -destination=service_mock.go -source=service.go

@@ -1,8 +1,8 @@
 package entity
 
 import (
-	"go-socket/core/modules/notification/types"
 	"time"
+	"wechat-clone/core/modules/notification/types"
 )
 
 type NotificationEntity struct {

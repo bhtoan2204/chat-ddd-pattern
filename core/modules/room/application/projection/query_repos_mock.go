@@ -11,10 +11,10 @@ package projection
 
 import (
 	context "context"
-	views "go-socket/core/modules/room/infra/projection/cassandra/views"
-	utils "go-socket/core/shared/utils"
 	reflect "reflect"
 	time "time"
+	views "wechat-clone/core/modules/room/infra/projection/cassandra/views"
+	utils "wechat-clone/core/shared/utils"
 
 	gomock "go.uber.org/mock/gomock"
 )

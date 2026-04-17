@@ -3,9 +3,9 @@ package projection
 import (
 	"context"
 
-	"go-socket/core/modules/room/infra/projection/cassandra/views"
-	sharedcassandra "go-socket/core/shared/infra/cassandra"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/infra/projection/cassandra/views"
+	sharedcassandra "wechat-clone/core/shared/infra/cassandra"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/gocql/gocql"
 )

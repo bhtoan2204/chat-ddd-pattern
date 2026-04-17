@@ -2,11 +2,11 @@
 package http
 
 import (
-	"go-socket/core/modules/payment/application/dto/in"
-	"go-socket/core/modules/payment/application/dto/out"
-	"go-socket/core/modules/payment/transport/http/handler"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/transport/httpx"
+	"wechat-clone/core/modules/payment/application/dto/in"
+	"wechat-clone/core/modules/payment/application/dto/out"
+	"wechat-clone/core/modules/payment/transport/http/handler"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/transport/httpx"
 
 	"github.com/gin-gonic/gin"
 )

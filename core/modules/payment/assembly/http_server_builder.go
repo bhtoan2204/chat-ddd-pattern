@@ -2,18 +2,18 @@ package assembly
 
 import (
 	"context"
-	appCtx "go-socket/core/context"
-	paymentcommand "go-socket/core/modules/payment/application/command"
-	paymentservice "go-socket/core/modules/payment/application/service"
-	paymentrepo "go-socket/core/modules/payment/infra/persistent/repository"
-	provideradapter "go-socket/core/modules/payment/infra/provider"
-	"go-socket/core/modules/payment/providers"
-	mockprovider "go-socket/core/modules/payment/providers/mock"
-	stripeprovider "go-socket/core/modules/payment/providers/stripe"
-	paymentserver "go-socket/core/modules/payment/transport/server"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/transport/http"
+	appCtx "wechat-clone/core/context"
+	paymentcommand "wechat-clone/core/modules/payment/application/command"
+	paymentservice "wechat-clone/core/modules/payment/application/service"
+	paymentrepo "wechat-clone/core/modules/payment/infra/persistent/repository"
+	provideradapter "wechat-clone/core/modules/payment/infra/provider"
+	"wechat-clone/core/modules/payment/providers"
+	mockprovider "wechat-clone/core/modules/payment/providers/mock"
+	stripeprovider "wechat-clone/core/modules/payment/providers/stripe"
+	paymentserver "wechat-clone/core/modules/payment/transport/server"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/transport/http"
 )
 
 func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {

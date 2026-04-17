@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"go-socket/core/modules/account/application/provider"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
 	"net/http"
+	"wechat-clone/core/modules/account/application/provider"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 	"golang.org/x/oauth2"

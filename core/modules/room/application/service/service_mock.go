@@ -11,9 +11,9 @@ package service
 
 import (
 	context "context"
-	types "go-socket/core/modules/room/application/types"
-	types0 "go-socket/core/modules/room/types"
 	reflect "reflect"
+	types "wechat-clone/core/modules/room/application/types"
+	types0 "wechat-clone/core/modules/room/types"
 
 	gomock "go.uber.org/mock/gomock"
 )

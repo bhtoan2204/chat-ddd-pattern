@@ -4,21 +4,21 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	appCtx "go-socket/core/context"
-	accountassembly "go-socket/core/modules/account/assembly"
-	ledgerassembly "go-socket/core/modules/ledger/assembly"
-	notificationassembly "go-socket/core/modules/notification/assembly"
-	paymentassembly "go-socket/core/modules/payment/assembly"
-	roomassembly "go-socket/core/modules/room/assembly"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/infra/db"
-	"go-socket/core/shared/pkg/logging"
-	apptransport "go-socket/core/shared/transport/app"
-	"go-socket/core/shared/utils"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
+	appCtx "wechat-clone/core/context"
+	accountassembly "wechat-clone/core/modules/account/assembly"
+	ledgerassembly "wechat-clone/core/modules/ledger/assembly"
+	notificationassembly "wechat-clone/core/modules/notification/assembly"
+	paymentassembly "wechat-clone/core/modules/payment/assembly"
+	roomassembly "wechat-clone/core/modules/room/assembly"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/infra/db"
+	"wechat-clone/core/shared/pkg/logging"
+	apptransport "wechat-clone/core/shared/transport/app"
+	"wechat-clone/core/shared/utils"
 
 	"go.uber.org/zap"
 )
@@ -62,7 +62,7 @@ func main() {
 		paymentassembly.BuildHTTPServer,
 	))
 
-	serviceName := "go-socket"
+	serviceName := "wechat-clone"
 	serviceAddress, err := utils.GetInternalIP()
 	if err != nil {
 		logger.Errorw("Failed to detect internal IP, fallback to localhost", zap.Error(err))

@@ -3,10 +3,10 @@ package command
 import (
 	"context"
 
-	"go-socket/core/modules/payment/application/dto/in"
-	"go-socket/core/modules/payment/application/dto/out"
-	paymentservice "go-socket/core/modules/payment/application/service"
-	"go-socket/core/shared/pkg/cqrs"
+	"wechat-clone/core/modules/payment/application/dto/in"
+	"wechat-clone/core/modules/payment/application/dto/out"
+	paymentservice "wechat-clone/core/modules/payment/application/service"
+	"wechat-clone/core/shared/pkg/cqrs"
 )
 
 type createPaymentHandler struct {

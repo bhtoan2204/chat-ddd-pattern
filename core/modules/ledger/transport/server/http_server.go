@@ -4,11 +4,11 @@ package server
 import (
 	"context"
 
-	"go-socket/core/modules/ledger/application/dto/in"
-	"go-socket/core/modules/ledger/application/dto/out"
-	ledgerhttp "go-socket/core/modules/ledger/transport/http"
-	"go-socket/core/shared/pkg/cqrs"
-	infrahttp "go-socket/core/shared/transport/http"
+	"wechat-clone/core/modules/ledger/application/dto/in"
+	"wechat-clone/core/modules/ledger/application/dto/out"
+	ledgerhttp "wechat-clone/core/modules/ledger/transport/http"
+	"wechat-clone/core/shared/pkg/cqrs"
+	infrahttp "wechat-clone/core/shared/transport/http"
 
 	"github.com/gin-gonic/gin"
 )

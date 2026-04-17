@@ -3,7 +3,7 @@ package repos
 import (
 	"context"
 
-	"go-socket/core/modules/ledger/domain/aggregate"
+	"wechat-clone/core/modules/ledger/domain/aggregate"
 )
 
 //go:generate mockgen -package=repos -destination=ledger_account_aggregate_repo_mock.go -source=ledger_account_aggregate_repo.go

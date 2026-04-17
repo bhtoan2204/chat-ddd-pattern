@@ -1,11 +1,11 @@
 package assembly
 
 import (
-	appCtx "go-socket/core/context"
-	notificationserver "go-socket/core/modules/notification/transport/server"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
-	modruntime "go-socket/core/shared/runtime"
+	appCtx "wechat-clone/core/context"
+	notificationserver "wechat-clone/core/modules/notification/transport/server"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
+	modruntime "wechat-clone/core/shared/runtime"
 )
 
 func buildMessagingRuntime(cfg *config.Config, appCtx *appCtx.AppContext) (modruntime.Module, error) {

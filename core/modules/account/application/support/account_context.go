@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"go-socket/core/shared/pkg/actorctx"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/actorctx"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 func ActorFromCtx(ctx context.Context) (*actorctx.Actor, error) {

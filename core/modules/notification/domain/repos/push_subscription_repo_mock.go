@@ -11,9 +11,9 @@ package repos
 
 import (
 	context "context"
-	aggregate "go-socket/core/modules/notification/domain/aggregate"
-	entity "go-socket/core/modules/notification/domain/entity"
 	reflect "reflect"
+	aggregate "wechat-clone/core/modules/notification/domain/aggregate"
+	entity "wechat-clone/core/modules/notification/domain/entity"
 
 	gomock "go.uber.org/mock/gomock"
 )

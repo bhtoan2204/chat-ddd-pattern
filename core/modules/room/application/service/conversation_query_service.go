@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 
-	"go-socket/core/modules/room/application/projection"
-	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/room/application/projection"
+	roomsupport "wechat-clone/core/modules/room/application/support"
+	apptypes "wechat-clone/core/modules/room/application/types"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"go.uber.org/zap"
 )

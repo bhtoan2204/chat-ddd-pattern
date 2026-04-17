@@ -3,14 +3,14 @@ package repository
 import (
 	"context"
 
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/modules/room/domain/repos"
-	roomcache "go-socket/core/modules/room/infra/cache"
-	"go-socket/core/modules/room/infra/persistent/models"
-	sharedcache "go-socket/core/shared/infra/cache"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/modules/room/domain/repos"
+	roomcache "wechat-clone/core/modules/room/infra/cache"
+	"wechat-clone/core/modules/room/infra/persistent/models"
+	sharedcache "wechat-clone/core/shared/infra/cache"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/utils"
 
 	"github.com/samber/lo"
 	"go.uber.org/zap"

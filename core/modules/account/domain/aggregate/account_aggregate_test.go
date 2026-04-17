@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	valueobject "go-socket/core/modules/account/domain/value_object"
-	accounttypes "go-socket/core/modules/account/types"
+	valueobject "wechat-clone/core/modules/account/domain/value_object"
+	accounttypes "wechat-clone/core/modules/account/types"
 )
 
 func TestAccountAggregateRegister(t *testing.T) {

@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"strings"
 
-	roomprojection "go-socket/core/modules/room/application/projection"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
+	roomprojection "wechat-clone/core/modules/room/application/projection"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	es8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"

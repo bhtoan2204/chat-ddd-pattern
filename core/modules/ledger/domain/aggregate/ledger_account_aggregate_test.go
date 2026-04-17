@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	ledgerentity "go-socket/core/modules/ledger/domain/entity"
-	eventpkg "go-socket/core/shared/pkg/event"
+	ledgerentity "wechat-clone/core/modules/ledger/domain/entity"
+	eventpkg "wechat-clone/core/shared/pkg/event"
 )
 
 func TestLedgerAccountAggregateTransferLifecycle(t *testing.T) {

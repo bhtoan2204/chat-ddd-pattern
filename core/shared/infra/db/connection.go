@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	oracle "github.com/godoes/gorm-oracle"
 	"go.uber.org/zap"

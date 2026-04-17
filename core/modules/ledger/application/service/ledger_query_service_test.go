@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	aggregate "go-socket/core/modules/ledger/domain/aggregate"
-	"go-socket/core/modules/ledger/domain/entity"
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	"go-socket/core/shared/utils"
+	aggregate "wechat-clone/core/modules/ledger/domain/aggregate"
+	"wechat-clone/core/modules/ledger/domain/entity"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	"wechat-clone/core/shared/utils"
 
 	"go.uber.org/mock/gomock"
 )

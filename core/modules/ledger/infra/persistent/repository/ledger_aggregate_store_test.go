@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
-	eventpkg "go-socket/core/shared/pkg/event"
+	ledgeraggregate "wechat-clone/core/modules/ledger/domain/aggregate"
+	eventpkg "wechat-clone/core/shared/pkg/event"
 )
 
 type fakeLedgerEventStore struct {

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"go-socket/core/shared/config"
+	"wechat-clone/core/shared/config"
 
 	lib "github.com/SherClockHolmes/webpush-go"
 )

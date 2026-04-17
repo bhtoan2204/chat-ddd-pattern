@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go-socket/scaffold/models"
-	"go-socket/scaffold/utils"
 	"go/format"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
+	"wechat-clone/scaffold/models"
+	"wechat-clone/scaffold/utils"
 )
 
 func GenerateResponse(endpoints []models.Endpoint) (string, error) {

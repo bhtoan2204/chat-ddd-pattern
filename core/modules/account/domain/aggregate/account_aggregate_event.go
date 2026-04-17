@@ -1,8 +1,8 @@
 package aggregate
 
 import (
-	accounttypes "go-socket/core/modules/account/types"
 	"time"
+	accounttypes "wechat-clone/core/modules/account/types"
 )
 
 type EventAccountCreated struct {

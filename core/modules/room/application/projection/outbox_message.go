@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type roomOutboxMessage struct {

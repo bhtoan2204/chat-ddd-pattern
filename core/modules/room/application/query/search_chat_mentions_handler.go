@@ -3,13 +3,13 @@ package query
 import (
 	"context"
 
-	"go-socket/core/modules/room/application/dto/in"
-	"go-socket/core/modules/room/application/dto/out"
-	roomservice "go-socket/core/modules/room/application/service"
-	roomsupport "go-socket/core/modules/room/application/support"
-	apptypes "go-socket/core/modules/room/application/types"
-	"go-socket/core/shared/pkg/cqrs"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/room/application/dto/in"
+	"wechat-clone/core/modules/room/application/dto/out"
+	roomservice "wechat-clone/core/modules/room/application/service"
+	roomsupport "wechat-clone/core/modules/room/application/support"
+	apptypes "wechat-clone/core/modules/room/application/types"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type searchChatMentionsHandler struct {

@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"go-socket/core/modules/room/domain/entity"
-	"go-socket/core/modules/room/domain/repos"
-	sharedevents "go-socket/core/shared/contracts/events"
+	"wechat-clone/core/modules/room/domain/entity"
+	"wechat-clone/core/modules/room/domain/repos"
+	sharedevents "wechat-clone/core/shared/contracts/events"
 
 	"go.uber.org/mock/gomock"
 )

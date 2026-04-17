@@ -2,9 +2,9 @@ package redis
 
 import (
 	"fmt"
-	"go-socket/core/shared/config"
-	"go-socket/core/shared/pkg/stackErr"
 	"time"
+	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/redis/go-redis/v9"
 )

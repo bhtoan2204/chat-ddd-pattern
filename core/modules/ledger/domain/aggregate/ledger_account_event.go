@@ -3,7 +3,7 @@ package aggregate
 import (
 	"time"
 
-	"go-socket/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/event"
 )
 
 var (

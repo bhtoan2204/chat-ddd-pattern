@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"go-socket/scaffold/models"
+	"wechat-clone/scaffold/models"
 )
 
 var pathParamPattern = regexp.MustCompile(`:([A-Za-z0-9_]+)`)

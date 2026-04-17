@@ -6,9 +6,9 @@ import (
 	"errors"
 	"fmt"
 
-	"go-socket/core/modules/account/domain/entity"
-	sharedcache "go-socket/core/shared/infra/cache"
-	"go-socket/core/shared/pkg/stackErr"
+	"wechat-clone/core/modules/account/domain/entity"
+	sharedcache "wechat-clone/core/shared/infra/cache"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/redis/go-redis/v9"
 )

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"text/template"
 
-	"go-socket/scaffold/models"
+	"wechat-clone/scaffold/models"
 )
 
 func TestRequestTemplateFormats(t *testing.T) {

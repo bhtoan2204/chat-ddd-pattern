@@ -3,9 +3,9 @@ package valueobject
 import (
 	"encoding/json"
 	"errors"
-	"go-socket/core/shared/pkg/stackErr"
 	"net/mail"
 	"strings"
+	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type Email struct {

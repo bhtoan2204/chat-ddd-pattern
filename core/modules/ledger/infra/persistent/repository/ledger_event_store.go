@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"time"
 
-	ledgeraggregate "go-socket/core/modules/ledger/domain/aggregate"
-	ledgerrepos "go-socket/core/modules/ledger/domain/repos"
-	"go-socket/core/modules/ledger/infra/persistent/model"
-	eventpkg "go-socket/core/shared/pkg/event"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgeraggregate "wechat-clone/core/modules/ledger/domain/aggregate"
+	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	"wechat-clone/core/modules/ledger/infra/persistent/model"
+	eventpkg "wechat-clone/core/shared/pkg/event"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"

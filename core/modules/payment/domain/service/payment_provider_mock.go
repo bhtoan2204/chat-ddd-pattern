@@ -11,8 +11,8 @@ package service
 
 import (
 	context "context"
-	entity "go-socket/core/modules/payment/domain/entity"
 	reflect "reflect"
+	entity "wechat-clone/core/modules/payment/domain/entity"
 
 	gomock "go.uber.org/mock/gomock"
 )

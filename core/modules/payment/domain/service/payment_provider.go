@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"go-socket/core/modules/payment/domain/entity"
+	"wechat-clone/core/modules/payment/domain/entity"
 )
 
 //go:generate mockgen -package=service -destination=payment_provider_mock.go -source=payment_provider.go

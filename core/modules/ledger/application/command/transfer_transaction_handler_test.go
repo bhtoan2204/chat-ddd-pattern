@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	"go-socket/core/modules/ledger/application/dto/in"
-	"go-socket/core/modules/ledger/application/service"
-	"go-socket/core/modules/ledger/domain/entity"
-	"go-socket/core/shared/infra/lock"
-	"go-socket/core/shared/pkg/actorctx"
+	"wechat-clone/core/modules/ledger/application/dto/in"
+	"wechat-clone/core/modules/ledger/application/service"
+	"wechat-clone/core/modules/ledger/domain/entity"
+	"wechat-clone/core/shared/infra/lock"
+	"wechat-clone/core/shared/pkg/actorctx"
 
 	"go.uber.org/mock/gomock"
 )

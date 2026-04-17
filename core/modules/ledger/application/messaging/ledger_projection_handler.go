@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	ledgerprojection "go-socket/core/modules/ledger/application/projection"
-	"go-socket/core/shared/contracts"
-	"go-socket/core/shared/pkg/logging"
-	"go-socket/core/shared/pkg/stackErr"
+	ledgerprojection "wechat-clone/core/modules/ledger/application/projection"
+	"wechat-clone/core/shared/contracts"
+	"wechat-clone/core/shared/pkg/logging"
+	"wechat-clone/core/shared/pkg/stackErr"
 
 	"go.uber.org/zap"
 )
