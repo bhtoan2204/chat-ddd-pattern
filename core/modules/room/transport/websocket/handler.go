@@ -100,7 +100,7 @@ func handleRealtimeMessage(ctx context.Context, hub IHub, msg pubsub.Message) er
 		}
 		payload, err := json.Marshal(event.Payload)
 		if err != nil {
-			return stackErr.Error(fmt.Errorf("marshal realtime chat message payload: %v", err))
+			return stackErr.Error(fmt.Errorf("marshal realtime chat message payload: %w", err))
 		}
 
 		if err := hub.Publish(ctx, Message{

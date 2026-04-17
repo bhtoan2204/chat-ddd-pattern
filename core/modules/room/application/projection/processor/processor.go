@@ -78,7 +78,7 @@ func (p *processor) handleRoomOutboxEvent(ctx context.Context, value []byte) err
 
 	var event contracts.OutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackErr.Error(fmt.Errorf("unmarshal room outbox event failed: %v", err))
+		return stackErr.Error(fmt.Errorf("unmarshal room outbox event failed: %w", err))
 	}
 
 	log.Infow("handle room outbox event",
@@ -101,7 +101,7 @@ func (p *processor) handleRoomOutboxEvent(ctx context.Context, value []byte) err
 func (p *processor) projectRoomAggregateSynced(ctx context.Context, raw json.RawMessage) error {
 	payloadAny, err := decodeEventPayload(ctx, roomprojection.EventRoomAggregateProjectionSynced, raw)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("decode room aggregate projection payload failed: %v", err))
+		return stackErr.Error(fmt.Errorf("decode room aggregate projection payload failed: %w", err))
 	}
 	if payloadAny == nil {
 		return nil
@@ -120,7 +120,7 @@ func (p *processor) projectRoomAggregateSynced(ctx context.Context, raw json.Raw
 func (p *processor) projectRoomAggregateDeleted(ctx context.Context, raw json.RawMessage) error {
 	payloadAny, err := decodeEventPayload(ctx, roomprojection.EventRoomAggregateProjectionDeleted, raw)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("decode room aggregate delete payload failed: %v", err))
+		return stackErr.Error(fmt.Errorf("decode room aggregate delete payload failed: %w", err))
 	}
 	if payloadAny == nil {
 		return nil
@@ -148,7 +148,7 @@ func (p *processor) projectRoomAggregateDeleted(ctx context.Context, raw json.Ra
 func (p *processor) projectMessageAggregateSynced(ctx context.Context, raw json.RawMessage) error {
 	payloadAny, err := decodeEventPayload(ctx, roomprojection.EventMessageAggregateProjectionSynced, raw)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("decode message aggregate projection payload failed: %v", err))
+		return stackErr.Error(fmt.Errorf("decode message aggregate projection payload failed: %w", err))
 	}
 	if payloadAny == nil {
 		return nil
@@ -161,13 +161,13 @@ func (p *processor) projectMessageAggregateSynced(ctx context.Context, raw json.
 
 	if p.servingProjector != nil {
 		if err := p.servingProjector.SyncMessageAggregate(ctx, payload); err != nil {
-			return stackErr.Error(fmt.Errorf("sync cassandra message aggregate failed: %v", err))
+			return stackErr.Error(fmt.Errorf("sync cassandra message aggregate failed: %w", err))
 		}
 	}
 
 	if p.searchIndexer != nil && payload.Message != nil {
 		if err := p.searchIndexer.SyncMessage(ctx, payload.Message); err != nil {
-			return stackErr.Error(fmt.Errorf("sync elasticsearch message failed: %v", err))
+			return stackErr.Error(fmt.Errorf("sync elasticsearch message failed: %w", err))
 		}
 	}
 	return nil

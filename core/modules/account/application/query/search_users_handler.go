@@ -56,7 +56,7 @@ func (u *searchUsersHandler) Handle(ctx context.Context, req *in.SearchUsersRequ
 
 	accounts, total, err := u.accountRepos.SearchUsers(ctx, q, limit, offset)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("search users: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("search users: %w", err))
 	}
 
 	return &out.SearchUsersResponse{

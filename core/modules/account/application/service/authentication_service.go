@@ -152,7 +152,7 @@ func (s *authenticationService) Register(ctx context.Context, command RegisterAc
 	var tokenPair *TokenPairResult
 	if txErr := s.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		if err := txRepos.AccountAggregateRepository().Save(ctx, accountAggregate); err != nil {
-			return stackErr.Error(fmt.Errorf("save account aggregate failed: %v", err))
+			return stackErr.Error(fmt.Errorf("save account aggregate failed: %w", err))
 		}
 		deviceAgg, err := s.ensureKnownDevice(ctx, txRepos.DeviceRepository(), accountSnapshot.ID, command.Device, now)
 		if err != nil {
@@ -187,7 +187,7 @@ func (s *authenticationService) Authenticate(ctx context.Context, command Authen
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, stackErr.Error(ErrAuthenticationAccountNotFound)
 		}
-		return nil, stackErr.Error(fmt.Errorf("load account aggregate by email failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("load account aggregate by email failed: %w", err))
 	}
 
 	currentHash, err := accountAggregate.CurrentPasswordHash()
@@ -241,7 +241,7 @@ func (s *authenticationService) OpenAuthenticate(ctx context.Context, command Op
 		accountAggregate, err := accountRepo.LoadByEmail(ctx, email.Value())
 		if err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				return stackErr.Error(fmt.Errorf("load account aggregate by email failed: %v", err))
+				return stackErr.Error(fmt.Errorf("load account aggregate by email failed: %w", err))
 			}
 
 			accountAggregate, err = aggregate.NewAccountAggregate(uuid.NewString())
@@ -263,7 +263,7 @@ func (s *authenticationService) OpenAuthenticate(ctx context.Context, command Op
 			if err := accountRepo.Save(ctx, accountAggregate); err != nil {
 				reloadedAgg, reloadErr := accountRepo.LoadByEmail(ctx, email.Value())
 				if reloadErr != nil {
-					return stackErr.Error(fmt.Errorf("save new account aggregate failed: %v", err))
+					return stackErr.Error(fmt.Errorf("save new account aggregate failed: %w", err))
 				}
 				accountAggregate = reloadedAgg
 			}
@@ -273,7 +273,7 @@ func (s *authenticationService) OpenAuthenticate(ctx context.Context, command Op
 					return stackErr.Error(err)
 				}
 				if err := accountRepo.Save(ctx, accountAggregate); err != nil {
-					return stackErr.Error(fmt.Errorf("save verified account aggregate failed: %v", err))
+					return stackErr.Error(fmt.Errorf("save verified account aggregate failed: %w", err))
 				}
 			}
 		}
@@ -304,7 +304,7 @@ func (s *authenticationService) OpenAuthenticate(ctx context.Context, command Op
 func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command RefreshTokenCommand) (*TokenPairResult, error) {
 	claims, err := s.paseto.ParseRefreshToken(ctx, command.RefreshToken)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("%v: %v", ErrRefreshTokenInvalid, err))
+		return nil, stackErr.Error(fmt.Errorf("%v: %w", ErrRefreshTokenInvalid, err))
 	}
 
 	now := time.Now().UTC()
@@ -315,7 +315,7 @@ func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return stackErr.Error(ErrRefreshTokenInvalid)
 			}
-			return stackErr.Error(fmt.Errorf("load session failed: %v", err))
+			return stackErr.Error(fmt.Errorf("load session failed: %w", err))
 		}
 		session, err := sessionAgg.Snapshot()
 		if err != nil {
@@ -327,7 +327,7 @@ func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command
 
 		valid, err := s.hasher.Verify(ctx, command.RefreshToken, session.RefreshTokenHash)
 		if err != nil {
-			return stackErr.Error(fmt.Errorf("verify refresh token failed: %v", err))
+			return stackErr.Error(fmt.Errorf("verify refresh token failed: %w", err))
 		}
 		if !valid {
 			return stackErr.Error(ErrRefreshTokenInvalid)
@@ -336,7 +336,7 @@ func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command
 		if err := sessionAgg.EnsureRefreshAllowed(now); err != nil {
 			if errors.Is(err, entity.ErrSessionExpired) && sessionAgg.MarkExpired(now) {
 				if saveErr := txRepos.SessionRepository().Save(ctx, sessionAgg); saveErr != nil {
-					return stackErr.Error(fmt.Errorf("mark session expired failed: %v", saveErr))
+					return stackErr.Error(fmt.Errorf("mark session expired failed: %w", saveErr))
 				}
 			}
 			return stackErr.Error(mapRefreshSessionErr(err))
@@ -344,7 +344,7 @@ func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command
 
 		accountAgg, err := txRepos.AccountAggregateRepository().Load(ctx, claims.AccountID)
 		if err != nil {
-			return stackErr.Error(fmt.Errorf("load account aggregate failed: %v", err))
+			return stackErr.Error(fmt.Errorf("load account aggregate failed: %w", err))
 		}
 		accountSnapshot, err := accountAgg.Snapshot()
 		if err != nil {
@@ -356,13 +356,13 @@ func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return stackErr.Error(ErrRefreshTokenInvalid)
 			}
-			return stackErr.Error(fmt.Errorf("load device failed: %v", err))
+			return stackErr.Error(fmt.Errorf("load device failed: %w", err))
 		}
 		if err := deviceAgg.Touch(command.UserAgent, command.IPAddress, now); err != nil {
 			return stackErr.Error(err)
 		}
 		if err := txRepos.DeviceRepository().Save(ctx, deviceAgg); err != nil {
-			return stackErr.Error(fmt.Errorf("save device failed: %v", err))
+			return stackErr.Error(fmt.Errorf("save device failed: %w", err))
 		}
 
 		tokenPair, err = issueTokenPair(ctx, s.paseto, accountSnapshot, xpaseto.RefreshTokenSubject{
@@ -375,13 +375,13 @@ func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command
 
 		refreshTokenHash, err := s.hasher.Hash(ctx, tokenPair.RefreshToken)
 		if err != nil {
-			return stackErr.Error(fmt.Errorf("hash refresh token failed: %v", err))
+			return stackErr.Error(fmt.Errorf("hash refresh token failed: %w", err))
 		}
 		if err := sessionAgg.Rotate(refreshTokenHash, tokenPair.RefreshExpiresAt, now, command.IPAddress, command.UserAgent); err != nil {
 			return stackErr.Error(err)
 		}
 		if err := txRepos.SessionRepository().Save(ctx, sessionAgg); err != nil {
-			return stackErr.Error(fmt.Errorf("save rotated session failed: %v", err))
+			return stackErr.Error(fmt.Errorf("save rotated session failed: %w", err))
 		}
 
 		return nil
@@ -489,7 +489,7 @@ func (s *authenticationService) ensureKnownDevice(
 	deviceAgg, err := deviceRepo.FindByAccountAndUID(ctx, accountID, command.DeviceUID)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, stackErr.Error(fmt.Errorf("load device failed: %v", err))
+			return nil, stackErr.Error(fmt.Errorf("load device failed: %w", err))
 		}
 		deviceAgg, err = aggregate.NewDeviceAggregate(uuid.NewString())
 		if err != nil {
@@ -505,7 +505,7 @@ func (s *authenticationService) ensureKnownDevice(
 	}
 
 	if err := deviceRepo.Save(ctx, deviceAgg); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("save device failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("save device failed: %w", err))
 	}
 	return deviceAgg, nil
 }
@@ -529,7 +529,7 @@ func (s *authenticationService) createSessionTokenPair(
 
 	refreshTokenHash, err := s.hasher.Hash(ctx, tokenPair.RefreshToken)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("hash refresh token failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("hash refresh token failed: %w", err))
 	}
 
 	sessionAgg, err := aggregate.NewSessionAggregate(sessionID)
@@ -549,7 +549,7 @@ func (s *authenticationService) createSessionTokenPair(
 	}
 
 	if err := sessionRepo.Save(ctx, sessionAgg); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("save session failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("save session failed: %w", err))
 	}
 	return tokenPair, nil
 }

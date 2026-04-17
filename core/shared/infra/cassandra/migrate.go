@@ -71,7 +71,7 @@ func (m *migrateTool) Migrate(ctx context.Context, session *gocql.Session, migra
 				if isExistingColumnError(err) {
 					continue
 				}
-				return stackErr.Error(fmt.Errorf("run cassandra migration %s failed: %v", migration.ID, err))
+				return stackErr.Error(fmt.Errorf("run cassandra migration %s failed: %w", migration.ID, err))
 			}
 		}
 
@@ -81,7 +81,7 @@ func (m *migrateTool) Migrate(ctx context.Context, session *gocql.Session, migra
 			migration.Name,
 			time.Now().UTC(),
 		).WithContext(ctx).Exec(); err != nil {
-			return stackErr.Error(fmt.Errorf("mark cassandra migration %s applied failed: %v", migration.ID, err))
+			return stackErr.Error(fmt.Errorf("mark cassandra migration %s applied failed: %w", migration.ID, err))
 		}
 	}
 	return nil
@@ -102,7 +102,7 @@ func (m *migrateTool) MigrateFromSource(ctx context.Context, session *gocql.Sess
 	for _, file := range files {
 		content, readErr := os.ReadFile(file.Path)
 		if readErr != nil {
-			return stackErr.Error(fmt.Errorf("read cassandra migration file failed: %v", readErr))
+			return stackErr.Error(fmt.Errorf("read cassandra migration file failed: %w", readErr))
 		}
 		statements := splitCQLStatements(string(content))
 		if len(statements) == 0 {
@@ -130,7 +130,7 @@ func normalizeFileSource(source string) (string, error) {
 	if !filepath.IsAbs(path) {
 		cwd, err := os.Getwd()
 		if err != nil {
-			return "", stackErr.Error(fmt.Errorf("get cwd failed: %v", err))
+			return "", stackErr.Error(fmt.Errorf("get cwd failed: %w", err))
 		}
 		path = filepath.Join(cwd, path)
 	}
@@ -140,7 +140,7 @@ func normalizeFileSource(source string) (string, error) {
 func listMigrationFiles(dir string) ([]migrationFile, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("read cassandra migration dir failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("read cassandra migration dir failed: %w", err))
 	}
 
 	files := make([]migrationFile, 0)
@@ -220,7 +220,7 @@ func ensureMigrationTable(ctx context.Context, session *gocql.Session, migration
 		)
 	`, migrationTable)
 	if err := session.Query(statement).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("ensure cassandra migration table failed: %v", err))
+		return stackErr.Error(fmt.Errorf("ensure cassandra migration table failed: %w", err))
 	}
 	return nil
 }
@@ -237,7 +237,7 @@ func isMigrationApplied(ctx context.Context, session *gocql.Session, migrationTa
 	if errors.Is(err, gocql.ErrNotFound) {
 		return false, nil
 	}
-	return false, stackErr.Error(fmt.Errorf("check cassandra migration failed: %v", err))
+	return false, stackErr.Error(fmt.Errorf("check cassandra migration failed: %w", err))
 }
 
 func isExistingColumnError(err error) bool {

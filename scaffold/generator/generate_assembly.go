@@ -58,7 +58,7 @@ func GenerateAssembly(spec *models.AssemblySpec) (string, error) {
 
 			formatted, err := format.Source(buf.Bytes())
 			if err != nil {
-				return "", fmt.Errorf("format assembly builder failed: %v", err)
+				return "", fmt.Errorf("format assembly builder failed: %w", err)
 			}
 
 			alreadyExists := fileExists(dst)

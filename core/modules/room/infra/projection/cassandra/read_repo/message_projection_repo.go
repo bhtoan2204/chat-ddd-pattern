@@ -57,7 +57,7 @@ func NewMessageProjectionRepo(session *gocql.Session, tables views.ProjectionTab
 func (r *MessageProjectionRepo) UpsertTimelineRow(ctx context.Context, projection *roomprojection.MessageProjection) error {
 	mentionsJSON, err := json.Marshal(projection.Mentions)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal cassandra timeline mentions failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal cassandra timeline mentions failed: %w", err))
 	}
 	statement := fmt.Sprintf(`INSERT INTO %s (room_id,message_sent_at,message_id,room_name,room_type,message_content,message_type,reply_to_message_id,forwarded_from_message_id,file_name,file_size,mime_type,object_key,message_sender_id,message_sender_name,message_sender_email,mentions_json,mention_all,mentioned_account_ids,edited_at,deleted_for_everyone_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.roomTimelineTable)
 	return stackErr.Error(r.session.Query(statement, projection.RoomID, projection.MessageSentAt.UTC(), projection.MessageID, projection.RoomName, projection.RoomType, projection.MessageContent, projection.MessageType, nullableProjectionString(projection.ReplyToMessageID), nullableProjectionString(projection.ForwardedFromMessageID), nullableProjectionString(projection.FileName), projection.FileSize, nullableProjectionString(projection.MimeType), nullableProjectionString(projection.ObjectKey), projection.MessageSenderID, nullableProjectionString(projection.MessageSenderName), nullableProjectionString(projection.MessageSenderEmail), string(mentionsJSON), projection.MentionAll, projection.MentionedAccountIDs, projection.EditedAt, projection.DeletedForEveryoneAt).WithContext(ctx).Exec())
@@ -66,7 +66,7 @@ func (r *MessageProjectionRepo) UpsertTimelineRow(ctx context.Context, projectio
 func (r *MessageProjectionRepo) UpsertByIDRow(ctx context.Context, projection *roomprojection.MessageProjection) error {
 	mentionsJSON, err := json.Marshal(projection.Mentions)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal cassandra message-by-id mentions failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal cassandra message-by-id mentions failed: %w", err))
 	}
 	statement := fmt.Sprintf(`INSERT INTO %s (message_id,room_id,room_name,room_type,message_content,message_type,reply_to_message_id,forwarded_from_message_id,file_name,file_size,mime_type,object_key,message_sender_id,message_sender_name,message_sender_email,message_sent_at,mentions_json,mention_all,mentioned_account_ids,edited_at,deleted_for_everyone_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, r.messageByIDTable)
 	return stackErr.Error(r.session.Query(statement, projection.MessageID, projection.RoomID, projection.RoomName, projection.RoomType, projection.MessageContent, projection.MessageType, nullableProjectionString(projection.ReplyToMessageID), nullableProjectionString(projection.ForwardedFromMessageID), nullableProjectionString(projection.FileName), projection.FileSize, nullableProjectionString(projection.MimeType), nullableProjectionString(projection.ObjectKey), projection.MessageSenderID, nullableProjectionString(projection.MessageSenderName), nullableProjectionString(projection.MessageSenderEmail), projection.MessageSentAt.UTC(), string(mentionsJSON), projection.MentionAll, projection.MentionedAccountIDs, projection.EditedAt, projection.DeletedForEveryoneAt).WithContext(ctx).Exec())
@@ -136,7 +136,7 @@ func (r *MessageProjectionRepo) scanMessageRows(ctx context.Context, statement s
 	for scanner.Next() {
 		row := &MessageProjectionRow{}
 		if err := scanner.Scan(&row.RoomID, &row.RoomName, &row.RoomType, &row.MessageID, &row.MessageContent, &row.MessageType, &row.ReplyToMessageID, &row.ForwardedFromMessageID, &row.FileName, &row.FileSize, &row.MimeType, &row.ObjectKey, &row.MessageSenderID, &row.MessageSenderName, &row.MessageSenderEmail, &row.MessageSentAt, &row.MentionsJSON, &row.MentionAll, &row.MentionedAccountIDs, &row.EditedAt, &row.DeletedForEveryoneAt); err != nil {
-			return nil, stackErr.Error(fmt.Errorf("scan cassandra timeline projection failed: %v", err))
+			return nil, stackErr.Error(fmt.Errorf("scan cassandra timeline projection failed: %w", err))
 		}
 		row.MessageSentAt = row.MessageSentAt.UTC()
 		row.EditedAt = utils.ClonePtr(row.EditedAt)
@@ -144,10 +144,10 @@ func (r *MessageProjectionRepo) scanMessageRows(ctx context.Context, statement s
 		rows = append(rows, row)
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("iterate cassandra timeline projections failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("iterate cassandra timeline projections failed: %w", err))
 	}
 	if err := iter.Close(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("close cassandra timeline iterator failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("close cassandra timeline iterator failed: %w", err))
 	}
 	return rows, nil
 }

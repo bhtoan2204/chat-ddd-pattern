@@ -74,7 +74,7 @@ func appendRoomOutboxEvents(ctx context.Context, outboxRepo repos.RoomOutboxEven
 			EventData:     pendingEvent.Payload,
 			CreatedAt:     pendingEvent.CreatedAt.Unix(),
 		}); err != nil {
-			return baseVersion, stackErr.Error(fmt.Errorf("append room outbox event #%d failed: %v", idx, err))
+			return baseVersion, stackErr.Error(fmt.Errorf("append room outbox event #%d failed: %w", idx, err))
 		}
 	}
 	return nextVersion, nil

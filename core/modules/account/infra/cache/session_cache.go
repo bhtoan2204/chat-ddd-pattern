@@ -46,7 +46,7 @@ func (c *sessionCache) Get(ctx context.Context, sessionID string) (*entity.Sessi
 
 	var session entity.Session
 	if err := json.Unmarshal(data, &session); err != nil {
-		return nil, false, stackErr.Error(fmt.Errorf("unmarshal session cache failed: %v", err))
+		return nil, false, stackErr.Error(fmt.Errorf("unmarshal session cache failed: %w", err))
 	}
 	return &session, true, nil
 }
@@ -57,7 +57,7 @@ func (c *sessionCache) Set(ctx context.Context, session *entity.Session) error {
 	}
 	data, err := json.Marshal(session)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal session cache failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal session cache failed: %w", err))
 	}
 	return c.cache.Set(ctx, sessionCacheKey(session.ID), data)
 }

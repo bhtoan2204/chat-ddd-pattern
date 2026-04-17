@@ -86,7 +86,7 @@ func (h *messageHandler) handleAccountEvent(ctx context.Context, value []byte) e
 	log := logging.FromContext(ctx).Named("handleAccountEvent")
 	var event contracts.OutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackErr.Error(fmt.Errorf("unmarshal account outbox event failed: %v", err))
+		return stackErr.Error(fmt.Errorf("unmarshal account outbox event failed: %w", err))
 	}
 	log.Infow("handle account event", zap.String("event_name", event.EventName))
 	switch event.EventName {
@@ -107,7 +107,7 @@ func (h *messageHandler) handleLedgerEvent(ctx context.Context, value []byte) er
 	log := logging.FromContext(ctx).Named("handleLedgerEvent")
 	var event contracts.OutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackErr.Error(fmt.Errorf("unmarshal account outbox event failed: %v", err))
+		return stackErr.Error(fmt.Errorf("unmarshal account outbox event failed: %w", err))
 	}
 	log.Infow("handle ledger event", zap.String("event_name", event.EventName))
 	switch event.EventName {

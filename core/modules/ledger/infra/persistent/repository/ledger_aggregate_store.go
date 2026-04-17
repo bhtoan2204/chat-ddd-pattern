@@ -73,11 +73,11 @@ func (s *aggregateStoreImpl) Save(ctx context.Context, agg eventpkg.Aggregate) e
 
 	for idx, evt := range events {
 		if err := s.repo.Append(ctx, evt); err != nil {
-			return stackErr.Error(fmt.Errorf("append ledger event #%d failed: %v", idx, err))
+			return stackErr.Error(fmt.Errorf("append ledger event #%d failed: %w", idx, err))
 		}
 		if evt.Version%10 == 0 {
 			if err := s.repo.CreateSnapshot(ctx, agg); err != nil {
-				return stackErr.Error(fmt.Errorf("create ledger snapshot failed: %v", err))
+				return stackErr.Error(fmt.Errorf("create ledger snapshot failed: %w", err))
 			}
 		}
 	}

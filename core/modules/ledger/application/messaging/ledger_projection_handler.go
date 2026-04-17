@@ -22,7 +22,7 @@ func (h *messageHandler) handleLedgerOutboxEvent(ctx context.Context, value []by
 
 	var event contracts.OutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackErr.Error(fmt.Errorf("unmarshal ledger outbox event failed: %v", err))
+		return stackErr.Error(fmt.Errorf("unmarshal ledger outbox event failed: %w", err))
 	}
 
 	log.Infow("handle ledger outbox event",
@@ -44,7 +44,7 @@ func (h *messageHandler) handleLedgerOutboxEvent(ctx context.Context, value []by
 func unmarshalLedgerTransactionProjectedPayload(data json.RawMessage) (ledgerprojection.LedgerTransactionProjected, error) {
 	var payload ledgerprojection.LedgerTransactionProjected
 	if err := contracts.UnmarshalEventData(data, &payload); err != nil {
-		return ledgerprojection.LedgerTransactionProjected{}, stackErr.Error(fmt.Errorf("unmarshal ledger transaction projected payload failed: %v", err))
+		return ledgerprojection.LedgerTransactionProjected{}, stackErr.Error(fmt.Errorf("unmarshal ledger transaction projected payload failed: %w", err))
 	}
 	return payload, nil
 }

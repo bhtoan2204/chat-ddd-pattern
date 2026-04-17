@@ -25,7 +25,7 @@ func (m *compositeModule) Start() error {
 	for idx, module := range m.modules {
 		if err := module.Start(); err != nil {
 			m.stopStarted(idx - 1)
-			return stackErr.Error(fmt.Errorf("start runtime %T failed: %v", module, err))
+			return stackErr.Error(fmt.Errorf("start runtime %T failed: %w", module, err))
 		}
 	}
 	return nil
@@ -46,7 +46,7 @@ func (m *compositeModule) Stop() error {
 			if err := module.Stop(); err != nil {
 				errMu.Lock()
 				if firstErr == nil {
-					firstErr = stackErr.Error(fmt.Errorf("stop runtime %T failed: %v", module, err))
+					firstErr = stackErr.Error(fmt.Errorf("stop runtime %T failed: %w", module, err))
 				}
 				errMu.Unlock()
 			}

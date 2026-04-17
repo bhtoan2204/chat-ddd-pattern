@@ -78,7 +78,7 @@ func (i *elasticsearchMessageIndexer) SyncMessage(ctx context.Context, message *
 
 	body, err := json.Marshal(document)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal elasticsearch room message failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal elasticsearch room message failed: %w", err))
 	}
 
 	req := esapi.IndexRequest{
@@ -89,7 +89,7 @@ func (i *elasticsearchMessageIndexer) SyncMessage(ctx context.Context, message *
 	}
 	res, err := req.Do(ctx, i.client)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("index elasticsearch room message failed: %v", err))
+		return stackErr.Error(fmt.Errorf("index elasticsearch room message failed: %w", err))
 	}
 	defer res.Body.Close()
 
@@ -114,7 +114,7 @@ func (i *elasticsearchMessageIndexer) DeleteRoom(ctx context.Context, roomID str
 		},
 	})
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal elasticsearch room delete query failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal elasticsearch room delete query failed: %w", err))
 	}
 
 	req := esapi.DeleteByQueryRequest{
@@ -126,7 +126,7 @@ func (i *elasticsearchMessageIndexer) DeleteRoom(ctx context.Context, roomID str
 	req.Refresh = &refresh
 	res, err := req.Do(ctx, i.client)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("delete elasticsearch room messages failed: %v", err))
+		return stackErr.Error(fmt.Errorf("delete elasticsearch room messages failed: %w", err))
 	}
 	defer res.Body.Close()
 
@@ -140,7 +140,7 @@ func (i *elasticsearchMessageIndexer) ensureIndex(ctx context.Context) error {
 	existsReq := esapi.IndicesExistsRequest{Index: []string{i.index}}
 	existsRes, err := existsReq.Do(ctx, i.client)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("check elasticsearch index failed: %v", err))
+		return stackErr.Error(fmt.Errorf("check elasticsearch index failed: %w", err))
 	}
 	defer existsRes.Body.Close()
 
@@ -154,7 +154,7 @@ func (i *elasticsearchMessageIndexer) ensureIndex(ctx context.Context) error {
 
 	body, err := json.Marshal(roomMessageIndexDefinition())
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal elasticsearch index definition failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal elasticsearch index definition failed: %w", err))
 	}
 
 	createReq := esapi.IndicesCreateRequest{
@@ -163,7 +163,7 @@ func (i *elasticsearchMessageIndexer) ensureIndex(ctx context.Context) error {
 	}
 	createRes, err := createReq.Do(ctx, i.client)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("create elasticsearch index failed: %v", err))
+		return stackErr.Error(fmt.Errorf("create elasticsearch index failed: %w", err))
 	}
 	defer createRes.Body.Close()
 

@@ -91,7 +91,7 @@ func (s *ledgerEventStoreImpl) CheckAndUpdateVersion(
 func (s *ledgerEventStoreImpl) Append(ctx context.Context, evt eventpkg.Event) error {
 	data, err := s.serializer.Marshal(evt.EventData)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal ledger event data failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal ledger event data failed: %w", err))
 	}
 
 	createdAt := time.Now().UTC()
@@ -150,7 +150,7 @@ func (s *ledgerEventStoreImpl) Get(
 func (s *ledgerEventStoreImpl) CreateSnapshot(ctx context.Context, agg eventpkg.Aggregate) error {
 	data, err := s.serializer.Marshal(agg)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal ledger snapshot failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal ledger snapshot failed: %w", err))
 	}
 
 	root := agg.Root()

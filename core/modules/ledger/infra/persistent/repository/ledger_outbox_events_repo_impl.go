@@ -26,7 +26,7 @@ func NewLedgerOutboxEventsRepoImpl(dbTX dbTX) ledgerrepos.LedgerOutboxEventsRepo
 func (r *ledgerOutboxEventsRepoImpl) Append(ctx context.Context, evt eventpkg.Event) error {
 	data, err := r.serializer.Marshal(evt.EventData)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal ledger outbox event failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal ledger outbox event failed: %w", err))
 	}
 
 	createdAt := time.Now().UTC()

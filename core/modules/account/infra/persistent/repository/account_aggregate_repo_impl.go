@@ -129,7 +129,7 @@ func (r *accountAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.Acco
 	}
 
 	if err := r.db.WithContext(ctx).Save(r.projectionWriter.toModel(snapshot)).Error; err != nil {
-		return stackErr.Error(fmt.Errorf("save account projection failed: %v", err))
+		return stackErr.Error(fmt.Errorf("save account projection failed: %w", err))
 	}
 	r.projectionWriter.syncCacheAfterCommit(ctx, snapshot)
 
@@ -144,7 +144,7 @@ func (r *accountAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.Acco
 			return stackErr.Error(err)
 		}
 		if err := r.db.WithContext(ctx).Create(&eventModel).Error; err != nil {
-			return stackErr.Error(fmt.Errorf("create account event failed: %v", err))
+			return stackErr.Error(fmt.Errorf("create account event failed: %w", err))
 		}
 	}
 
@@ -179,7 +179,7 @@ func (r *accountAggregateRepoImpl) loadProjectionByEmail(ctx context.Context, em
 func (r *accountAggregateRepoImpl) buildEventModel(evt eventpkg.Event) (models.AccountOutboxEventModel, error) {
 	data, err := r.serializer.Marshal(evt.EventData)
 	if err != nil {
-		return models.AccountOutboxEventModel{}, stackErr.Error(fmt.Errorf("marshal account event data failed: %v", err))
+		return models.AccountOutboxEventModel{}, stackErr.Error(fmt.Errorf("marshal account event data failed: %w", err))
 	}
 
 	createdAt := time.Now().UTC()

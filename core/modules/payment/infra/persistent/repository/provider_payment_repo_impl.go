@@ -151,7 +151,7 @@ func (r *providerPaymentRepoImpl) appendOutboxEvents(ctx context.Context, events
 func (r *providerPaymentRepoImpl) appendOutboxEvent(ctx context.Context, evt eventpkg.Event) error {
 	data, err := r.serializer.Marshal(evt.EventData)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal event data failed: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal event data failed: %w", err))
 	}
 
 	createdAt := time.Now().UTC()

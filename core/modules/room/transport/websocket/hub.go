@@ -264,7 +264,7 @@ func (h *Hub) Publish(ctx context.Context, msg Message) error {
 	log := logging.FromContext(ctx)
 	payload, err := json.Marshal(msg)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal websocket message: %v", err))
+		return stackErr.Error(fmt.Errorf("marshal websocket message: %w", err))
 	}
 	if msg.Data != nil {
 		log.Infow("Publish data", zap.String("payload", string(payload)))
@@ -273,7 +273,7 @@ func (h *Hub) Publish(ctx context.Context, msg Message) error {
 	roomID := strings.TrimSpace(msg.RoomID)
 	if roomID != "" {
 		if err := h.redisClient.Publish(ctx, roomChannelName(roomID), payload).Err(); err != nil {
-			return stackErr.Error(fmt.Errorf("publish redis room message: %v", err))
+			return stackErr.Error(fmt.Errorf("publish redis room message: %w", err))
 		}
 		return nil
 	}
@@ -285,7 +285,7 @@ func (h *Hub) Publish(ctx context.Context, msg Message) error {
 				continue
 			}
 			if err := h.redisClient.Publish(ctx, userChannelName(userID), payload).Err(); err != nil {
-				return stackErr.Error(fmt.Errorf("publish redis user message: %v", err))
+				return stackErr.Error(fmt.Errorf("publish redis user message: %w", err))
 			}
 		}
 		return nil
@@ -300,7 +300,7 @@ func (h *Hub) handleChatMessage(_ context.Context, _ IClient, msg Message) error
 	}
 	if len(msg.Data) > 0 {
 		if err := json.Unmarshal(msg.Data, req); err != nil {
-			return stackErr.Error(fmt.Errorf("unmarshal websocket chat payload: %v", err))
+			return stackErr.Error(fmt.Errorf("unmarshal websocket chat payload: %w", err))
 		}
 	}
 	req.RoomID = strings.TrimSpace(msg.RoomID)
@@ -367,7 +367,7 @@ func (h *Hub) subscribeRoom(ctx context.Context, roomID string) error {
 	if _, err := pubsub.Receive(subCtx); err != nil {
 		h.removeSubscription(subCtx, roomID, sub)
 		_ = sub.Close()
-		return stackErr.Error(fmt.Errorf("subscribe to redis room channel: %v", err))
+		return stackErr.Error(fmt.Errorf("subscribe to redis room channel: %w", err))
 	}
 
 	go h.consumeRoomMessages(subCtx, roomID, sub)

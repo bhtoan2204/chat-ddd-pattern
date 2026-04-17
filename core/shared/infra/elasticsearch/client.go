@@ -36,7 +36,7 @@ func NewClient(cfg config.ElasticsearchConfig) (*es8.Client, error) {
 		},
 	})
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("create elasticsearch client failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("create elasticsearch client failed: %w", err))
 	}
 
 	return client, nil

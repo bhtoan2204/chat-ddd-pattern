@@ -124,7 +124,7 @@ func writeApplicationHandlerFile(tmpl *template.Template, module modulePaths, ep
 
 	formatted, err := format.Source(buf.Bytes())
 	if err != nil {
-		return applicationHandlerWriteSkipped, fmt.Errorf("format application handler failed: %v", err)
+		return applicationHandlerWriteSkipped, fmt.Errorf("format application handler failed: %w", err)
 	}
 	alreadyExists := fileExists(dst)
 	if err := os.WriteFile(dst, formatted, 0o644); err != nil {

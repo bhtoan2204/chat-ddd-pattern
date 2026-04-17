@@ -72,17 +72,17 @@ func (s *appServer) Start(ctx context.Context, appContext *appCtx.AppContext) er
 func (s *appServer) buildModuleRuntimes(appContext *appCtx.AppContext) error {
 	notificationRuntime, err := notificationassembly.BuildMessagingRuntime(s.cfg, appContext)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("build notification messaging runtime failed: %v", err))
+		return stackErr.Error(fmt.Errorf("build notification messaging runtime failed: %w", err))
 	}
 
 	ledgerRuntime, err := ledgerassembly.BuildMessagingRuntime(s.cfg, appContext)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("build ledger messaging runtime failed: %v", err))
+		return stackErr.Error(fmt.Errorf("build ledger messaging runtime failed: %w", err))
 	}
 
 	roomRuntime, err := roomassembly.BuildProjectionRuntime(s.cfg, appContext)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("build room projection runtime failed: %v", err))
+		return stackErr.Error(fmt.Errorf("build room projection runtime failed: %w", err))
 	}
 
 	s.moduleRuntimes = []modruntime.Module{
@@ -98,7 +98,7 @@ func (s *appServer) startModuleRuntimes(ctx context.Context) error {
 	for idx, runtime := range s.moduleRuntimes {
 		if err := runtime.Start(); err != nil {
 			s.stopStartedRuntimes(ctx, idx-1)
-			return stackErr.Error(fmt.Errorf("start module runtime %T failed: %v", runtime, err))
+			return stackErr.Error(fmt.Errorf("start module runtime %T failed: %w", runtime, err))
 		}
 	}
 	return nil

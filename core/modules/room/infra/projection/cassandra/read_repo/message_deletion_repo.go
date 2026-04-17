@@ -50,15 +50,15 @@ func (r *MessageDeletionRepo) ListDeletedMessageIDs(ctx context.Context, account
 	var messageID string
 	for scanner.Next() {
 		if err := scanner.Scan(&messageID); err != nil {
-			return nil, stackErr.Error(fmt.Errorf("scan cassandra message deletion projection failed: %v", err))
+			return nil, stackErr.Error(fmt.Errorf("scan cassandra message deletion projection failed: %w", err))
 		}
 		results[strings.TrimSpace(messageID)] = struct{}{}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("iterate cassandra message deletions failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("iterate cassandra message deletions failed: %w", err))
 	}
 	if err := iter.Close(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("close cassandra message deletion iterator failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("close cassandra message deletion iterator failed: %w", err))
 	}
 	return results, nil
 }

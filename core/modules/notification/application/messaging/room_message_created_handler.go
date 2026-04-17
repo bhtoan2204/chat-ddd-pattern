@@ -21,7 +21,7 @@ func (h *messageHandler) handleRoomOutboxEvent(ctx context.Context, value []byte
 
 	var event contracts.OutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackErr.Error(fmt.Errorf("unmarshal room outbox event failed: %v", err))
+		return stackErr.Error(fmt.Errorf("unmarshal room outbox event failed: %w", err))
 	}
 
 	log.Infow("handle room outbox event",
@@ -40,7 +40,7 @@ func (h *messageHandler) handleRoomOutboxEvent(ctx context.Context, value []byte
 func (h *messageHandler) handleRoomMessageCreatedEvent(ctx context.Context, raw json.RawMessage) error {
 	payloadAny, err := decodeEventPayload(ctx, sharedevents.EventRoomMessageCreated, raw)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("decode room message created payload failed: %v", err))
+		return stackErr.Error(fmt.Errorf("decode room message created payload failed: %w", err))
 	}
 	if payloadAny == nil {
 		return nil
@@ -73,7 +73,7 @@ func (h *messageHandler) handleRoomMessageCreatedEvent(ctx context.Context, raw 
 			return stackErr.Error(err)
 		}
 		if err := h.notificationRepo.Save(ctx, notificationAgg); err != nil {
-			return stackErr.Error(fmt.Errorf("create room mention notification failed: %v", err))
+			return stackErr.Error(fmt.Errorf("create room mention notification failed: %w", err))
 		}
 	}
 

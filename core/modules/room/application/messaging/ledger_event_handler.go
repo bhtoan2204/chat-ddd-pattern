@@ -23,7 +23,7 @@ import (
 func (h *messageHandler) handleLedgerAccountTransferredToAccount(ctx context.Context, raw json.RawMessage) error {
 	payloadAny, err := decodeEventPayload(ctx, sharedevents.EventLedgerAccountTransferredToAccount, raw)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("decode event payload failed: %v", err))
+		return stackErr.Error(fmt.Errorf("decode event payload failed: %w", err))
 	}
 
 	payload, ok := payloadAny.(*sharedevents.LedgerTransaction)
@@ -42,7 +42,7 @@ func (h *messageHandler) handleLedgerAccountTransferredToAccount(ctx context.Con
 
 	roomAgg, err := h.baseRepo.RoomAggregateRepository().LoadByDirectKey(ctx, entity.CanonicalDirectKey(senderID, receiverID))
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("load transfer room failed: %v", err))
+		return stackErr.Error(fmt.Errorf("load transfer room failed: %w", err))
 	}
 	if roomAgg == nil || roomAgg.Room() == nil {
 		return stackErr.Error(fmt.Errorf("direct room not found for transfer participants"))

@@ -25,7 +25,7 @@ func NewSession(ctx context.Context, cfg config.CassandraConfig) (*gocql.Session
 	baseCluster := newClusterConfig(cfg, hosts)
 	baseSession, err := baseCluster.CreateSession()
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("create cassandra bootstrap session failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("create cassandra bootstrap session failed: %w", err))
 	}
 	defer baseSession.Close()
 
@@ -38,7 +38,7 @@ func NewSession(ctx context.Context, cfg config.CassandraConfig) (*gocql.Session
 
 	session, err := cluster.CreateSession()
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("create cassandra session failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("create cassandra session failed: %w", err))
 	}
 	return session, nil
 }
@@ -93,7 +93,7 @@ func ensureKeyspace(ctx context.Context, session *gocql.Session, cfg config.Cass
 		replicationFactor,
 	)
 	if err := session.Query(statement).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("ensure cassandra keyspace failed: %v", err))
+		return stackErr.Error(fmt.Errorf("ensure cassandra keyspace failed: %w", err))
 	}
 	return nil
 }

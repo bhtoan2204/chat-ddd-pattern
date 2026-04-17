@@ -22,7 +22,7 @@ func (h *messageHandler) handlePaymentOutboxEvent(ctx context.Context, value []b
 
 	var event contracts.OutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackErr.Error(fmt.Errorf("unmarshal payment outbox event failed: %v", err))
+		return stackErr.Error(fmt.Errorf("unmarshal payment outbox event failed: %w", err))
 	}
 
 	log.Infow("handle payment outbox event",
@@ -123,7 +123,7 @@ func (h *messageHandler) withLedgerAccountLocks(ctx context.Context, lockKeys []
 func unmarshalPaymentSucceededPayload(data json.RawMessage) (sharedevents.PaymentSucceededEvent, error) {
 	var payload sharedevents.PaymentSucceededEvent
 	if err := contracts.UnmarshalEventData(data, &payload); err != nil {
-		return sharedevents.PaymentSucceededEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment succeeded payload failed: %v", err))
+		return sharedevents.PaymentSucceededEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment succeeded payload failed: %w", err))
 	}
 	return payload, nil
 }
@@ -131,7 +131,7 @@ func unmarshalPaymentSucceededPayload(data json.RawMessage) (sharedevents.Paymen
 func unmarshalPaymentRefundedPayload(data json.RawMessage) (sharedevents.PaymentRefundedEvent, error) {
 	var payload sharedevents.PaymentRefundedEvent
 	if err := contracts.UnmarshalEventData(data, &payload); err != nil {
-		return sharedevents.PaymentRefundedEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment refunded payload failed: %v", err))
+		return sharedevents.PaymentRefundedEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment refunded payload failed: %w", err))
 	}
 	return payload, nil
 }
@@ -139,7 +139,7 @@ func unmarshalPaymentRefundedPayload(data json.RawMessage) (sharedevents.Payment
 func unmarshalPaymentChargebackPayload(data json.RawMessage) (sharedevents.PaymentChargebackEvent, error) {
 	var payload sharedevents.PaymentChargebackEvent
 	if err := contracts.UnmarshalEventData(data, &payload); err != nil {
-		return sharedevents.PaymentChargebackEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment chargeback payload failed: %v", err))
+		return sharedevents.PaymentChargebackEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment chargeback payload failed: %w", err))
 	}
 	return payload, nil
 }

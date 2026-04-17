@@ -30,7 +30,7 @@ func decodeEventPayload(ctx context.Context, eventName string, raw []byte) (inte
 	payload := reflect.New(payloadType).Interface()
 	if err := contracts.UnmarshalEventData(raw, payload); err != nil {
 		logger.Errorw("unmarshal event_data failed", zap.Error(err), zap.String("raw", string(raw)))
-		return nil, stackErr.Error(fmt.Errorf("unmarshal event_data failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("unmarshal event_data failed: %w", err))
 	}
 
 	return payload, nil

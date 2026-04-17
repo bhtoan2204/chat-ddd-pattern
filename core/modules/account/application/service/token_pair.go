@@ -24,12 +24,12 @@ func issueTokenPair(
 
 	accessToken, accessExpiresAt, err := pasetoSvc.GenerateAccessToken(ctx, account)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("generate access token failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("generate access token failed: %w", err))
 	}
 
 	refreshToken, refreshExpiresAt, err := pasetoSvc.GenerateRefreshToken(ctx, account, subject)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("generate refresh token failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("generate refresh token failed: %w", err))
 	}
 
 	return &TokenPairResult{

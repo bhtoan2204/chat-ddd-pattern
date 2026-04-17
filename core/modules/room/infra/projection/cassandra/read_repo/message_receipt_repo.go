@@ -62,17 +62,17 @@ func (r *MessageReceiptRepo) CountByStatus(ctx context.Context, messageID, statu
 	scanner := iter.Scanner()
 	for scanner.Next() {
 		if err := scanner.Scan(&value); err != nil {
-			return 0, stackErr.Error(fmt.Errorf("scan cassandra message receipt failed: %v", err))
+			return 0, stackErr.Error(fmt.Errorf("scan cassandra message receipt failed: %w", err))
 		}
 		if strings.EqualFold(strings.TrimSpace(value), strings.TrimSpace(status)) {
 			count++
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return 0, stackErr.Error(fmt.Errorf("iterate cassandra message receipts failed: %v", err))
+		return 0, stackErr.Error(fmt.Errorf("iterate cassandra message receipts failed: %w", err))
 	}
 	if err := iter.Close(); err != nil {
-		return 0, stackErr.Error(fmt.Errorf("close cassandra message receipts iterator failed: %v", err))
+		return 0, stackErr.Error(fmt.Errorf("close cassandra message receipts iterator failed: %w", err))
 	}
 	return count, nil
 }

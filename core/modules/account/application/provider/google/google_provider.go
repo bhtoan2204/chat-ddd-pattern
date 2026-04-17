@@ -43,7 +43,7 @@ func (g *googleProvider) Login() string {
 func (g *googleProvider) Callback(ctx context.Context, code string) (*provider.AuthResult, error) {
 	token, err := g.oauthClient.Exchange(ctx, code)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("exchange oauth code: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("exchange oauth code: %w", err))
 	}
 
 	result := &provider.AuthResult{
@@ -73,12 +73,12 @@ func (g *googleProvider) UserInfo(ctx context.Context, accessToken string) (*pro
 		nil,
 	)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("create userinfo request: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("create userinfo request: %w", err))
 	}
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, stackErr.Error(fmt.Errorf("request userinfo: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("request userinfo: %w", err))
 	}
 	defer resp.Body.Close()
 
@@ -88,7 +88,7 @@ func (g *googleProvider) UserInfo(ctx context.Context, accessToken string) (*pro
 
 	var userInfo provider.UserInfo
 	if err := json.NewDecoder(resp.Body).Decode(&userInfo); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("decode userinfo response: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("decode userinfo response: %w", err))
 	}
 
 	return &userInfo, nil

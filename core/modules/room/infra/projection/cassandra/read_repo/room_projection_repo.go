@@ -100,7 +100,7 @@ func (r *RoomProjectionRepo) GetRoomRow(ctx context.Context, roomID string) (*Ro
 		if errors.Is(err, gocql.ErrNotFound) {
 			return nil, nil
 		}
-		return nil, stackErr.Error(fmt.Errorf("get cassandra room projection failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("get cassandra room projection failed: %w", err))
 	}
 
 	row.CreatedAt = row.CreatedAt.UTC()
@@ -144,7 +144,7 @@ func (r *RoomProjectionRepo) UpsertRoomRow(ctx context.Context, row *RoomProject
 		row.CreatedAt.UTC(),
 		row.UpdatedAt.UTC(),
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("upsert cassandra room projection failed: %v", err))
+		return stackErr.Error(fmt.Errorf("upsert cassandra room projection failed: %w", err))
 	}
 	return nil
 }
@@ -154,7 +154,7 @@ func (r *RoomProjectionRepo) DeleteRoomRow(ctx context.Context, roomID string) e
 		fmt.Sprintf(`DELETE FROM %s WHERE room_id = ?`, r.roomTable),
 		strings.TrimSpace(roomID),
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("delete cassandra room projection failed: %v", err))
+		return stackErr.Error(fmt.Errorf("delete cassandra room projection failed: %w", err))
 	}
 	return nil
 }
@@ -217,7 +217,7 @@ func (r *RoomProjectionRepo) ListRoomsByAccount(ctx context.Context, accountID s
 			&createdAt,
 			&updatedAt,
 		); err != nil {
-			return nil, stackErr.Error(fmt.Errorf("scan cassandra account room projection failed: %v", err))
+			return nil, stackErr.Error(fmt.Errorf("scan cassandra account room projection failed: %w", err))
 		}
 		rows = append(rows, &RoomProjectionRow{
 			RoomID:              roomID,
@@ -236,10 +236,10 @@ func (r *RoomProjectionRepo) ListRoomsByAccount(ctx context.Context, accountID s
 		})
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("iterate cassandra account room projections failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("iterate cassandra account room projections failed: %w", err))
 	}
 	if err := iter.Close(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("close cassandra account room projection iterator failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("close cassandra account room projection iterator failed: %w", err))
 	}
 
 	return sliceRoomRows(rows, offset, limit), nil
@@ -300,7 +300,7 @@ func (r *RoomProjectionRepo) ListRoomsFromBaseProjection(ctx context.Context, li
 			&createdAt,
 			&updatedAt,
 		); err != nil {
-			return nil, stackErr.Error(fmt.Errorf("scan cassandra room projection failed: %v", err))
+			return nil, stackErr.Error(fmt.Errorf("scan cassandra room projection failed: %w", err))
 		}
 		rows = append(rows, &RoomProjectionRow{
 			RoomID:              roomID,
@@ -319,10 +319,10 @@ func (r *RoomProjectionRepo) ListRoomsFromBaseProjection(ctx context.Context, li
 		})
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("iterate cassandra room projections failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("iterate cassandra room projections failed: %w", err))
 	}
 	if err := iter.Close(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("close cassandra room projection iterator failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("close cassandra room projection iterator failed: %w", err))
 	}
 
 	sort.Slice(rows, func(i, j int) bool {
@@ -379,7 +379,7 @@ func (r *RoomProjectionRepo) ListRoomMemberRows(ctx context.Context, roomID stri
 			&row.CreatedAt,
 			&row.UpdatedAt,
 		); err != nil {
-			return nil, stackErr.Error(fmt.Errorf("scan cassandra room member projection failed: %v", err))
+			return nil, stackErr.Error(fmt.Errorf("scan cassandra room member projection failed: %w", err))
 		}
 		row.LastDeliveredAt = utils.ClonePtr(lastDeliveredAt)
 		row.LastReadAt = utils.ClonePtr(lastReadAt)
@@ -388,10 +388,10 @@ func (r *RoomProjectionRepo) ListRoomMemberRows(ctx context.Context, roomID stri
 		rows = append(rows, row)
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("iterate cassandra room member projections failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("iterate cassandra room member projections failed: %w", err))
 	}
 	if err := iter.Close(); err != nil {
-		return nil, stackErr.Error(fmt.Errorf("close cassandra room member projection iterator failed: %v", err))
+		return nil, stackErr.Error(fmt.Errorf("close cassandra room member projection iterator failed: %w", err))
 	}
 	return rows, nil
 }
@@ -427,7 +427,7 @@ func (r *RoomProjectionRepo) UpsertRoomMemberRow(ctx context.Context, row *RoomM
 		row.CreatedAt.UTC(),
 		row.UpdatedAt.UTC(),
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("upsert cassandra room member projection failed: %v", err))
+		return stackErr.Error(fmt.Errorf("upsert cassandra room member projection failed: %w", err))
 	}
 	return nil
 }
@@ -438,7 +438,7 @@ func (r *RoomProjectionRepo) DeleteRoomMemberRow(ctx context.Context, roomID, ac
 		strings.TrimSpace(roomID),
 		strings.TrimSpace(accountID),
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("delete cassandra room member projection failed: %v", err))
+		return stackErr.Error(fmt.Errorf("delete cassandra room member projection failed: %w", err))
 	}
 	return nil
 }
@@ -525,7 +525,7 @@ func (r *RoomProjectionRepo) UpsertAccountRoomIndex(ctx context.Context, account
 		nullableProjectionString(room.LastMessageSenderID),
 		room.CreatedAt.UTC(),
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("upsert cassandra room-by-account projection failed: %v", err))
+		return stackErr.Error(fmt.Errorf("upsert cassandra room-by-account projection failed: %w", err))
 	}
 	return nil
 }
@@ -540,7 +540,7 @@ func (r *RoomProjectionRepo) DeleteAccountRoomIndex(ctx context.Context, account
 		room.UpdatedAt.UTC(),
 		room.RoomID,
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("delete cassandra room-by-account projection failed: %v", err))
+		return stackErr.Error(fmt.Errorf("delete cassandra room-by-account projection failed: %w", err))
 	}
 	return nil
 }

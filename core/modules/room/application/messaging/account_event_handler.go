@@ -15,7 +15,7 @@ import (
 func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json.RawMessage) error {
 	payloadAny, err := decodeEventPayload(ctx, sharedevents.EventAccountCreated, raw)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("decode event payload failed: %v", err))
+		return stackErr.Error(fmt.Errorf("decode event payload failed: %w", err))
 	}
 
 	payload, ok := payloadAny.(*sharedevents.AccountCreatedEvent)
@@ -38,7 +38,7 @@ func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json
 func (h *messageHandler) handleAccountUpdatedEvent(ctx context.Context, raw json.RawMessage) error {
 	payloadAny, err := decodeEventPayload(ctx, sharedevents.EventAccountProfileUpdated, raw)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("decode event payload failed: %v", err))
+		return stackErr.Error(fmt.Errorf("decode event payload failed: %w", err))
 	}
 
 	payload, ok := payloadAny.(*sharedevents.AccountProfileUpdatedEvent)
