@@ -66,7 +66,6 @@ func NewConsumer(cfg *Config) (Consumer, error) {
 		"bootstrap.servers":        cfg.Servers,
 		"group.id":                 cfg.Group,
 		"auto.offset.reset":        cfg.OffsetReset,
-		"enable.auto.commit":       false,
 		"enable.auto.offset.store": false,
 		"session.timeout.ms":       120000,
 		"heartbeat.interval.ms":    3000,
@@ -186,6 +185,9 @@ func (c *consumer) Stop() {
 	})
 }
 
+// success → shouldCommit = true
+// fail but DLQ ok → shouldCommit = true
+// fail and DLQ fail → shouldCommit = false
 func (c *consumer) handleMessage(log *zap.SugaredLogger, f CallBack, msg *kafka.Message) {
 	var topic string
 	if msg.TopicPartition.Topic != nil {
@@ -195,26 +197,47 @@ func (c *consumer) handleMessage(log *zap.SugaredLogger, f CallBack, msg *kafka.
 	ctx, span := c.startSpan(msg)
 	defer span.End()
 
+	shouldCommit := false
+	defer func() {
+		if !shouldCommit {
+			return
+		}
+
+		if _, err := c.instance.CommitMessage(msg); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
+			log.Warnw("Failed to commit offset after message processing",
+				zap.Any("topic_partition", msg.TopicPartition),
+				zap.Error(err))
+		}
+	}()
+
 	if err := processMessageWithRetry(ctx, f, msg); err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 
 		log.Errorw("consumer process got error",
-			zap.String("topic", topic), zap.Error(err),
+			zap.String("topic", topic),
+			zap.Error(err),
 			zap.ByteString("val", msg.Value),
 			zap.ByteString("key", msg.Key),
-			zap.Int64("offset", int64(msg.TopicPartition.Offset)))
+			zap.Int64("offset", int64(msg.TopicPartition.Offset)),
+		)
 
 		if c.dlq {
-			c.StoreDLQ(ctx, msg)
-		}
+			if err := c.StoreDLQ(ctx, msg); err != nil {
+				span.RecordError(err)
+				span.SetStatus(codes.Error, err.Error())
+				log.Errorw("failed to store message to DLQ",
+					zap.String("topic", topic),
+					zap.Error(err),
+					zap.ByteString("key", msg.Key),
+					zap.Int64("offset", int64(msg.TopicPartition.Offset)),
+				)
+				return
+			}
 
-		// Rewind to the failed offset so later commits cannot skip an unprocessed message.
-		if rewindErr := c.rewindMessage(msg); rewindErr != nil {
-			span.RecordError(rewindErr)
-			log.Warnw("Failed to rewind offset after message processing error",
-				zap.Any("topic_partition", msg.TopicPartition),
-				zap.Error(rewindErr))
+			shouldCommit = true
 		}
 
 		if c.retryBackoff > 0 {
@@ -223,13 +246,7 @@ func (c *consumer) handleMessage(log *zap.SugaredLogger, f CallBack, msg *kafka.
 		return
 	}
 
-	if _, err := c.instance.CommitMessage(msg); err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
-		log.Warnw("Failed to commit offset after message processing",
-			zap.Any("topic_partition", msg.TopicPartition),
-			zap.Error(err))
-	}
+	shouldCommit = true
 }
 
 func (c *consumer) rewindMessage(msg *kafka.Message) error {
@@ -238,9 +255,9 @@ func (c *consumer) rewindMessage(msg *kafka.Message) error {
 
 const DLQSuffix = "dlq"
 
-func (c *consumer) StoreDLQ(ctx context.Context, msg *kafka.Message) {
+func (c *consumer) StoreDLQ(ctx context.Context, msg *kafka.Message) error {
 	topic := *msg.TopicPartition.Topic
-	c.producer.ProduceRawWithKey(ctx, GetDLQTopic(topic), msg.Key, msg.Value)
+	return c.producer.ProduceRawWithKey(ctx, GetDLQTopic(topic), msg.Key, msg.Value)
 }
 
 func GetDLQTopic(topic string) string {
