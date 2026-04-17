@@ -3,7 +3,6 @@ package rules
 import (
 	"errors"
 	"strings"
-	"time"
 
 	accounttypes "go-socket/core/modules/account/types"
 )
@@ -61,11 +60,4 @@ func EqualOptionalString(left, right *string) bool {
 	default:
 		return *left == *right
 	}
-}
-
-func NormalizeAccountTime(value time.Time) time.Time {
-	if value.IsZero() {
-		return time.Now().UTC()
-	}
-	return value.UTC()
 }

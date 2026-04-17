@@ -7,6 +7,7 @@ import (
 	"time"
 
 	appCtx "go-socket/core/context"
+	"go-socket/core/modules/account/application/provider"
 	"go-socket/core/modules/account/domain/aggregate"
 	"go-socket/core/modules/account/domain/entity"
 	repos "go-socket/core/modules/account/domain/repos"
@@ -54,6 +55,11 @@ type AuthenticateAccountCommand struct {
 	Device   DeviceCommand
 }
 
+type OpenAuthenticateAccountCommand struct {
+	UserInfo provider.UserInfo
+	Device   DeviceCommand
+}
+
 type TokenPairResult struct {
 	AccessToken      string
 	RefreshToken     string
@@ -81,6 +87,7 @@ type RevokeAccountSessionsCommand struct {
 type AuthenticationService interface {
 	Register(ctx context.Context, command RegisterAccountCommand) (*TokenPairResult, error)
 	Authenticate(ctx context.Context, command AuthenticateAccountCommand) (*TokenPairResult, error)
+	OpenAuthenticate(ctx context.Context, command OpenAuthenticateAccountCommand) (*TokenPairResult, error)
 	RefreshAuthenticate(ctx context.Context, command RefreshTokenCommand) (*TokenPairResult, error)
 	Logout(ctx context.Context, command LogoutCommand) error
 	RevokeAllSessions(ctx context.Context, command RevokeAccountSessionsCommand) error
@@ -211,6 +218,81 @@ func (s *authenticationService) Authenticate(ctx context.Context, command Authen
 		if err != nil {
 			return stackErr.Error(err)
 		}
+		return nil
+	}); txErr != nil {
+		return nil, stackErr.Error(txErr)
+	}
+
+	return tokenPair, nil
+}
+
+func (s *authenticationService) OpenAuthenticate(ctx context.Context, command OpenAuthenticateAccountCommand) (*TokenPairResult, error) {
+	now := time.Now().UTC()
+
+	email, err := valueobject.NewEmail(command.UserInfo.Email)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	var tokenPair *TokenPairResult
+
+	if txErr := s.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
+		accountRepo := txRepos.AccountAggregateRepository()
+		accountAggregate, err := accountRepo.LoadByEmail(ctx, email.Value())
+		if err != nil {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
+				return stackErr.Error(fmt.Errorf("load account aggregate by email failed: %v", err))
+			}
+
+			accountAggregate, err = aggregate.NewAccountAggregate(uuid.NewString())
+			if err != nil {
+				return stackErr.Error(err)
+			}
+
+			displayName := command.UserInfo.Name
+			if displayName == "" {
+				displayName = command.UserInfo.Email
+			}
+
+			avatarObjectKey := command.UserInfo.Picture
+
+			if err := accountAggregate.OpenRegister(email.Value(), displayName, avatarObjectKey, now); err != nil {
+				return stackErr.Error(err)
+			}
+
+			if err := accountRepo.Save(ctx, accountAggregate); err != nil {
+				reloadedAgg, reloadErr := accountRepo.LoadByEmail(ctx, email.Value())
+				if reloadErr != nil {
+					return stackErr.Error(fmt.Errorf("save new account aggregate failed: %v", err))
+				}
+				accountAggregate = reloadedAgg
+			}
+		} else {
+			if !accountAggregate.IsEmailVerified() {
+				if err := accountAggregate.ConfirmEmailVerified(email, now); err != nil {
+					return stackErr.Error(err)
+				}
+				if err := accountRepo.Save(ctx, accountAggregate); err != nil {
+					return stackErr.Error(fmt.Errorf("save verified account aggregate failed: %v", err))
+				}
+			}
+		}
+
+		accountSnapshot, err := accountAggregate.Snapshot()
+		if err != nil {
+			return stackErr.Error(err)
+		}
+
+		deviceAgg, err := s.ensureKnownDevice(ctx, txRepos.DeviceRepository(), accountSnapshot.ID, command.Device, now)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+
+		tokenPair, err = s.createSessionTokenPair(ctx, txRepos.SessionRepository(), accountSnapshot, deviceAgg.DeviceID(), command.Device, now)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+
 		return nil
 	}); txErr != nil {
 		return nil, stackErr.Error(txErr)

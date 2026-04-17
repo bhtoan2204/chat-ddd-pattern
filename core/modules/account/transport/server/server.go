@@ -26,6 +26,8 @@ type accountHTTPServer struct {
 	getAvatar          cqrs.Dispatcher[*in.GetAvatarRequest, *out.GetAvatarResponse]
 	createPresignedUrl cqrs.Dispatcher[*in.CreatePresignedUrlRequest, *out.CreatePresignedUrlResponse]
 	searchUsers        cqrs.Dispatcher[*in.SearchUsersRequest, *out.SearchUsersResponse]
+	loginGoogle        cqrs.Dispatcher[*in.LoginGoogleRequest, *out.LoginGoogleResponse]
+	callbackGoogle     cqrs.Dispatcher[*in.CallbackGoogleRequest, *out.CallbackGoogleResponse]
 }
 
 func NewHTTPServer(
@@ -41,6 +43,8 @@ func NewHTTPServer(
 	getAvatar cqrs.Dispatcher[*in.GetAvatarRequest, *out.GetAvatarResponse],
 	createPresignedUrl cqrs.Dispatcher[*in.CreatePresignedUrlRequest, *out.CreatePresignedUrlResponse],
 	searchUsers cqrs.Dispatcher[*in.SearchUsersRequest, *out.SearchUsersResponse],
+	loginGoogle cqrs.Dispatcher[*in.LoginGoogleRequest, *out.LoginGoogleResponse],
+	callbackGoogle cqrs.Dispatcher[*in.CallbackGoogleRequest, *out.CallbackGoogleResponse],
 ) (infrahttp.HTTPServer, error) {
 	return &accountHTTPServer{
 		login:              login,
@@ -55,11 +59,13 @@ func NewHTTPServer(
 		getAvatar:          getAvatar,
 		createPresignedUrl: createPresignedUrl,
 		searchUsers:        searchUsers,
+		loginGoogle:        loginGoogle,
+		callbackGoogle:     callbackGoogle,
 	}, nil
 }
 
 func (s *accountHTTPServer) RegisterPublicRoutes(routes *gin.RouterGroup) {
-	accounthttp.RegisterPublicRoutes(routes, s.login, s.register, s.refresh, s.confirmVerifyEmail)
+	accounthttp.RegisterPublicRoutes(routes, s.login, s.register, s.refresh, s.confirmVerifyEmail, s.loginGoogle, s.callbackGoogle)
 }
 
 func (s *accountHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {

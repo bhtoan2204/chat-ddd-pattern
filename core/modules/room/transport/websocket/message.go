@@ -20,3 +20,9 @@ type Message struct {
 	Data         json.RawMessage `json:"data,omitempty"`
 	RecipientIDs []string        `json:"recipient_ids,omitempty"`
 }
+
+type AckMessage struct {
+	Message
+	IsSuccess bool   `json:"is_success"`
+	Error     string `json:"error,omitempty"`
+}

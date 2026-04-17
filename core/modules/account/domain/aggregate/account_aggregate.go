@@ -10,6 +10,8 @@ import (
 	"go-socket/core/shared/pkg/stackErr"
 	"go-socket/core/shared/utils"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type AccountAggregate struct {
@@ -132,7 +134,6 @@ func (a *AccountAggregate) Register(
 	if err != nil {
 		return stackErr.Error(err)
 	}
-	createdAt := rules.NormalizeAccountTime(now)
 
 	return a.ApplyChange(a, &EventAccountCreated{
 		AccountID:    a.AggregateID(),
@@ -140,11 +141,50 @@ func (a *AccountAggregate) Register(
 		PasswordHash: passwordHash.Value(),
 		DisplayName:  normalizedDisplayName,
 		Status:       accounttypes.AccountStatusActive,
-		CreatedAt:    createdAt,
+		CreatedAt:    now,
 	})
 }
 
-func (a *AccountAggregate) UpdateProfile(displayName string, username, avatarObjectKey *string, now time.Time) (bool, error) {
+func (a *AccountAggregate) OpenRegister(email, displayName, avatarObjectKey string, now time.Time) error {
+	if a.IsRegistered() {
+		return stackErr.Error(rules.ErrAccountAlreadyRegistered)
+	}
+	normalizedDisplayName, err := rules.NormalizeDisplayName(displayName)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+
+	if err := a.ApplyChange(a, &EventAccountCreated{
+		AccountID:    a.AggregateID(),
+		Email:        email,
+		PasswordHash: uuid.NewString(),
+		DisplayName:  normalizedDisplayName,
+		Status:       accounttypes.AccountStatusActive,
+		CreatedAt:    now,
+	}); err != nil {
+		return stackErr.Error(err)
+	}
+
+	if err := a.ApplyChange(a, &EventAccountProfileUpdated{
+		AccountID:       a.AggregateID(),
+		DisplayName:     normalizedDisplayName,
+		AvatarObjectKey: &avatarObjectKey,
+	}); err != nil {
+		return stackErr.Error(err)
+	}
+
+	if !a.IsEmailVerified() {
+		if err := a.ApplyChange(a, &EventAccountEmailVerified{
+			AccountID:       a.AggregateID(),
+			EmailVerifiedAt: now,
+		}); err != nil {
+			return stackErr.Error(err)
+		}
+	}
+	return nil
+}
+
+func (a *AccountAggregate) UpdateProfile(displayName string, username, avatarObjectKey *string) (bool, error) {
 	if !a.IsRegistered() {
 		return false, stackErr.Error(rules.ErrAccountNotRegistered)
 	}
@@ -168,13 +208,12 @@ func (a *AccountAggregate) UpdateProfile(displayName string, username, avatarObj
 		return false, nil
 	}
 
-	updatedAt := rules.NormalizeAccountTime(now)
 	if err := a.ApplyChange(a, &EventAccountProfileUpdated{
 		AccountID:       a.AggregateID(),
 		DisplayName:     normalizedDisplayName,
 		Username:        normalizedUsername,
 		AvatarObjectKey: normalizedAvatarObjectKey,
-		UpdatedAt:       updatedAt,
+		UpdatedAt:       utils.NowUTC(),
 	}); err != nil {
 		return false, stackErr.Error(err)
 	}
@@ -218,7 +257,7 @@ func (a *AccountAggregate) ConfirmEmailVerified(email valueobject.Email, verifie
 
 	return a.ApplyChange(a, &EventAccountEmailVerified{
 		AccountID:       a.AggregateID(),
-		EmailVerifiedAt: rules.NormalizeAccountTime(verifiedAt),
+		EmailVerifiedAt: verifiedAt,
 	})
 }
 
@@ -226,15 +265,15 @@ func (a *AccountAggregate) ChangePassword(passwordHash valueobject.HashedPasswor
 	if !a.IsRegistered() {
 		return false, stackErr.Error(rules.ErrAccountNotRegistered)
 	}
-	if a.PasswordHash == passwordHash.Value() {
+
+	if a.HasChangePassword() && a.PasswordHash == passwordHash.Value() {
 		return false, stackErr.Error(rules.ErrAccountPasswordSameAsOldOne)
 	}
 
-	changedAt := rules.NormalizeAccountTime(now)
 	if err := a.ApplyChange(a, &EventAccountPasswordChanged{
 		AccountID:         a.AggregateID(),
 		PasswordHash:      passwordHash.Value(),
-		PasswordChangedAt: changedAt,
+		PasswordChangedAt: now,
 	}); err != nil {
 		return false, stackErr.Error(err)
 	}
@@ -350,4 +389,12 @@ func (a *AccountAggregate) CurrentPasswordHash() (valueobject.HashedPassword, er
 
 func (a *AccountAggregate) IsRegistered() bool {
 	return a.AccountID != "" && !a.CreatedAt.IsZero()
+}
+
+func (a *AccountAggregate) IsEmailVerified() bool {
+	return a.EmailVerifiedAt != nil
+}
+
+func (a *AccountAggregate) HasChangePassword() bool {
+	return a.PasswordChangedAt != nil
 }

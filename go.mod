@@ -29,12 +29,14 @@ require (
 	go.uber.org/mock v0.5.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/crypto v0.46.0
+	golang.org/x/oauth2 v0.32.0
 	golang.org/x/sync v0.19.0
 	google.golang.org/grpc v1.78.0
 	gorm.io/gorm v1.31.1
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.9.0 // indirect
 	github.com/aead/chacha20 v0.0.0-20180709150244-8b13a72661da // indirect
 	github.com/aead/chacha20poly1305 v0.0.0-20170617001512-233f39982aeb // indirect
 	github.com/aead/poly1305 v0.0.0-20180717145839-3fee0db0b635 // indirect

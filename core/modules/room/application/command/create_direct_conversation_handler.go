@@ -70,7 +70,7 @@ func (h *createDirectConversationHandler) Handle(ctx context.Context, req *in.Cr
 		room,
 		[]*entity.RoomMemberEntity{ownerMember, peerMember},
 		accountID,
-		fmt.Sprintf("%s started a direct conversation", accountID),
+		fmt.Sprintf("%s started a direct conversation", ownerMember.DisplayName),
 		now,
 	)
 	if err != nil {

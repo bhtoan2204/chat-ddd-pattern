@@ -47,6 +47,13 @@ type AuthConfig struct {
 	TokenIssuer            string `env:"AUTH_TOKEN_ISSUER"`
 	AccessTokenTTLSeconds  int64  `env:"AUTH_ACCESS_TOKEN_TTL_SECONDS"`
 	RefreshTokenTTLSeconds int64  `env:"AUTH_REFRESH_TOKEN_TTL_SECONDS"`
+	GoogleConfig           GoogleConfig
+}
+
+type GoogleConfig struct {
+	GoogleClientID     string `env:"GOOGLE_CLIENT_ID"`
+	GoogleClientSecret string `env:"GOOGLE_CLIENT_SECRET"`
+	GoogleRedirectURL  string `env:"GOOGLE_CLIENT_REDIRECT_URL"`
 }
 
 type KafkaConfig struct {

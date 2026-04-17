@@ -46,14 +46,13 @@ func NewAccount(
 		return nil, stackErr.Error(err)
 	}
 
-	normalizedNow := rules.NormalizeAccountTime(now)
 	return &Account{
 		ID:           normalizedID,
 		Email:        email,
 		PasswordHash: passwordHash,
 		DisplayName:  normalizedDisplayName,
 		Status:       normalizedStatus,
-		CreatedAt:    normalizedNow,
-		UpdatedAt:    normalizedNow,
+		CreatedAt:    now,
+		UpdatedAt:    now,
 	}, nil
 }

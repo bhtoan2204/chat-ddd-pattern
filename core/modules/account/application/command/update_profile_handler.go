@@ -12,7 +12,6 @@ import (
 	"go-socket/core/shared/pkg/cqrs"
 	"go-socket/core/shared/pkg/logging"
 	"go-socket/core/shared/pkg/stackErr"
-	"go-socket/core/shared/utils"
 
 	"go.uber.org/zap"
 )
@@ -42,7 +41,7 @@ func (u *updateProfileHandler) Handle(ctx context.Context, req *in.UpdateProfile
 		return nil, stackErr.Error(err)
 	}
 
-	updated, err := accountAggregate.UpdateProfile(req.DisplayName, req.Username, req.AvatarObjectKey, utils.NowUTC())
+	updated, err := accountAggregate.UpdateProfile(req.DisplayName, req.Username, req.AvatarObjectKey)
 	if err != nil {
 		log.Errorw("Failed to update account profile aggregate", zap.Error(err))
 		return nil, stackErr.Error(err)

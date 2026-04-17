@@ -4,6 +4,8 @@ import (
 	"context"
 	appCtx "go-socket/core/context"
 	"go-socket/core/modules/account/application/command"
+	"go-socket/core/modules/account/application/provider"
+	"go-socket/core/modules/account/application/provider/google"
 	"go-socket/core/modules/account/application/query"
 	accountservice "go-socket/core/modules/account/application/service"
 	accountrepo "go-socket/core/modules/account/infra/persistent/repository"
@@ -13,9 +15,11 @@ import (
 	"go-socket/core/shared/transport/http"
 )
 
-func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
+func buildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
 	accountRepos := accountrepo.NewRepoImpl(appContext.GetDB(), appContext.GetCache())
 	accountServices := accountservice.NewServices(appContext, accountRepos)
+	authProviderRegistry := provider.NewProviderRegistry()
+	authProviderRegistry.Register(google.NewGoogleProvider(ctx, appContext.GetConfig()))
 
 	login := cqrs.NewDispatcher(command.NewLoginHandler(appContext, accountRepos, accountServices))
 	register := cqrs.NewDispatcher(command.NewRegisterHandler(appContext, accountRepos, accountServices))
@@ -29,6 +33,8 @@ func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 	changePassword := cqrs.NewDispatcher(command.NewChangePasswordHandler(appContext, accountRepos, accountServices))
 	searchUsers := cqrs.NewDispatcher(query.NewSearchUsers(appContext, accountRepos, accountServices))
 	refresh := cqrs.NewDispatcher(command.NewRefresh(appContext, accountRepos, accountServices))
+	loginGoogle := cqrs.NewDispatcher(command.NewLoginGoogle(appContext, accountRepos, accountServices, authProviderRegistry))
+	callbackGoogle := cqrs.NewDispatcher(command.NewCallbackGoogle(appContext, accountRepos, accountServices, authProviderRegistry))
 	server, err := accountserver.NewHTTPServer(
 		login,
 		register,
@@ -42,6 +48,8 @@ func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 		getAvatar,
 		getPresignedUrl,
 		searchUsers,
+		loginGoogle,
+		callbackGoogle,
 	)
 	if err != nil {
 		return nil, stackErr.Error(err)

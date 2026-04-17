@@ -28,6 +28,7 @@ type wsHandler struct {
 
 func NewWSHandler(appContext *appCtx.AppContext, hub IHub, upgrader websocket.Upgrader) *wsHandler {
 	log := logging.FromContext(context.Background())
+	log.Infow("Connect to socket handler")
 	subcriber, err := appContext.LocalBus().Subscribe(constant.RealtimeMessageTopic)
 	if err != nil {
 		return nil

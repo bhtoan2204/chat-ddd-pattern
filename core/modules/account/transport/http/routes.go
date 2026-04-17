@@ -17,11 +17,15 @@ func RegisterPublicRoutes(
 	register cqrs.Dispatcher[*in.RegisterRequest, *out.RegisterResponse],
 	refresh cqrs.Dispatcher[*in.RefreshRequest, *out.RefreshResponse],
 	confirmVerifyEmail cqrs.Dispatcher[*in.ConfirmVerifyEmailRequest, *out.ConfirmVerifyEmailResponse],
+	loginGoogle cqrs.Dispatcher[*in.LoginGoogleRequest, *out.LoginGoogleResponse],
+	callbackGoogle cqrs.Dispatcher[*in.CallbackGoogleRequest, *out.CallbackGoogleResponse],
 ) {
 	routes.POST("/auth/login", httpx.Wrap(handler.NewLoginHandler(login)))
 	routes.POST("/auth/register", httpx.Wrap(handler.NewRegisterHandler(register)))
 	routes.POST("/auth/refresh", httpx.Wrap(handler.NewRefreshHandler(refresh)))
 	routes.POST("/account/verify-email/confirm", httpx.Wrap(handler.NewConfirmVerifyEmailHandler(confirmVerifyEmail)))
+	routes.POST("/auth/login-google", httpx.Wrap(handler.NewLoginGoogleHandler(loginGoogle)))
+	routes.POST("/auth/login-google/callback", httpx.Wrap(handler.NewCallbackGoogleHandler(callbackGoogle)))
 }
 func RegisterPrivateRoutes(
 	routes *gin.RouterGroup,

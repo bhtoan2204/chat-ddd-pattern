@@ -10,14 +10,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func extractToken(c *gin.Context) string {
+	token := c.GetHeader("Authorization")
+	if token != "" {
+		token = strings.TrimSpace(strings.TrimPrefix(token, "Bearer "))
+		if token != "" {
+			return token
+		}
+	}
+
+	token = strings.TrimSpace(c.Query("authorization"))
+	if token != "" {
+		return token
+	}
+
+	return ""
+}
+
 func AuthenMiddleware(appCtx *appCtx.AppContext) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
-		if token == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			return
-		}
-		token = strings.TrimPrefix(token, "Bearer ")
+		token := extractToken(c)
 		if token == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
 			return

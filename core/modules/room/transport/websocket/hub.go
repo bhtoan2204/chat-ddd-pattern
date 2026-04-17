@@ -18,7 +18,7 @@ import (
 )
 
 const roomChannelPrefix = "room:"
-const userChannelPrefix = "roon:"
+const userChannelPrefix = "user:"
 const presenceTTL = 2 * time.Minute
 
 var _ IHub = (*Hub)(nil)
@@ -68,19 +68,21 @@ func (h *Hub) Register(ctx context.Context, client IClient) {
 	}
 
 	h.mu.Lock()
-	defer h.mu.Unlock()
-
 	if h.isClosed {
+		h.mu.Unlock()
 		client.Close(ctx)
 		return
 	}
+
 	h.clients[client.GetID()] = client
 	if _, ok := h.clientRooms[client.GetID()]; !ok {
 		h.clientRooms[client.GetID()] = make(map[string]struct{})
 	}
+	clientCount := len(h.clients)
+	h.mu.Unlock()
+
 	h.publishPresence(ctx, client.GetUserID(), "online")
-	_ = h.JoinRoom(ctx, client, userChannelName(client.GetUserID()))
-	log.Infow("client registered", "client_id", client.GetID(), "user_id", client.GetUserID(), "clients", len(h.clients))
+	log.Infow("client registered", "client_id", client.GetID(), "user_id", client.GetUserID(), "clients", clientCount)
 }
 
 func (h *Hub) Unregister(ctx context.Context, client IClient) {
@@ -116,7 +118,6 @@ func (h *Hub) Unregister(ctx context.Context, client IClient) {
 	h.mu.Unlock()
 
 	h.publishPresence(ctx, client.GetUserID(), "offline")
-	_ = h.LeaveRoom(ctx, client, userChannelName(client.GetUserID()))
 	client.Close(ctx)
 	log.Infow("client unregistered", "client_id", clientID, "clients", remainingClients)
 }
@@ -205,13 +206,15 @@ func (h *Hub) LeaveRoom(ctx context.Context, client IClient, roomID string) erro
 func (h *Hub) HandleMessage(ctx context.Context, client IClient, msg Message) error {
 	log := logging.FromContext(ctx)
 
+	var err error
+
 	switch msg.Action {
 	case ActionJoinRoom:
-		return h.JoinRoom(ctx, client, msg.RoomID)
+		err = h.JoinRoom(ctx, client, msg.RoomID)
 	case ActionLeaveRoom:
-		return h.LeaveRoom(ctx, client, msg.RoomID)
+		err = h.LeaveRoom(ctx, client, msg.RoomID)
 	case ActionChatMessage:
-		return h.handleChatMessage(ctx, client, msg)
+		err = h.handleChatMessage(ctx, client, msg)
 	case ActionTyping, ActionSeen:
 		if msg.SenderID == "" {
 			msg.SenderID = client.GetUserID()
@@ -219,23 +222,52 @@ func (h *Hub) HandleMessage(ctx context.Context, client IClient, msg Message) er
 		if msg.SenderID == "" {
 			msg.SenderID = client.GetID()
 		}
-		return h.Publish(ctx, msg)
+		err = h.Publish(ctx, msg)
 	case ActionPresence:
 		h.publishPresence(ctx, client.GetUserID(), "online")
-		return nil
+		err = nil
+	default:
+		log.Errorw("No valid action", zap.Any("msg", msg))
+		err = stackErr.Error(fmt.Errorf("unsupported websocket action: %s", msg.Action))
 	}
-	log.Errorw("No valid action", zap.Any("msg", msg))
-	return stackErr.Error(fmt.Errorf("unsupported websocket action: %s", msg.Action))
+
+	h.sendAck(ctx, client, msg, err)
+	return err
+}
+
+func (h *Hub) sendAck(ctx context.Context, client IClient, msg Message, err error) {
+	log := logging.FromContext(ctx)
+
+	if client == nil {
+		return
+	}
+
+	ack := AckMessage{
+		Message:   msg,
+		IsSuccess: err == nil,
+	}
+
+	if err != nil {
+		ack.Error = err.Error()
+	}
+
+	payload, marshalErr := json.Marshal(ack)
+	if marshalErr != nil {
+		log.Errorw("failed to marshal websocket ack", zap.Error(marshalErr))
+		return
+	}
+
+	client.Send(ctx, payload)
 }
 
 func (h *Hub) Publish(ctx context.Context, msg Message) error {
-	if h.redisClient == nil {
-		return stackErr.Error(errors.New("redis client is nil"))
-	}
-
+	log := logging.FromContext(ctx)
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("marshal websocket message: %v", err))
+	}
+	if msg.Data != nil {
+		log.Infow("Publish data", zap.String("payload", string(payload)))
 	}
 
 	roomID := strings.TrimSpace(msg.RoomID)
@@ -413,14 +445,27 @@ func (h *Hub) removeSubscription(ctx context.Context, roomID string, expected *r
 }
 
 func roomChannelName(roomID string) string {
+	roomID = strings.TrimSpace(roomID)
+	roomID = strings.TrimPrefix(roomID, roomChannelPrefix)
 	return roomChannelPrefix + roomID
 }
 
 func userChannelName(userID string) string {
+	userID = strings.TrimSpace(userID)
+	userID = strings.TrimPrefix(userID, userChannelPrefix)
 	return userChannelPrefix + userID
 }
 
 func (h *Hub) publishPresence(ctx context.Context, userID, status string) {
+	if h.redisClient == nil {
+		return
+	}
+
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return
+	}
+
 	key := "chat:presence:" + strings.TrimSpace(userID)
 	if status == "online" {
 		_ = h.redisClient.Set(ctx, key, "online", presenceTTL).Err()
@@ -440,6 +485,9 @@ func (h *Hub) publishPresence(ctx context.Context, userID, status string) {
 }
 
 func (h *Hub) roomsForUser(userID string) []string {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+
 	roomIDs := make([]string, 0)
 	for _, client := range h.clients {
 		if client.GetUserID() != userID {

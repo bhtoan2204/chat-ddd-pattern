@@ -414,3 +414,78 @@ endpoints:
                 type: string
               - name: email_verified
                 type: bool
+  - name: AuthLoginGoogle
+    method: POST
+    path: /auth/login-google
+    handler: LoginGoogleHandler
+    usecase:
+      name: AuthUsecase
+      method: LoginGoogle
+    request:
+      struct: LoginGoogleRequest
+      fields: []
+    response:
+      struct: LoginGoogleResponse
+      fields:
+        - name: redirect_url
+          type: string
+  - name: AuthCallbackGoogle
+    method: POST
+    path: /auth/login-google/callback
+    handler: CallbackGoogleHandler
+    usecase:
+      name: AuthUsecase
+      method: CallbackGoogle
+    request:
+      struct: CallbackGoogleRequest
+      fields:
+        - name: code
+          type: string
+          required: true
+        - name: state
+          type: string
+          required: true
+        - name: device_uid
+          type: string
+          source: header
+          header: X-Device-UID
+          required: true
+        - name: device_name
+          type: string
+          source: header
+          header: X-Device-Name
+        - name: device_type
+          type: string
+          source: header
+          header: X-Device-Type
+        - name: os_name
+          type: string
+          source: header
+          header: X-Device-OS-Name
+        - name: os_version
+          type: string
+          source: header
+          header: X-Device-OS-Version
+        - name: app_version
+          type: string
+          source: header
+          header: X-Device-App-Version
+        - name: user_agent
+          type: string
+          source: header
+          header: User-Agent
+        - name: ip_address
+          type: string
+          source: header
+          header: X-Forwarded-For
+    response:
+      struct: CallbackGoogleResponse
+      fields:
+        - name: access_token
+          type: string
+        - name: refresh_token
+          type: string
+        - name: access_expires_at
+          type: int64
+        - name: refresh_expires_at
+          type: int64

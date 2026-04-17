@@ -2,6 +2,7 @@ package query
 
 import (
 	"context"
+	"net/url"
 	"time"
 
 	appCtx "go-socket/core/context"
@@ -41,6 +42,22 @@ func (u *getAvatarHandler) Handle(ctx context.Context, req *in.GetAvatarRequest)
 	}
 	if accountEntity.AvatarObjectKey == nil || *accountEntity.AvatarObjectKey == "" {
 		return &out.GetAvatarResponse{}, nil
+	}
+
+	isAbsoluteURL := func(value string) bool {
+		parsed, err := url.ParseRequestURI(value)
+		if err != nil {
+			return false
+		}
+
+		return parsed.Scheme == "http" || parsed.Scheme == "https"
+	}
+
+	avatarValue := *accountEntity.AvatarObjectKey
+	if isAbsoluteURL(avatarValue) {
+		return &out.GetAvatarResponse{
+			URL: avatarValue,
+		}, nil
 	}
 
 	url, err := u.storage.PresignedGetObjectURL(ctx, *accountEntity.AvatarObjectKey, avatarPresignedURLTTL)
