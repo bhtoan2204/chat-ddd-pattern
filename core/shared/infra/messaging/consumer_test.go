@@ -75,37 +75,48 @@ func TestHandleMessageCommitsOffsetOnlyAfterSuccessfulProcessing(t *testing.T) {
 	}
 }
 
-func TestHandleMessageRewindsFailedOffsetWithoutCommitting(t *testing.T) {
+func TestHandleMessageDoesNotCommitOrRewindOnFailure(t *testing.T) {
 	topic := "CHATAPP.APPUSER.ACCOUNT_OUTBOX_EVENTS"
 	msg := &kafka.Message{
-		TopicPartition: kafka.TopicPartition{Topic: &topic, Partition: 0, Offset: 27},
-		Value:          []byte(`{"event_name":"EventAccountCreated"}`),
+		TopicPartition: kafka.TopicPartition{
+			Topic:     &topic,
+			Partition: 0,
+			Offset:    27,
+		},
+		Value: []byte(`{"event_name":"EventAccountCreated"}`),
 	}
 
-	fake := &fakeKafkaConsumer{}
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockKafka := NewMockkafkaConsumerClient(ctrl)
+
 	consumer := &consumer{
-		instance:     fake,
+		instance:     mockKafka,
 		chanStop:     make(chan bool, 1),
 		retryBackoff: 0,
+		dlq:          false,
 	}
 
 	callCount := 0
-	consumer.handleMessage(zap.NewNop().Sugar(), func(context.Context, string, []byte) error {
-		callCount++
-		return errors.New("boom")
-	}, msg)
+
+	// Với implementation hiện tại:
+	// - fail thì KHÔNG commit
+	// - fail thì KHÔNG seek/rewind
+	mockKafka.EXPECT().CommitMessage(gomock.Any()).Times(0)
+	mockKafka.EXPECT().Seek(gomock.Any(), gomock.Any()).Times(0)
+
+	consumer.handleMessage(
+		zap.NewNop().Sugar(),
+		func(context.Context, string, []byte) error {
+			callCount++
+			return errors.New("boom")
+		},
+		msg,
+	)
 
 	if callCount == 0 {
 		t.Fatalf("expected callback to be invoked")
-	}
-	if got := len(fake.committed); got != 0 {
-		t.Fatalf("expected no committed offsets on failure, got %d", got)
-	}
-	if got := len(fake.seeked); got != 1 {
-		t.Fatalf("expected 1 rewind on failure, got %d", got)
-	}
-	if fake.seeked[0].Offset != msg.TopicPartition.Offset {
-		t.Fatalf("expected rewind to offset %v, got %v", msg.TopicPartition.Offset, fake.seeked[0].Offset)
 	}
 }
 

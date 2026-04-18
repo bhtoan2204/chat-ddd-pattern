@@ -3,7 +3,9 @@ package xpaseto
 import (
 	"context"
 	"testing"
+	"time"
 	"wechat-clone/core/modules/account/domain/entity"
+	valueobject "wechat-clone/core/modules/account/domain/value_object"
 	"wechat-clone/core/shared/config"
 )
 
@@ -33,7 +35,7 @@ func TestPaseto(t *testing.T) {
 	t.Log(claims)
 }
 
-func TestParsePaseto(t *testing.T) {
+func TestParseAccessToken(t *testing.T) {
 	cfg := &config.Config{
 		AuthConfig: config.AuthConfig{
 			TokenIssuer:            "chat",
@@ -45,13 +47,55 @@ func TestParsePaseto(t *testing.T) {
 			RefreshPrivateKey:      "OghFb8xO1EqyzKRc1/q7hgAkNzZfZJXOkczIoey2+ViDY25dsYyAOfDThLwqZ4qokn3hbAAE+h7/YcHrpXX5Aw==",
 		},
 	}
+
 	pasetoSvc, err := NewPaseto(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
-	claims, err := pasetoSvc.ParseAccessToken(context.Background(), "v2.public.eyJlbWFpbCI6ImhvYW5ndHVkYWRlbkBnbWFpbC5jb20iLCJleHAiOiIyMDI2LTA0LTE1VDA2OjE0OjAxWiIsImlhdCI6IjIwMjYtMDQtMTVUMDM6NDQ6MDFaIiwiaXNzIjoiY2hhdCIsInN1YiI6IjQwOWM1MmVhLTcxYTMtNDUxMy05MzQwLWU5NDdhYTc0MTI3MyIsInRva2VuX3VzZSI6ImFjY2VzcyJ9JK56WWwIOAIKpO_8ES4dR7tu5pZDNkiJB2WUhKczKNUqUF5nwTyybeYAN3-y8fPQJdNnMf6zxGNjV16Mw6FmDA.bnVsbA")
+	email, err := valueobject.NewEmail("hoangtudaden@gmail.com")
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(claims)
+	account := &entity.Account{
+		ID:    "409c52ea-71a3-4513-9340-e947aa741273",
+		Email: email,
+	}
+
+	token, exp, err := pasetoSvc.GenerateAccessToken(context.Background(), account)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	claims, err := pasetoSvc.ParseAccessToken(context.Background(), token)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if claims.AccountID != account.ID {
+		t.Fatalf("expected account id %q, got %q", account.ID, claims.AccountID)
+	}
+
+	if claims.Email != account.Email.Value() {
+		t.Fatalf("expected email %q, got %q", account.Email.Value(), claims.Email)
+	}
+
+	if claims.TokenType != TokenTypeAccess {
+		t.Fatalf("expected token type %q, got %q", TokenTypeAccess, claims.TokenType)
+	}
+
+	if claims.SessionID != "" {
+		t.Fatalf("expected empty session id for access token, got %q", claims.SessionID)
+	}
+
+	if claims.DeviceID != "" {
+		t.Fatalf("expected empty device id for access token, got %q", claims.DeviceID)
+	}
+
+	if diff := claims.ExpiresAt.Sub(exp); diff < -time.Second || diff > time.Second {
+		t.Fatalf("expected exp close to %v, got %v", exp, claims.ExpiresAt)
+	}
+
+	if claims.IssuedAt.IsZero() {
+		t.Fatal("expected issued at to be set")
+	}
 }
