@@ -73,7 +73,7 @@ func matchesProjectedTransaction(
 	if strings.TrimSpace(existing.TransactionID) != strings.TrimSpace(projected.TransactionID) {
 		return false
 	}
-	if strings.ToUpper(strings.TrimSpace(existing.Currency)) != strings.ToUpper(strings.TrimSpace(projected.Currency)) {
+	if !strings.EqualFold(strings.TrimSpace(existing.Currency), strings.TrimSpace(projected.Currency)) {
 		return false
 	}
 	if !existing.CreatedAt.UTC().Equal(projected.CreatedAt.UTC()) {
@@ -91,7 +91,7 @@ func matchesProjectedTransaction(
 		if strings.TrimSpace(existingEntry.AccountID) != strings.TrimSpace(projectedEntry.AccountID) {
 			return false
 		}
-		if strings.ToUpper(strings.TrimSpace(existingEntry.Currency)) != strings.ToUpper(strings.TrimSpace(projectedEntry.Currency)) {
+		if !strings.EqualFold(strings.TrimSpace(existingEntry.Currency), strings.TrimSpace(projectedEntry.Currency)) {
 			return false
 		}
 		if existingEntry.Amount != projectedEntry.Amount {

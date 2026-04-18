@@ -13,7 +13,10 @@ import (
 	roomrepos "wechat-clone/core/modules/room/domain/repos"
 	"wechat-clone/core/modules/room/types"
 	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
+
+	"go.uber.org/zap"
 )
 
 type removeChatMemberHandler struct {
@@ -53,10 +56,12 @@ func (h *removeChatMemberHandler) Handle(ctx context.Context, req *in.RemoveChat
 		return nil, stackErr.Error(err)
 	}
 	out := roomsupport.ToConversationResponse(res)
-	h.realtime.EmitMessage(ctx, types.MessagePayload{
+	if err := h.realtime.EmitMessage(ctx, types.MessagePayload{
 		RoomId:  out.RoomID,
 		Type:    reflect.TypeOf(out).Elem().Name(),
 		Payload: out,
-	})
+	}); err != nil {
+		logging.FromContext(ctx).Warnw("failed to emit realtime message after removing chat member", zap.Error(err), "room_id", req.RoomID)
+	}
 	return out, nil
 }

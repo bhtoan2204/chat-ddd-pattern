@@ -13,7 +13,10 @@ import (
 	roomrepos "wechat-clone/core/modules/room/domain/repos"
 	"wechat-clone/core/modules/room/types"
 	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
+
+	"go.uber.org/zap"
 )
 
 type updateGroupChatHandler struct {
@@ -60,11 +63,13 @@ func (h *updateGroupChatHandler) Handle(ctx context.Context, req *in.UpdateGroup
 	}
 	out := roomsupport.ToConversationResponse(res)
 
-	h.realtime.EmitMessage(ctx, types.MessagePayload{
+	if err := h.realtime.EmitMessage(ctx, types.MessagePayload{
 		RoomId:  out.RoomID,
 		Type:    reflect.TypeOf(out).Elem().Name(),
 		Payload: out,
-	})
+	}); err != nil {
+		logging.FromContext(ctx).Warnw("failed to emit realtime message after updating group chat", zap.Error(err), "room_id", req.RoomID)
+	}
 
 	return out, nil
 }

@@ -12,7 +12,10 @@ import (
 	roomrepos "wechat-clone/core/modules/room/domain/repos"
 	"wechat-clone/core/modules/room/types"
 	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
+
+	"go.uber.org/zap"
 )
 
 type sendChatMessageHandler struct {
@@ -48,11 +51,13 @@ func (h *sendChatMessageHandler) Handle(ctx context.Context, req *in.SendChatMes
 	}
 
 	out := roomsupport.ToMessageResponse(res)
-	h.realtime.EmitMessage(ctx, types.MessagePayload{
+	if err := h.realtime.EmitMessage(ctx, types.MessagePayload{
 		RoomId:  out.RoomID,
 		Type:    reflect.TypeOf(out).Elem().Name(),
 		Payload: out,
-	})
+	}); err != nil {
+		logging.FromContext(ctx).Warnw("failed to emit realtime message after sending chat message", zap.Error(err), zap.String("room_id", res.RoomID))
+	}
 	return out, nil
 }
 

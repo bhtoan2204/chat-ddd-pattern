@@ -14,8 +14,10 @@ import (
 	roomrepos "wechat-clone/core/modules/room/domain/repos"
 	"wechat-clone/core/modules/room/types"
 	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
 
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -59,10 +61,12 @@ func (h *markChatMessageStatusHandler) Handle(ctx context.Context, req *in.MarkC
 	}
 
 	out := &out.MarkChatMessageStatusResponse{Ok: true}
-	h.realtime.EmitMessage(ctx, types.MessagePayload{
+	if err := h.realtime.EmitMessage(ctx, types.MessagePayload{
 		RoomId:  agg.Message().RoomID,
 		Type:    reflect.TypeOf(out).Elem().Name(),
 		Payload: out,
-	})
+	}); err != nil {
+		logging.FromContext(ctx).Warnw("failed to emit realtime message after marking chat message status", zap.Error(err), "message_id", req.MessageID)
+	}
 	return out, nil
 }

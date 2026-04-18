@@ -16,10 +16,6 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-func structExistsInDir(dir, structName string) bool {
-	return structExistsInDirExcept(dir, structName, "")
-}
-
 func structExistsInDirExcept(dir, structName, excludePath string) bool {
 	found := false
 	excludePath = filepath.Clean(excludePath)

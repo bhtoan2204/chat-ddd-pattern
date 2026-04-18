@@ -27,6 +27,10 @@ func extractToken(c *gin.Context) string {
 	return ""
 }
 
+type contextKey string
+
+const accountContextKey contextKey = "account"
+
 func AuthenMiddleware(appCtx *appCtx.AppContext) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		token := extractToken(c)
@@ -43,9 +47,9 @@ func AuthenMiddleware(appCtx *appCtx.AppContext) gin.HandlerFunc {
 			AccountID: claims.AccountID,
 			Email:     claims.Email,
 		})
-		ctx = context.WithValue(ctx, "account", claims)
+		ctx = context.WithValue(ctx, accountContextKey, claims)
 		c.Request = c.Request.WithContext(ctx)
-		c.Set("account", claims)
+		c.Set(accountContextKey, claims)
 		c.Next()
 	}
 }

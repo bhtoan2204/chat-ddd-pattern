@@ -621,52 +621,6 @@ func (s *cassandraProjectionStore) syncRoomIndexes(ctx context.Context, previous
 	return nil
 }
 
-func roomRowToEntity(row *roomProjectionRow) *views.RoomView {
-	if row == nil {
-		return nil
-	}
-
-	pinnedMessageID := utils.StringPtr(row.PinnedMessageID)
-	lastMessageID := utils.StringPtr(row.LastMessageID)
-	lastMessageContent := utils.StringPtr(row.LastMessageContent)
-	lastMessageSenderID := utils.StringPtr(row.LastMessageSenderID)
-
-	return &views.RoomView{
-		ID:                  row.RoomID,
-		Name:                row.Name,
-		Description:         row.Description,
-		RoomType:            row.RoomType,
-		OwnerID:             row.OwnerID,
-		PinnedMessageID:     pinnedMessageID,
-		MemberCount:         row.MemberCount,
-		LastMessageID:       lastMessageID,
-		LastMessageAt:       utils.ClonePtr(row.LastMessageAt),
-		LastMessageContent:  lastMessageContent,
-		LastMessageSenderID: lastMessageSenderID,
-		CreatedAt:           row.CreatedAt.UTC(),
-		UpdatedAt:           row.UpdatedAt.UTC(),
-	}
-}
-
-func roomMemberRowToEntity(row *roomMemberProjectionRow) *views.RoomMemberView {
-	if row == nil {
-		return nil
-	}
-	return &views.RoomMemberView{
-		ID:              row.MemberID,
-		RoomID:          row.RoomID,
-		AccountID:       row.AccountID,
-		DisplayName:     strings.TrimSpace(row.DisplayName),
-		Username:        strings.TrimSpace(row.Username),
-		AvatarObjectKey: strings.TrimSpace(row.AvatarObjectKey),
-		Role:            row.Role,
-		LastDeliveredAt: utils.ClonePtr(row.LastDeliveredAt),
-		LastReadAt:      utils.ClonePtr(row.LastReadAt),
-		CreatedAt:       row.CreatedAt.UTC(),
-		UpdatedAt:       row.UpdatedAt.UTC(),
-	}
-}
-
 func messageRowToEntity(row *messageProjectionRow) (*views.MessageView, error) {
 	if row == nil {
 		return nil, nil
@@ -819,14 +773,6 @@ func cloneRoomRow(row *roomProjectionRow) *roomProjectionRow {
 	return &copy
 }
 
-func nullableProjectionString(value string) interface{} {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return nil
-	}
-	return value
-}
-
 func batchTimeLowerBound(rows []*messageProjectionRow) *time.Time {
 	if len(rows) == 0 {
 		return nil
@@ -851,22 +797,6 @@ func batchTimeUpperBound(rows []*messageProjectionRow) *time.Time {
 		}
 	}
 	return &max
-}
-
-func sliceRoomEntities(rows []*roomProjectionRow, offset, limit int) []*views.RoomView {
-	if offset >= len(rows) {
-		return []*views.RoomView{}
-	}
-	end := offset + limit
-	if end > len(rows) {
-		end = len(rows)
-	}
-
-	results := make([]*views.RoomView, 0, end-offset)
-	for _, row := range rows[offset:end] {
-		results = append(results, roomRowToEntity(row))
-	}
-	return results
 }
 
 func (s *cassandraProjectionStore) listRoomsFromBaseProjection(ctx context.Context, options utils.QueryOptions) ([]*views.RoomView, error) {
@@ -896,14 +826,6 @@ func normalizeOffsetLimit(limit *int, offset *int, defaultLimit, maxLimit int) (
 		valueOffset = *offset
 	}
 	return valueLimit, valueOffset
-}
-
-func limitWithOffset(limit, offset int) int {
-	value := limit + offset
-	if value <= 0 {
-		return limit
-	}
-	return value
 }
 
 func boundedLimit(value, defaultValue, maxValue int) int {

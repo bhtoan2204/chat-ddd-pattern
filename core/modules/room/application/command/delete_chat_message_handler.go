@@ -12,7 +12,10 @@ import (
 	roomrepos "wechat-clone/core/modules/room/domain/repos"
 	"wechat-clone/core/modules/room/types"
 	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
+
+	"go.uber.org/zap"
 )
 
 type deleteChatMessageHandler struct {
@@ -45,10 +48,12 @@ func (h *deleteChatMessageHandler) Handle(ctx context.Context, req *in.DeleteCha
 	}
 
 	out := &out.DeleteChatMessageResponse{Ok: true}
-	h.realtime.EmitMessage(ctx, types.MessagePayload{
+	if err := h.realtime.EmitMessage(ctx, types.MessagePayload{
 		RoomId:  agg.Message().RoomID,
 		Type:    reflect.TypeOf(out).Elem().Name(),
 		Payload: out,
-	})
+	}); err != nil {
+		logging.FromContext(ctx).Warnw("failed to emit realtime message after deleting chat message", zap.Error(err), "message_id", req.MessageID)
+	}
 	return out, nil
 }

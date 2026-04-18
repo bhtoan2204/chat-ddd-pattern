@@ -36,9 +36,9 @@ func GenerateHandler(endpoints []models.Endpoint) (string, error) {
 			return "", err
 		}
 		key := module.FsRoot + ":handler:" + ep.Handler
-		if seen[key] {
-			// continue
-		}
+		// if seen[key] {
+		// 	continue
+		// }
 		seen[key] = true
 
 		written, err := writeHandlerFile(tmpl, module, ep)
@@ -178,15 +178,6 @@ func buildRequestSetup(ep models.Endpoint) string {
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-func requestHasField(fields []models.FieldSpec, name string) bool {
-	for _, field := range fields {
-		if field.Name == name {
-			return true
-		}
-	}
-	return false
 }
 
 func handlerBindMode(ep models.Endpoint) string {

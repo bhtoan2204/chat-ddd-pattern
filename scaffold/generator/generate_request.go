@@ -256,12 +256,3 @@ func requestNormalizeLines(field models.FieldSpec, goType, goName string) []stri
 		return nil
 	}
 }
-
-func requestNeedsValidate(fields []requestField) bool {
-	for _, field := range fields {
-		if field.Required && field.ZeroCheck != "" {
-			return true
-		}
-	}
-	return false
-}

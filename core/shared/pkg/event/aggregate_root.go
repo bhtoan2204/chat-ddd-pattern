@@ -3,7 +3,6 @@ package event
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"wechat-clone/core/shared/pkg/stackErr"
 )
 
@@ -86,17 +85,15 @@ func (ar *AggregateRoot) ApplyChangeWithMetadata(agg Aggregate, data interface{}
 		return stackErr.Error(fmt.Errorf("missing aggregate_id, aggregate_type=%s", ar.aggregateType))
 	}
 
-	dataType := reflect.TypeOf(data)
-	if dataType == nil {
+	if data == nil {
 		return stackErr.Error(errors.New("event data can not be nil"))
 	}
-	if dataType.Kind() == reflect.Ptr {
-		dataType = dataType.Elem()
-	}
+
 	eventType := EventName(data)
 	if eventType == "" {
 		return stackErr.Error(ErrEventNameEmpty)
 	}
+
 	event := Event{
 		AggregateID:   ar.aggregateID,
 		AggregateType: ar.aggregateType,

@@ -112,6 +112,7 @@ func (s *paymentCommandService) ProcessWebhook(
 	ctx context.Context,
 	req *in.ProcessWebhookRequest,
 ) (*out.ProcessWebhookResponse, error) {
+	log := logging.FromContext(ctx).Named("ProcessWebhook")
 	provider, err := s.providerRegistry.Get(req.Provider)
 	if err != nil {
 		return nil, stackErr.Error(err)
@@ -142,7 +143,16 @@ func (s *paymentCommandService) ProcessWebhook(
 	if !locked {
 		return nil, stackErr.Error(fmt.Errorf("acquire payment lock failed: transaction_id=%s", paymentAggregate.TransactionID()))
 	}
-	defer s.locker.ReleaseLock(ctx, lockKey, lockValue)
+	defer func() {
+		released, err := s.locker.ReleaseLock(ctx, lockKey, lockValue)
+		if err != nil {
+			log.Errorw("failed to release payment lock", zap.String("transaction_id", paymentAggregate.TransactionID()), zap.String("lock_key", lockKey), zap.Error(err))
+			return
+		}
+		if !released {
+			log.Warnw("payment lock was not released", zap.String("transaction_id", paymentAggregate.TransactionID()), zap.String("lock_key", lockKey))
+		}
+	}()
 
 	paymentAggregate, err = s.baseRepo.ProviderPaymentRepository().GetByTransactionID(ctx, paymentAggregate.TransactionID())
 	if err != nil {

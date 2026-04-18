@@ -75,13 +75,25 @@ func DefaultLogger() *zap.SugaredLogger {
 func NewLogger(logLevel string, env string) *zap.SugaredLogger {
 	level := LogLevel(strings.ToUpper(logLevel))
 
-	config := &zap.Config{
-		Level:            zap.NewAtomicLevelAt(toZapLevel(level)),
-		Development:      true,
-		Encoding:         encodingConsole,
-		EncoderConfig:    developmentEncoderConfig,
-		OutputPaths:      outputStderr,
-		ErrorOutputPaths: outputStderr,
+	var config *zap.Config
+	if env == "production" {
+		config = &zap.Config{
+			Level:            zap.NewAtomicLevelAt(toZapLevel(level)),
+			Development:      true,
+			Encoding:         encodingConsole,
+			EncoderConfig:    productionEncoderConfig,
+			OutputPaths:      outputStderr,
+			ErrorOutputPaths: outputStderr,
+		}
+	} else {
+		config = &zap.Config{
+			Level:            zap.NewAtomicLevelAt(toZapLevel(level)),
+			Development:      true,
+			Encoding:         encodingConsole,
+			EncoderConfig:    developmentEncoderConfig,
+			OutputPaths:      outputStderr,
+			ErrorOutputPaths: outputStderr,
+		}
 	}
 
 	logger, err := config.Build()
