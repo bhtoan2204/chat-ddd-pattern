@@ -18,8 +18,6 @@ import (
 
 type createPresignedURLHandler struct {
 	storage storage.Storage
-
-	avatarBucket string
 }
 
 func NewCreatePresignedUrlHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.CreatePresignedUrlRequest, *out.CreatePresignedUrlResponse] {

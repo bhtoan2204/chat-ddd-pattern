@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	reflect "reflect"
-	"strings"
 	"time"
 
 	roomsupport "wechat-clone/core/modules/room/application/support"
@@ -14,33 +12,25 @@ import (
 	"wechat-clone/core/modules/room/domain/entity"
 	"wechat-clone/core/modules/room/domain/repos"
 	"wechat-clone/core/modules/room/types"
-	sharedevents "wechat-clone/core/shared/contracts/events"
 	"wechat-clone/core/shared/pkg/stackErr"
-
-	"github.com/google/uuid"
 )
 
 func (h *messageHandler) handleLedgerAccountTransferredToAccount(ctx context.Context, raw json.RawMessage) error {
-	payloadAny, err := decodeEventPayload(ctx, sharedevents.EventLedgerAccountTransferredToAccount, raw)
+	transfer, err := decodeLedgerAccountTransferPayload(ctx, raw)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("decode event payload failed: %w", err))
+		return stackErr.Error(fmt.Errorf("decode ledger transfer payload failed: %w", err))
 	}
 
-	payload, ok := payloadAny.(*sharedevents.LedgerTransaction)
-	if !ok {
-		return stackErr.Error(fmt.Errorf("invalid payload type for event %s", sharedevents.EventLedgerAccountTransferredToAccount))
+	messageID := transferMessageID(transfer.TransactionID)
+	existingMessage, err := h.baseRepo.MessageRepository().GetMessageByID(ctx, messageID)
+	if err != nil {
+		return stackErr.Error(fmt.Errorf("load transfer message failed: %w", err))
 	}
-	if payload == nil || len(payload.Entries) != 2 {
-		return stackErr.Error(fmt.Errorf("ledger transfer payload must contain exactly 2 entries"))
-	}
-
-	senderID := strings.TrimSpace(payload.Entries[0].AccountID) // sender is always the debit entry
-	receiverID := strings.TrimSpace(payload.Entries[1].AccountID)
-	if senderID == "" || receiverID == "" {
-		return stackErr.Error(fmt.Errorf("ledger transfer payload account ids are required"))
+	if existingMessage != nil {
+		return nil
 	}
 
-	roomAgg, err := h.baseRepo.RoomAggregateRepository().LoadByDirectKey(ctx, entity.CanonicalDirectKey(senderID, receiverID))
+	roomAgg, err := h.baseRepo.RoomAggregateRepository().LoadByDirectKey(ctx, entity.CanonicalDirectKey(transfer.SenderAccountID, transfer.ReceiverAccountID))
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("load transfer room failed: %w", err))
 	}
@@ -48,12 +38,16 @@ func (h *messageHandler) handleLedgerAccountTransferredToAccount(ctx context.Con
 		return stackErr.Error(fmt.Errorf("direct room not found for transfer participants"))
 	}
 
-	now := time.Now().UTC()
+	now := transfer.CreatedAt
+	if now.IsZero() {
+		now = time.Now().UTC()
+	}
+
 	message, err := roomAgg.SendMessage(
-		uuid.NewString(),
-		senderID,
+		messageID,
+		transfer.SenderAccountID,
 		entity.MessageParams{
-			Message:     fmt.Sprintf("%f", math.Abs(float64(payload.Entries[0].Amount))),
+			Message:     formatTransferMessageBody(transfer.Currency, transfer.AmountMinor),
 			MessageType: entity.MessageTypeTransfer,
 		},
 		aggregate.MessageSenderIdentity{},
@@ -70,16 +64,18 @@ func (h *messageHandler) handleLedgerAccountTransferredToAccount(ctx context.Con
 		return stackErr.Error(err)
 	}
 
-	msg, err := roomsupport.BuildMessageResultFromState(ctx, h.baseRepo, senderID, message)
+	msg, err := roomsupport.BuildMessageResultFromState(ctx, h.baseRepo, transfer.SenderAccountID, message)
 	if err != nil {
 		return stackErr.Error(err)
 	}
 	out := roomsupport.ToMessageResponse(msg)
-	h.svc.EmitMessage(ctx, types.MessagePayload{
+	if err := h.svc.EmitMessage(ctx, types.MessagePayload{
 		RoomId:  out.RoomID,
 		Type:    reflect.TypeOf(out).Elem().Name(),
 		Payload: out,
-	})
+	}); err != nil {
+		return stackErr.Error(fmt.Errorf("failed to emit realtime message after handling ledger transfer event: %w", err))
+	}
 
 	return nil
 }

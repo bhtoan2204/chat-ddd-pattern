@@ -28,7 +28,6 @@ type App interface {
 type Server struct {
 	cfg            *config.Config
 	router         *gin.Engine
-	httpServer     *http.Server
 	moduleServers  []HTTPServer
 	moduleBuilders []ModuleBuilder
 	appCtx         *appCtx.AppContext

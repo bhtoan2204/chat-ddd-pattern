@@ -19,6 +19,8 @@ import (
 type CallBack func(ctx context.Context, topic string, value []byte) error
 type Handler func(ctx context.Context, value []byte) error
 
+const TopicDLQSuffix = "dlq"
+
 //go:generate mockgen -package=messaging -destination=consumer_mock.go -source=consumer.go
 type Consumer interface {
 	Read(callback CallBack)
@@ -249,20 +251,14 @@ func (c *consumer) handleMessage(log *zap.SugaredLogger, f CallBack, msg *kafka.
 	shouldCommit = true
 }
 
-func (c *consumer) rewindMessage(msg *kafka.Message) error {
-	return c.instance.Seek(msg.TopicPartition, int((5*time.Second)/time.Millisecond))
-}
-
-const DLQSuffix = "dlq"
-
 func (c *consumer) StoreDLQ(ctx context.Context, msg *kafka.Message) error {
 	topic := *msg.TopicPartition.Topic
 	return c.producer.ProduceRawWithKey(ctx, GetDLQTopic(topic), msg.Key, msg.Value)
 }
 
 func GetDLQTopic(topic string) string {
-	if !strings.HasSuffix(topic, DLQSuffix) {
-		topic = fmt.Sprintf("%s.%s", topic, DLQSuffix)
+	if !strings.HasSuffix(topic, TopicDLQSuffix) {
+		topic = fmt.Sprintf("%s.%s", topic, TopicDLQSuffix)
 	}
 
 	return topic
@@ -271,7 +267,7 @@ func GetDLQTopic(topic string) string {
 func processMessageWithRetry(ctx context.Context, f CallBack, msg *kafka.Message) error {
 	retryTimes := uint(3)
 	topic := topicFromMessage(msg)
-	if strings.HasSuffix(topic, DLQSuffix) {
+	if strings.HasSuffix(topic, TopicDLQSuffix) {
 		retryTimes = 0
 	}
 

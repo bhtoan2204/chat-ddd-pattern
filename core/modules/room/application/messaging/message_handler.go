@@ -91,10 +91,12 @@ func (h *messageHandler) handleAccountEvent(ctx context.Context, value []byte) e
 	switch event.EventName {
 	case sharedevents.EventAccountCreated:
 		if err := h.handleAccountCreatedEvent(ctx, event.EventData); err != nil {
+			log.Errorw("handle account created event failed", zap.Error(err))
 			return stackErr.Error(err)
 		}
 	case sharedevents.EventAccountProfileUpdated:
 		if err := h.handleAccountUpdatedEvent(ctx, event.EventData); err != nil {
+			log.Errorw("handle account updated event failed", zap.Error(err))
 			return stackErr.Error(err)
 		}
 	}
@@ -106,12 +108,13 @@ func (h *messageHandler) handleLedgerEvent(ctx context.Context, value []byte) er
 	log := logging.FromContext(ctx).Named("handleLedgerEvent")
 	var event contracts.OutboxMessage
 	if err := json.Unmarshal(value, &event); err != nil {
-		return stackErr.Error(fmt.Errorf("unmarshal account outbox event failed: %w", err))
+		return stackErr.Error(fmt.Errorf("unmarshal ledger outbox event failed: %w", err))
 	}
 	log.Infow("handle ledger event", zap.String("event_name", event.EventName))
 	switch event.EventName {
 	case sharedevents.EventLedgerAccountTransferredToAccount:
 		if err := h.handleLedgerAccountTransferredToAccount(ctx, event.EventData); err != nil {
+			log.Errorw("handle ledger account transferred event failed", zap.Error(err))
 			return stackErr.Error(err)
 		}
 	}
