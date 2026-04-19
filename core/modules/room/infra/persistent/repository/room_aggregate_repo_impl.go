@@ -159,9 +159,13 @@ func (r *roomAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.RoomSta
 	}
 
 	domainPendingEvents := agg.PendingOutboxEvents()
-	currentMembers, err := enrichRoomMembersWithAccountProjections(ctx, r.roomAccountRepo, sortRoomMembersByAccount(agg.Members()))
-	if err != nil {
-		return stackErr.Error(err)
+	currentMembers := sortRoomMembersByAccount(agg.Members())
+	if agg.IsNew() || len(pendingMemberUpserts) > 0 || len(agg.RemovedMemberIDs()) > 0 {
+		var err error
+		currentMembers, err = enrichRoomMembersWithAccountProjections(ctx, r.roomAccountRepo, currentMembers)
+		if err != nil {
+			return stackErr.Error(err)
+		}
 	}
 	lastMessage := latestRoomProjectionMessage(pendingMessages)
 	if lastMessage == nil {

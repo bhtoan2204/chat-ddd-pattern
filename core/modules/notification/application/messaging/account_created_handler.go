@@ -72,6 +72,11 @@ func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json
 			return stackErr.Error(fmt.Errorf("emit account notification realtime failed: %w", emitErr))
 		}
 	}
+	if h.push != nil {
+		if pushErr := h.push.SendNotification(ctx, snapshot); pushErr != nil {
+			log.Warnw("send account notification webpush failed", zap.Error(pushErr))
+		}
+	}
 
 	if h.emailSender == nil {
 		return nil

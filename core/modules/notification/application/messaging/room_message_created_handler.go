@@ -44,6 +44,7 @@ func (h *messageHandler) handleRoomOutboxEvent(ctx context.Context, value []byte
 }
 
 func (h *messageHandler) handleRoomMentionNotificationEvent(ctx context.Context, raw json.RawMessage) error {
+	log := logging.FromContext(ctx).Named("handleRoomMentionNotificationEvent")
 	payloadAny, err := decodeEventPayload(ctx, sharedevents.EventRoomMessageCreated, raw)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("decode room message created payload failed: %w", err))
@@ -90,10 +91,12 @@ func (h *messageHandler) handleRoomMentionNotificationEvent(ctx context.Context,
 		if err != nil {
 			return stackErr.Error(err)
 		}
-		if h.realtime != nil {
-			if emitErr := h.realtime.EmitMessage(ctx, support.NewRealtimeNotificationPayload(notificationtypes.RealtimeEventNotificationUpsert, snapshot, unreadCount)); emitErr != nil {
-				return stackErr.Error(fmt.Errorf("emit room mention realtime failed: %w", emitErr))
-			}
+		if emitErr := h.realtime.EmitMessage(ctx, support.NewRealtimeNotificationPayload(notificationtypes.RealtimeEventNotificationUpsert, snapshot, unreadCount)); emitErr != nil {
+			log.Warnw("emit room mention notification realtime failed", zap.Error(emitErr))
+		}
+
+		if pushErr := h.push.SendNotification(ctx, snapshot); pushErr != nil {
+			log.Warnw("send room mention webpush failed", zap.Error(pushErr))
 		}
 	}
 
@@ -180,6 +183,11 @@ func (h *messageHandler) handleRoomMessageProjectionEvent(ctx context.Context, r
 		if h.realtime != nil {
 			if emitErr := h.realtime.EmitMessage(ctx, support.NewRealtimeNotificationPayload(notificationtypes.RealtimeEventNotificationUpsert, snapshot, unreadCount)); emitErr != nil {
 				return stackErr.Error(fmt.Errorf("emit message notification realtime failed: %w", emitErr))
+			}
+		}
+		if h.push != nil {
+			if pushErr := h.push.SendNotification(ctx, snapshot); pushErr != nil {
+				logging.FromContext(ctx).Warnw("send message notification webpush failed", zap.Error(pushErr))
 			}
 		}
 	}

@@ -11,6 +11,7 @@ import (
 	"wechat-clone/core/shared/infra/xpaseto"
 	"wechat-clone/core/shared/pkg/hasher"
 	"wechat-clone/core/shared/pkg/pubsub"
+	"wechat-clone/core/shared/pkg/webpush"
 
 	es8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/gocql/gocql"
@@ -34,6 +35,7 @@ type AppContext struct {
 	cassandra     *gocql.Session
 	elasticsearch *es8.Client
 	localBus      *pubsub.Bus
+	webPush       webpush.WebPushService
 }
 
 func NewAppContext(ctx context.Context, opts ...Option) (*AppContext, error) {
@@ -122,6 +124,12 @@ func WithLocalBus(bus *pubsub.Bus) Option {
 	}
 }
 
+func WithWebPush(service webpush.WebPushService) Option {
+	return func(appCtx *AppContext) {
+		appCtx.webPush = service
+	}
+}
+
 func (appCtx *AppContext) GetRedisClient() *redis.Client {
 	return appCtx.redisClient
 }
@@ -131,7 +139,7 @@ func (appCtx *AppContext) GetConfig() *config.Config {
 }
 
 func (appCtx *AppContext) GetDB() *gorm.DB {
-	return appCtx.db
+	return appCtx.db.Debug()
 }
 
 func (appCtx *AppContext) GetCache() cache.Cache {
@@ -172,6 +180,10 @@ func (appCtx *AppContext) GetElasticsearchClient() *es8.Client {
 
 func (appCtx *AppContext) LocalBus() *pubsub.Bus {
 	return appCtx.localBus
+}
+
+func (appCtx *AppContext) GetWebPush() webpush.WebPushService {
+	return appCtx.webPush
 }
 
 func (appCtx *AppContext) Close() {

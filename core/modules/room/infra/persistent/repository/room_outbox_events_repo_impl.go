@@ -25,9 +25,35 @@ func NewRoomOutboxEventsRepoImpl(db *gorm.DB) repos.RoomOutboxEventsRepository {
 }
 
 func (r *roomOutboxEventsRepoImpl) Append(ctx context.Context, evt eventpkg.Event) error {
+	model, err := r.toModel(evt)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+
+	return stackErr.Error(r.db.WithContext(ctx).Create(model).Error)
+}
+
+func (r *roomOutboxEventsRepoImpl) AppendMany(ctx context.Context, events []eventpkg.Event) error {
+	if len(events) == 0 {
+		return nil
+	}
+
+	modelsList := make([]models.RoomOutboxEventModel, 0, len(events))
+	for _, evt := range events {
+		model, err := r.toModel(evt)
+		if err != nil {
+			return stackErr.Error(err)
+		}
+		modelsList = append(modelsList, *model)
+	}
+
+	return stackErr.Error(r.db.WithContext(ctx).Create(&modelsList).Error)
+}
+
+func (r *roomOutboxEventsRepoImpl) toModel(evt eventpkg.Event) (*models.RoomOutboxEventModel, error) {
 	data, err := r.serializer.Marshal(evt.EventData)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("marshal event data failed: %w", err))
+		return nil, stackErr.Error(fmt.Errorf("marshal event data failed: %w", err))
 	}
 
 	createdAt := time.Now().UTC()
@@ -35,7 +61,7 @@ func (r *roomOutboxEventsRepoImpl) Append(ctx context.Context, evt eventpkg.Even
 		createdAt = time.Unix(evt.CreatedAt, 0).UTC()
 	}
 
-	return stackErr.Error(r.db.WithContext(ctx).Create(&models.RoomOutboxEventModel{
+	return &models.RoomOutboxEventModel{
 		AggregateID:   evt.AggregateID,
 		AggregateType: evt.AggregateType,
 		Version:       evt.Version,
@@ -43,5 +69,5 @@ func (r *roomOutboxEventsRepoImpl) Append(ctx context.Context, evt eventpkg.Even
 		EventData:     string(data),
 		Metadata:      "{}",
 		CreatedAt:     createdAt,
-	}).Error)
+	}, nil
 }

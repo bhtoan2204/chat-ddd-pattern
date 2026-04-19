@@ -30,6 +30,7 @@ type messageHandler struct {
 	emailSender adapter.EmailSender
 	baseRepo    repos.Repos
 	realtime    notificationservice.RealtimeService
+	push        notificationservice.PushDeliveryService
 }
 
 func NewMessageHandler(
@@ -37,12 +38,14 @@ func NewMessageHandler(
 	emailSender adapter.EmailSender,
 	baseRepo repos.Repos,
 	realtime notificationservice.RealtimeService,
+	push notificationservice.PushDeliveryService,
 ) (MessageHandler, error) {
 	instance := &messageHandler{
 		consumer:    make([]infraMessaging.Consumer, 0),
 		emailSender: emailSender,
 		baseRepo:    baseRepo,
 		realtime:    realtime,
+		push:        push,
 	}
 
 	topicHandlers := map[string]infraMessaging.Handler{}

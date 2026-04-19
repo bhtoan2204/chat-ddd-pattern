@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"mime"
 	"net/smtp"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -92,7 +93,10 @@ func (s SMTP) SendTemplate(ctx context.Context, to, subject, templateName string
 	if err != nil {
 		return err
 	}
-	return s.Send(ctx, to, subject, body)
+	if os.Getenv("ENVIRONMENT") == "production" {
+		return s.Send(ctx, to, subject, body)
+	}
+	return nil
 }
 
 func (s SMTP) RenderTemplate(templateName string, data any) (string, error) {

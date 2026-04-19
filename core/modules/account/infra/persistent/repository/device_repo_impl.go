@@ -12,6 +12,7 @@ import (
 	"wechat-clone/core/shared/utils"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type deviceRepoImpl struct {
@@ -62,7 +63,27 @@ func (r *deviceRepoImpl) Save(ctx context.Context, device *aggregate.DeviceAggre
 		return stackErr.Error(err)
 	}
 
-	if err := r.db.WithContext(ctx).Save(r.toModel(snapshot)).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "id"},
+			},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"account_id",
+				"device_uid",
+				"device_name",
+				"device_type",
+				"os_name",
+				"os_version",
+				"app_version",
+				"user_agent",
+				"last_ip_address",
+				"last_seen_at",
+				"is_trusted",
+				"updated_at",
+			}),
+		}).
+		Create(r.toModel(snapshot)).Error; err != nil {
 		return stackErr.Error(err)
 	}
 	return nil

@@ -1,6 +1,10 @@
 package webpush
 
-import lib "github.com/SherClockHolmes/webpush-go"
+import (
+	"strings"
+
+	lib "github.com/SherClockHolmes/webpush-go"
+)
 
 type Keys struct {
 	Auth   string `json:"auth"`
@@ -10,6 +14,16 @@ type Keys struct {
 type Subscription struct {
 	Endpoint string `json:"endpoint"`
 	Keys     Keys   `json:"keys"`
+}
+
+func (s Subscription) Validate() error {
+	if strings.TrimSpace(s.Endpoint) == "" {
+		return ErrSubscriptionEndpointRequired
+	}
+	if strings.TrimSpace(s.Keys.Auth) == "" || strings.TrimSpace(s.Keys.P256dh) == "" {
+		return ErrSubscriptionKeysRequired
+	}
+	return nil
 }
 
 func (s Subscription) ToLibSubscription() *lib.Subscription {

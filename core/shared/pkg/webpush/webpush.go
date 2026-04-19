@@ -2,7 +2,11 @@ package webpush
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"wechat-clone/core/shared/config"
 	"wechat-clone/core/shared/pkg/stackErr"
 
@@ -18,9 +22,17 @@ var sendNotification = func(
 	return lib.SendNotificationWithContext(ctx, payload, subscription, options)
 }
 
+var (
+	ErrInvalidConfig                = errors.New("webpush configuration is invalid")
+	ErrSubscriptionEndpointRequired = errors.New("webpush subscription endpoint is required")
+	ErrSubscriptionKeysRequired     = errors.New("webpush subscription keys are required")
+	ErrPushDeliveryRejected         = errors.New("webpush delivery rejected")
+)
+
 //go:generate mockgen -package=webpush -destination=webpush_mock.go -source=webpush.go
 type WebPushService interface {
-	Send(ctx context.Context, payload []byte, subscription *lib.Subscription) error
+	Send(ctx context.Context, payload []byte, subscription Subscription) error
+	SendMany(ctx context.Context, payload []byte, subscriptions []Subscription) error
 }
 
 type webPushService struct {
@@ -29,20 +41,36 @@ type webPushService struct {
 	ttl             int
 }
 
-func NewWebPushService(cfg *config.Config) WebPushService {
+func NewWebPushService(cfg *config.Config) (WebPushService, error) {
+	if cfg == nil {
+		return nil, stackErr.Error(ErrInvalidConfig)
+	}
+	if strings.TrimSpace(cfg.WebPushConfig.VAPIDPublicKey) == "" || strings.TrimSpace(cfg.WebPushConfig.VAPIDPrivateKey) == "" {
+		return nil, stackErr.Error(ErrInvalidConfig)
+	}
+
+	ttl := cfg.WebPushConfig.TTL
+	if ttl <= 0 {
+		ttl = 30
+	}
+
 	return &webPushService{
 		vapidPublicKey:  cfg.WebPushConfig.VAPIDPublicKey,
 		vapidPrivateKey: cfg.WebPushConfig.VAPIDPrivateKey,
-		ttl:             cfg.WebPushConfig.TTL,
-	}
+		ttl:             ttl,
+	}, nil
 }
 
 func (s *webPushService) Send(
 	ctx context.Context,
 	payload []byte,
-	subscription *lib.Subscription,
+	subscription Subscription,
 ) error {
-	resp, err := sendNotification(ctx, payload, subscription, &lib.Options{
+	if err := subscription.Validate(); err != nil {
+		return stackErr.Error(err)
+	}
+
+	resp, err := sendNotification(ctx, payload, subscription.ToLibSubscription(), &lib.Options{
 		VAPIDPublicKey:  s.vapidPublicKey,
 		VAPIDPrivateKey: s.vapidPrivateKey,
 		TTL:             s.ttl,
@@ -53,6 +81,28 @@ func (s *webPushService) Send(
 
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
+	}
+
+	if resp != nil && resp.StatusCode >= http.StatusBadRequest {
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return stackErr.Error(fmt.Errorf("%w: status=%d body_read_failed=%v", ErrPushDeliveryRejected, resp.StatusCode, readErr))
+		}
+		return stackErr.Error(fmt.Errorf("%w: status=%d body=%s", ErrPushDeliveryRejected, resp.StatusCode, strings.TrimSpace(string(body))))
+	}
+
+	return nil
+}
+
+func (s *webPushService) SendMany(
+	ctx context.Context,
+	payload []byte,
+	subscriptions []Subscription,
+) error {
+	for idx, subscription := range subscriptions {
+		if err := s.Send(ctx, payload, subscription); err != nil {
+			return stackErr.Error(fmt.Errorf("send webpush subscription #%d failed: %w", idx, err))
+		}
 	}
 
 	return nil

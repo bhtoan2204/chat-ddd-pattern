@@ -64,16 +64,32 @@ func loadLatestRoomOutboxVersion(ctx context.Context, db *gorm.DB, roomID string
 
 func appendRoomOutboxEvents(ctx context.Context, outboxRepo repos.RoomOutboxEventsRepository, roomID string, baseVersion int, events []pendingRoomOutboxEvent) (int, error) {
 	nextVersion := baseVersion
-	for idx, pendingEvent := range events {
+	batch := make([]eventpkg.Event, 0, len(events))
+	for _, pendingEvent := range events {
 		nextVersion++
-		if err := outboxRepo.Append(ctx, eventpkg.Event{
+		batch = append(batch, eventpkg.Event{
 			AggregateID:   roomID,
 			AggregateType: roomOutboxAggregateType,
 			Version:       nextVersion,
 			EventName:     pendingEvent.EventName,
 			EventData:     pendingEvent.Payload,
 			CreatedAt:     pendingEvent.CreatedAt.Unix(),
-		}); err != nil {
+		})
+	}
+
+	type batchAppender interface {
+		AppendMany(ctx context.Context, events []eventpkg.Event) error
+	}
+
+	if repo, ok := outboxRepo.(batchAppender); ok {
+		if err := repo.AppendMany(ctx, batch); err != nil {
+			return baseVersion, stackErr.Error(fmt.Errorf("append room outbox events failed: %w", err))
+		}
+		return nextVersion, nil
+	}
+
+	for idx, evt := range batch {
+		if err := outboxRepo.Append(ctx, evt); err != nil {
 			return baseVersion, stackErr.Error(fmt.Errorf("append room outbox event #%d failed: %w", idx, err))
 		}
 	}

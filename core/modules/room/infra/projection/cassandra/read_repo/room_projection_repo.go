@@ -110,6 +110,7 @@ func (r *RoomProjectionRepo) GetRoomRow(ctx context.Context, roomID string) (*Ro
 }
 
 func (r *RoomProjectionRepo) UpsertRoomRow(ctx context.Context, row *RoomProjectionRow) error {
+	startedAt := time.Now()
 	statement := fmt.Sprintf(`
 		INSERT INTO %s (
 			room_id,
@@ -144,7 +145,13 @@ func (r *RoomProjectionRepo) UpsertRoomRow(ctx context.Context, row *RoomProject
 		row.CreatedAt.UTC(),
 		row.UpdatedAt.UTC(),
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("upsert cassandra room projection failed: %w", err))
+		return stackErr.Error(fmt.Errorf(
+			"upsert cassandra room projection failed: room_id=%s table=%s elapsed=%s: %w",
+			strings.TrimSpace(row.RoomID),
+			r.roomTable,
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		))
 	}
 	return nil
 }
@@ -397,6 +404,7 @@ func (r *RoomProjectionRepo) ListRoomMemberRows(ctx context.Context, roomID stri
 }
 
 func (r *RoomProjectionRepo) UpsertRoomMemberRow(ctx context.Context, row *RoomMemberProjectionRow) error {
+	startedAt := time.Now()
 	statement := fmt.Sprintf(`
 		INSERT INTO %s (
 			room_id,
@@ -427,7 +435,14 @@ func (r *RoomProjectionRepo) UpsertRoomMemberRow(ctx context.Context, row *RoomM
 		row.CreatedAt.UTC(),
 		row.UpdatedAt.UTC(),
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("upsert cassandra room member projection failed: %w", err))
+		return stackErr.Error(fmt.Errorf(
+			"upsert cassandra room member projection failed: room_id=%s account_id=%s table=%s elapsed=%s: %w",
+			strings.TrimSpace(row.RoomID),
+			strings.TrimSpace(row.AccountID),
+			r.roomMembersTable,
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		))
 	}
 	return nil
 }
@@ -489,6 +504,7 @@ func (r *RoomProjectionRepo) GetRoomMemberByAccount(ctx context.Context, roomID,
 }
 
 func (r *RoomProjectionRepo) UpsertAccountRoomIndex(ctx context.Context, accountID string, room *RoomProjectionRow) error {
+	startedAt := time.Now()
 	statement := fmt.Sprintf(`
 		INSERT INTO %s (
 			account_id,
@@ -525,7 +541,14 @@ func (r *RoomProjectionRepo) UpsertAccountRoomIndex(ctx context.Context, account
 		nullableProjectionString(room.LastMessageSenderID),
 		room.CreatedAt.UTC(),
 	).WithContext(ctx).Exec(); err != nil {
-		return stackErr.Error(fmt.Errorf("upsert cassandra room-by-account projection failed: %w", err))
+		return stackErr.Error(fmt.Errorf(
+			"upsert cassandra room-by-account projection failed: account_id=%s room_id=%s table=%s elapsed=%s: %w",
+			strings.TrimSpace(accountID),
+			strings.TrimSpace(room.RoomID),
+			r.roomsByAccountTable,
+			time.Since(startedAt).Round(time.Millisecond),
+			err,
+		))
 	}
 	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"wechat-clone/core/shared/utils"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type sessionRepoImpl struct {
@@ -80,7 +81,26 @@ func (r *sessionRepoImpl) Save(ctx context.Context, session *aggregate.SessionAg
 	if err != nil {
 		return stackErr.Error(err)
 	}
-	if err := r.db.WithContext(ctx).Save(r.toModel(snapshot)).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "id"},
+			},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"account_id",
+				"device_id",
+				"refresh_token_hash",
+				"status",
+				"ip_address",
+				"user_agent",
+				"last_activity_at",
+				"expires_at",
+				"revoked_at",
+				"revoked_reason",
+				"updated_at",
+			}),
+		}).
+		Create(r.toModel(snapshot)).Error; err != nil {
 		return stackErr.Error(err)
 	}
 	r.syncCacheAfterCommit(ctx, snapshot)

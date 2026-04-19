@@ -17,6 +17,7 @@ import (
 	"wechat-clone/core/shared/pkg/hasher"
 	"wechat-clone/core/shared/pkg/pubsub"
 	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/webpush"
 )
 
 func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
@@ -85,6 +86,12 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 		PublishMode: pubsub.PublishBlocking,
 	})
 	opts = append(opts, WithLocalBus(localBus))
+
+	webPushService, err := webpush.NewWebPushService(cfg)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	opts = append(opts, WithWebPush(webPushService))
 
 	return NewAppContext(ctx, opts...)
 }

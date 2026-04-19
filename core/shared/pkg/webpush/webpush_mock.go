@@ -13,7 +13,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	webpush "github.com/SherClockHolmes/webpush-go"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,7 +41,7 @@ func (m *MockWebPushService) EXPECT() *MockWebPushServiceMockRecorder {
 }
 
 // Send mocks base method.
-func (m *MockWebPushService) Send(ctx context.Context, payload []byte, subscription *webpush.Subscription) error {
+func (m *MockWebPushService) Send(ctx context.Context, payload []byte, subscription Subscription) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", ctx, payload, subscription)
 	ret0, _ := ret[0].(error)
@@ -53,4 +52,18 @@ func (m *MockWebPushService) Send(ctx context.Context, payload []byte, subscript
 func (mr *MockWebPushServiceMockRecorder) Send(ctx, payload, subscription any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockWebPushService)(nil).Send), ctx, payload, subscription)
+}
+
+// SendMany mocks base method.
+func (m *MockWebPushService) SendMany(ctx context.Context, payload []byte, subscriptions []Subscription) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendMany", ctx, payload, subscriptions)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SendMany indicates an expected call of SendMany.
+func (mr *MockWebPushServiceMockRecorder) SendMany(ctx, payload, subscriptions any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMany", reflect.TypeOf((*MockWebPushService)(nil).SendMany), ctx, payload, subscriptions)
 }

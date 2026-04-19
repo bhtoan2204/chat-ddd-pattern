@@ -12,6 +12,7 @@ import (
 	valueobject "wechat-clone/core/modules/account/domain/value_object"
 	"wechat-clone/core/shared/infra/xpaseto"
 	"wechat-clone/core/shared/pkg/hasher"
+	"wechat-clone/core/shared/pkg/tokendigest"
 
 	"go.uber.org/mock/gomock"
 	"gorm.io/gorm"
@@ -32,6 +33,7 @@ func TestAuthenticationService_Authenticate_IssuesAccessAndRefreshTokens(t *test
 
 	accessExpiresAt := time.Date(2026, time.April, 14, 11, 0, 0, 0, time.UTC)
 	refreshExpiresAt := time.Date(2026, time.April, 21, 11, 0, 0, 0, time.UTC)
+	refreshDigester := mustNewTestTokenDigester(t)
 
 	var savedDeviceID string
 	var issuedSessionID string
@@ -86,7 +88,6 @@ func TestAuthenticationService_Authenticate_IssuesAccessAndRefreshTokens(t *test
 			issuedSessionID = subject.SessionID
 			return "refresh-token", refreshExpiresAt, nil
 		})
-	hasherMock.EXPECT().Hash(gomock.Any(), "refresh-token").Return("hashed-refresh-token", nil)
 	txRepos.EXPECT().SessionRepository().Return(sessionRepo)
 	sessionRepo.EXPECT().
 		Save(gomock.Any(), gomock.AssignableToTypeOf(&aggregate.SessionAggregate{})).
@@ -101,16 +102,21 @@ func TestAuthenticationService_Authenticate_IssuesAccessAndRefreshTokens(t *test
 			if session.ID != issuedSessionID {
 				t.Fatalf("expected session id %q, got %q", issuedSessionID, session.ID)
 			}
-			if session.RefreshTokenHash != "hashed-refresh-token" {
+			expectedDigest, digestErr := refreshDigester.Digest(context.Background(), "refresh-token")
+			if digestErr != nil {
+				t.Fatalf("Digest() error = %v", digestErr)
+			}
+			if session.RefreshTokenHash != expectedDigest {
 				t.Fatalf("expected hashed refresh token, got %q", session.RefreshTokenHash)
 			}
 			return nil
 		})
 
 	service := &authenticationService{
-		baseRepo: baseRepo,
-		hasher:   hasherMock,
-		paseto:   pasetoMock,
+		baseRepo:             baseRepo,
+		hasher:               hasherMock,
+		refreshTokenDigester: refreshDigester,
+		paseto:               pasetoMock,
 	}
 
 	result, err := service.Authenticate(context.Background(), AuthenticateAccountCommand{
@@ -156,7 +162,12 @@ func TestAuthenticationService_RefreshAuthenticate_RotatesRefreshToken(t *testin
 	accessExpiresAt := time.Date(2026, time.April, 14, 12, 0, 0, 0, time.UTC)
 	refreshExpiresAt := time.Date(2026, time.April, 21, 12, 0, 0, 0, time.UTC)
 	deviceAgg := newKnownDeviceAggregate(t, "acc-1", "dev-1", "browser-1")
-	sessionAgg := newActiveSessionAggregate(t, "ses-1", "acc-1", "dev-1", "stored-refresh-hash", refreshExpiresAt)
+	refreshDigester := mustNewTestTokenDigester(t)
+	storedRefreshDigest, err := refreshDigester.Digest(context.Background(), "incoming-refresh-token")
+	if err != nil {
+		t.Fatalf("Digest() error = %v", err)
+	}
+	sessionAgg := newActiveSessionAggregate(t, "ses-1", "acc-1", "dev-1", storedRefreshDigest, refreshExpiresAt)
 
 	pasetoMock.EXPECT().
 		ParseRefreshToken(gomock.Any(), "incoming-refresh-token").
@@ -173,7 +184,6 @@ func TestAuthenticationService_RefreshAuthenticate_RotatesRefreshToken(t *testin
 		})
 	txRepos.EXPECT().SessionRepository().Return(sessionRepo).Times(2)
 	sessionRepo.EXPECT().Load(gomock.Any(), "ses-1").Return(sessionAgg, nil)
-	hasherMock.EXPECT().Verify(gomock.Any(), "incoming-refresh-token", "stored-refresh-hash").Return(true, nil)
 	txRepos.EXPECT().AccountAggregateRepository().Return(accountAggregateRepo)
 	accountAggregateRepo.EXPECT().Load(gomock.Any(), "acc-1").Return(accountAggregate, nil)
 	txRepos.EXPECT().DeviceRepository().Return(deviceRepo).Times(2)
@@ -200,7 +210,6 @@ func TestAuthenticationService_RefreshAuthenticate_RotatesRefreshToken(t *testin
 			xpaseto.RefreshTokenSubject{SessionID: "ses-1", DeviceID: "dev-1"},
 		).
 		Return("rotated-refresh-token", refreshExpiresAt, nil)
-	hasherMock.EXPECT().Hash(gomock.Any(), "rotated-refresh-token").Return("rotated-refresh-hash", nil)
 	sessionRepo.EXPECT().
 		Save(gomock.Any(), gomock.AssignableToTypeOf(&aggregate.SessionAggregate{})).
 		DoAndReturn(func(_ context.Context, sessionAgg *aggregate.SessionAggregate) error {
@@ -211,16 +220,21 @@ func TestAuthenticationService_RefreshAuthenticate_RotatesRefreshToken(t *testin
 			if session == nil || session.ID != "ses-1" {
 				t.Fatalf("expected rotated session ses-1, got %+v", session)
 			}
-			if session.RefreshTokenHash != "rotated-refresh-hash" {
+			expectedDigest, digestErr := refreshDigester.Digest(context.Background(), "rotated-refresh-token")
+			if digestErr != nil {
+				t.Fatalf("Digest() error = %v", digestErr)
+			}
+			if session.RefreshTokenHash != expectedDigest {
 				t.Fatalf("expected rotated hash, got %q", session.RefreshTokenHash)
 			}
 			return nil
 		})
 
 	service := &authenticationService{
-		baseRepo: baseRepo,
-		hasher:   hasherMock,
-		paseto:   pasetoMock,
+		baseRepo:             baseRepo,
+		hasher:               hasherMock,
+		refreshTokenDigester: refreshDigester,
+		paseto:               pasetoMock,
 	}
 
 	result, err := service.RefreshAuthenticate(context.Background(), RefreshTokenCommand{
@@ -259,9 +273,10 @@ func TestAuthenticationService_Authenticate_MapsNotFound(t *testing.T) {
 	accountAggregateRepo.EXPECT().LoadByEmail(gomock.Any(), "missing@example.com").Return(nil, gorm.ErrRecordNotFound)
 
 	service := &authenticationService{
-		baseRepo: baseRepo,
-		hasher:   hasherMock,
-		paseto:   pasetoMock,
+		baseRepo:             baseRepo,
+		hasher:               hasherMock,
+		refreshTokenDigester: mustNewTestTokenDigester(t),
+		paseto:               pasetoMock,
 	}
 
 	_, err := service.Authenticate(context.Background(), AuthenticateAccountCommand{
@@ -292,9 +307,10 @@ func TestAuthenticationService_Authenticate_MapsInvalidPassword(t *testing.T) {
 	hasherMock.EXPECT().Verify(gomock.Any(), "password123", "hashed-password").Return(false, nil)
 
 	service := &authenticationService{
-		baseRepo: baseRepo,
-		hasher:   hasherMock,
-		paseto:   pasetoMock,
+		baseRepo:             baseRepo,
+		hasher:               hasherMock,
+		refreshTokenDigester: mustNewTestTokenDigester(t),
+		paseto:               pasetoMock,
 	}
 
 	_, err := service.Authenticate(context.Background(), AuthenticateAccountCommand{
@@ -316,7 +332,6 @@ func TestAuthenticationService_Register_IssuesAccessAndRefreshTokens(t *testing.
 	ctrl := gomock.NewController(t)
 	baseRepo := repos.NewMockRepos(ctrl)
 	txRepos := repos.NewMockRepos(ctrl)
-	accountRepo := repos.NewMockAccountRepository(ctrl)
 	accountAggregateRepo := repos.NewMockAccountAggregateRepository(ctrl)
 	deviceRepo := repos.NewMockDeviceRepository(ctrl)
 	sessionRepo := repos.NewMockSessionRepository(ctrl)
@@ -329,8 +344,6 @@ func TestAuthenticationService_Register_IssuesAccessAndRefreshTokens(t *testing.
 	var savedDeviceID string
 	var issuedSessionID string
 
-	baseRepo.EXPECT().AccountRepository().Return(accountRepo)
-	accountRepo.EXPECT().IsEmailExists(gomock.Any(), "alice@example.com").Return(false, nil)
 	hasherMock.EXPECT().Hash(gomock.Any(), "password123").Return("hashed-password", nil)
 	baseRepo.EXPECT().
 		WithTransaction(gomock.Any(), gomock.Any()).
@@ -342,7 +355,6 @@ func TestAuthenticationService_Register_IssuesAccessAndRefreshTokens(t *testing.
 		Save(gomock.Any(), gomock.AssignableToTypeOf(&aggregate.AccountAggregate{})).
 		Return(nil)
 	txRepos.EXPECT().DeviceRepository().Return(deviceRepo)
-	deviceRepo.EXPECT().FindByAccountAndUID(gomock.Any(), gomock.Any(), "browser-1").Return(nil, gorm.ErrRecordNotFound)
 	deviceRepo.EXPECT().
 		Save(gomock.Any(), gomock.AssignableToTypeOf(&aggregate.DeviceAggregate{})).
 		DoAndReturn(func(_ context.Context, deviceAgg *aggregate.DeviceAggregate) error {
@@ -383,7 +395,6 @@ func TestAuthenticationService_Register_IssuesAccessAndRefreshTokens(t *testing.
 			issuedSessionID = subject.SessionID
 			return "refresh-token", refreshExpiresAt, nil
 		})
-	hasherMock.EXPECT().Hash(gomock.Any(), "refresh-token").Return("hashed-refresh-token", nil)
 	txRepos.EXPECT().SessionRepository().Return(sessionRepo)
 	sessionRepo.EXPECT().
 		Save(gomock.Any(), gomock.AssignableToTypeOf(&aggregate.SessionAggregate{})).
@@ -392,16 +403,24 @@ func TestAuthenticationService_Register_IssuesAccessAndRefreshTokens(t *testing.
 			if err != nil {
 				t.Fatalf("Snapshot() error = %v", err)
 			}
+			expectedDigest, digestErr := mustNewTestTokenDigester(t).Digest(context.Background(), "refresh-token")
+			if digestErr != nil {
+				t.Fatalf("Digest() error = %v", digestErr)
+			}
 			if session == nil || session.ID != issuedSessionID || session.DeviceID != savedDeviceID {
 				t.Fatalf("expected register session bound to issued subject, got %+v", session)
+			}
+			if session.RefreshTokenHash != expectedDigest {
+				t.Fatalf("expected refresh token digest %q, got %q", expectedDigest, session.RefreshTokenHash)
 			}
 			return nil
 		})
 
 	service := &authenticationService{
-		baseRepo: baseRepo,
-		hasher:   hasherMock,
-		paseto:   pasetoMock,
+		baseRepo:             baseRepo,
+		hasher:               hasherMock,
+		refreshTokenDigester: mustNewTestTokenDigester(t),
+		paseto:               pasetoMock,
 	}
 
 	result, err := service.Register(context.Background(), RegisterAccountCommand{
@@ -437,17 +456,27 @@ func TestAuthenticationService_Register_ReturnsAccountExists(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	baseRepo := repos.NewMockRepos(ctrl)
-	accountRepo := repos.NewMockAccountRepository(ctrl)
+	txRepos := repos.NewMockRepos(ctrl)
+	accountAggregateRepo := repos.NewMockAccountAggregateRepository(ctrl)
 	hasherMock := hasher.NewMockHasher(ctrl)
 	pasetoMock := xpaseto.NewMockPasetoService(ctrl)
 
-	baseRepo.EXPECT().AccountRepository().Return(accountRepo)
-	accountRepo.EXPECT().IsEmailExists(gomock.Any(), "alice@example.com").Return(true, nil)
+	hasherMock.EXPECT().Hash(gomock.Any(), "password123").Return("hashed-password", nil)
+	baseRepo.EXPECT().
+		WithTransaction(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, fn func(repos.Repos) error) error {
+			return fn(txRepos)
+		})
+	txRepos.EXPECT().AccountAggregateRepository().Return(accountAggregateRepo)
+	accountAggregateRepo.EXPECT().
+		Save(gomock.Any(), gomock.AssignableToTypeOf(&aggregate.AccountAggregate{})).
+		Return(errors.New("ORA-00001: unique constraint violated"))
 
 	service := &authenticationService{
-		baseRepo: baseRepo,
-		hasher:   hasherMock,
-		paseto:   pasetoMock,
+		baseRepo:             baseRepo,
+		hasher:               hasherMock,
+		refreshTokenDigester: mustNewTestTokenDigester(t),
+		paseto:               pasetoMock,
 	}
 
 	_, err := service.Register(context.Background(), RegisterAccountCommand{
@@ -549,4 +578,14 @@ func newKnownDeviceAggregate(t *testing.T, accountID, deviceID, deviceUID string
 	}
 
 	return deviceAgg
+}
+
+func mustNewTestTokenDigester(t *testing.T) tokendigest.Digester {
+	t.Helper()
+
+	digester, err := tokendigest.NewHMACSHA256Digester("test-refresh-token-secret")
+	if err != nil {
+		t.Fatalf("NewHMACSHA256Digester() error = %v", err)
+	}
+	return digester
 }

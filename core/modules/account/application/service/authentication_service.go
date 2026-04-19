@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	appCtx "wechat-clone/core/context"
@@ -11,11 +12,11 @@ import (
 	"wechat-clone/core/modules/account/domain/aggregate"
 	"wechat-clone/core/modules/account/domain/entity"
 	repos "wechat-clone/core/modules/account/domain/repos"
-	domainservice "wechat-clone/core/modules/account/domain/service"
 	valueobject "wechat-clone/core/modules/account/domain/value_object"
 	"wechat-clone/core/shared/infra/xpaseto"
 	"wechat-clone/core/shared/pkg/hasher"
 	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/pkg/tokendigest"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -94,16 +95,23 @@ type AuthenticationService interface {
 }
 
 type authenticationService struct {
-	baseRepo repos.Repos
-	hasher   hasher.Hasher
-	paseto   xpaseto.PasetoService
+	baseRepo             repos.Repos
+	hasher               hasher.Hasher
+	refreshTokenDigester tokendigest.Digester
+	paseto               xpaseto.PasetoService
 }
 
 func NewAuthenticationService(appCtx *appCtx.AppContext, baseRepo repos.Repos) AuthenticationService {
+	refreshTokenDigester, err := tokendigest.NewHMACSHA256Digester(appCtx.GetConfig().SecurityConfig.SecretKey)
+	if err != nil {
+		panic(fmt.Sprintf("create refresh token digester failed: %v", err))
+	}
+
 	return &authenticationService{
-		baseRepo: baseRepo,
-		hasher:   appCtx.GetHasher(),
-		paseto:   appCtx.GetPaseto(),
+		baseRepo:             baseRepo,
+		hasher:               appCtx.GetHasher(),
+		refreshTokenDigester: refreshTokenDigester,
+		paseto:               appCtx.GetPaseto(),
 	}
 }
 
@@ -112,13 +120,6 @@ func (s *authenticationService) Register(ctx context.Context, command RegisterAc
 	email, err := valueobject.NewEmail(command.Email)
 	if err != nil {
 		return nil, stackErr.Error(err)
-	}
-
-	if err := domainservice.EnsureEmailAvailable(ctx, s.baseRepo.AccountRepository(), email); err != nil {
-		if errors.Is(err, domainservice.ErrAccountEmailAlreadyExists) {
-			return nil, stackErr.Error(ErrRegistrationAccountExists)
-		}
-		return nil, stackErr.Error(ErrRegistrationCheckAccountFailed)
 	}
 
 	password, err := valueobject.NewPlainPassword(command.Password)
@@ -154,9 +155,12 @@ func (s *authenticationService) Register(ctx context.Context, command RegisterAc
 		if err := txRepos.AccountAggregateRepository().Save(ctx, accountAggregate); err != nil {
 			return stackErr.Error(fmt.Errorf("save account aggregate failed: %w", err))
 		}
-		deviceAgg, err := s.ensureKnownDevice(ctx, txRepos.DeviceRepository(), accountSnapshot.ID, command.Device, now)
+		deviceAgg, err := s.registerInitialDevice(accountSnapshot.ID, command.Device, now)
 		if err != nil {
 			return stackErr.Error(err)
+		}
+		if err := txRepos.DeviceRepository().Save(ctx, deviceAgg); err != nil {
+			return stackErr.Error(fmt.Errorf("save device failed: %w", err))
 		}
 		tokenPair, err = s.createSessionTokenPair(ctx, txRepos.SessionRepository(), accountSnapshot, deviceAgg.DeviceID(), command.Device, now)
 		if err != nil {
@@ -164,6 +168,9 @@ func (s *authenticationService) Register(ctx context.Context, command RegisterAc
 		}
 		return nil
 	}); txErr != nil {
+		if isOracleUniqueConstraintError(txErr) {
+			return nil, stackErr.Error(ErrRegistrationAccountExists)
+		}
 		return nil, stackErr.Error(txErr)
 	}
 
@@ -325,7 +332,7 @@ func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command
 			return stackErr.Error(ErrRefreshTokenInvalid)
 		}
 
-		valid, err := s.hasher.Verify(ctx, command.RefreshToken, session.RefreshTokenHash)
+		valid, err := s.verifyRefreshToken(ctx, command.RefreshToken, session.RefreshTokenHash)
 		if err != nil {
 			return stackErr.Error(fmt.Errorf("verify refresh token failed: %w", err))
 		}
@@ -373,7 +380,7 @@ func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command
 			return stackErr.Error(err)
 		}
 
-		refreshTokenHash, err := s.hasher.Hash(ctx, tokenPair.RefreshToken)
+		refreshTokenHash, err := s.digestRefreshToken(ctx, tokenPair.RefreshToken)
 		if err != nil {
 			return stackErr.Error(fmt.Errorf("hash refresh token failed: %w", err))
 		}
@@ -527,7 +534,7 @@ func (s *authenticationService) createSessionTokenPair(
 		return nil, stackErr.Error(err)
 	}
 
-	refreshTokenHash, err := s.hasher.Hash(ctx, tokenPair.RefreshToken)
+	refreshTokenHash, err := s.digestRefreshToken(ctx, tokenPair.RefreshToken)
 	if err != nil {
 		return nil, stackErr.Error(fmt.Errorf("hash refresh token failed: %w", err))
 	}
@@ -563,4 +570,70 @@ func mapRefreshSessionErr(err error) error {
 	default:
 		return ErrRefreshTokenInvalid
 	}
+}
+
+func (s *authenticationService) registerInitialDevice(
+	accountID string,
+	command DeviceCommand,
+	now time.Time,
+) (*aggregate.DeviceAggregate, error) {
+	registration := entity.DeviceRegistration{
+		DeviceUID:  command.DeviceUID,
+		DeviceName: command.DeviceName,
+		DeviceType: command.DeviceType,
+		OSName:     command.OSName,
+		OSVersion:  command.OSVersion,
+		AppVersion: command.AppVersion,
+		UserAgent:  command.UserAgent,
+		IPAddress:  command.IPAddress,
+	}
+
+	deviceAgg, err := aggregate.NewDeviceAggregate(uuid.NewString())
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if err := deviceAgg.Register(accountID, registration, now); err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	return deviceAgg, nil
+}
+
+func isOracleUniqueConstraintError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(strings.ToUpper(err.Error()), "ORA-00001")
+}
+
+func (s *authenticationService) digestRefreshToken(ctx context.Context, token string) (string, error) {
+	if s.refreshTokenDigester != nil {
+		digest, err := s.refreshTokenDigester.Digest(ctx, token)
+		if err != nil {
+			return "", stackErr.Error(err)
+		}
+		return digest, nil
+	}
+
+	digest, err := s.hasher.Hash(ctx, token)
+	if err != nil {
+		return "", stackErr.Error(err)
+	}
+	return digest, nil
+}
+
+func (s *authenticationService) verifyRefreshToken(ctx context.Context, token string, digest string) (bool, error) {
+	if s.refreshTokenDigester != nil {
+		valid, err := s.refreshTokenDigester.Verify(ctx, token, digest)
+		if err != nil {
+			return false, stackErr.Error(err)
+		}
+		return valid, nil
+	}
+
+	valid, err := s.hasher.Verify(ctx, token, digest)
+	if err != nil {
+		return false, stackErr.Error(err)
+	}
+	return valid, nil
 }

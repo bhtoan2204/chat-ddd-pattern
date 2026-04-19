@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"wechat-clone/core/shared/config"
+	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
 
 	"github.com/gocql/gocql"
+	"go.uber.org/zap"
 )
 
 func NewSession(ctx context.Context, cfg config.CassandraConfig) (*gocql.Session, error) {
@@ -21,6 +23,17 @@ func NewSession(ctx context.Context, cfg config.CassandraConfig) (*gocql.Session
 	if len(hosts) == 0 {
 		return nil, stackErr.Error(fmt.Errorf("cassandra hosts are required when cassandra is enabled"))
 	}
+
+	log := logging.FromContext(ctx).Named("CassandraSession")
+	log.Infow("Initializing Cassandra session",
+		zap.Strings("hosts", hosts),
+		zap.Int("port", cfg.Port),
+		zap.String("keyspace", strings.TrimSpace(cfg.Keyspace)),
+		zap.String("local_dc", strings.TrimSpace(cfg.LocalDC)),
+		zap.String("consistency", strings.TrimSpace(cfg.Consistency)),
+		zap.Int("connect_timeout_seconds", cfg.ConnectTimeoutSeconds),
+		zap.Int("query_timeout_seconds", cfg.TimeoutSeconds),
+	)
 
 	baseCluster := newClusterConfig(cfg, hosts)
 	baseSession, err := baseCluster.CreateSession()
@@ -40,6 +53,13 @@ func NewSession(ctx context.Context, cfg config.CassandraConfig) (*gocql.Session
 	if err != nil {
 		return nil, stackErr.Error(fmt.Errorf("create cassandra session failed: %w", err))
 	}
+
+	log.Infow("Cassandra session ready",
+		zap.String("keyspace", cluster.Keyspace),
+		zap.String("consistency", cluster.Consistency.String()),
+		zap.Int("connect_timeout_seconds", cfg.ConnectTimeoutSeconds),
+		zap.Int("query_timeout_seconds", cfg.TimeoutSeconds),
+	)
 	return session, nil
 }
 

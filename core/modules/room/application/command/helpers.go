@@ -117,7 +117,7 @@ func resolveMessageMentions(
 	}, nil
 }
 
-func buildSenderIdentity(ctx context.Context, baseRepo repos.Repos, senderID string) aggregate.MessageSenderIdentity {
+func buildSenderIdentity(ctx context.Context, members []*entity.RoomMemberEntity, senderID string) aggregate.MessageSenderIdentity {
 	actor, _ := actorctx.FromContext(ctx)
 
 	identity := aggregate.MessageSenderIdentity{
@@ -125,18 +125,27 @@ func buildSenderIdentity(ctx context.Context, baseRepo repos.Repos, senderID str
 		Email: "",
 	}
 	if actor != nil && actor.Email != "" {
-		identity.Name = actor.Email
 		identity.Email = actor.Email
 	}
 
-	accountProjections, err := baseRepo.RoomAccountProjectionRepository().ListByAccountIDs(ctx, []string{senderID})
-	if err != nil || len(accountProjections) == 0 || accountProjections[0] == nil {
+	for _, member := range members {
+		if member == nil || strings.TrimSpace(member.AccountID) != strings.TrimSpace(senderID) {
+			continue
+		}
+		if displayName := resolveMentionDisplayName(&entity.AccountEntity{
+			AccountID:   member.AccountID,
+			DisplayName: member.DisplayName,
+			Username:    member.Username,
+		}, senderID); displayName != "" {
+			identity.Name = displayName
+		}
 		return identity
 	}
 
-	if displayName := resolveMentionDisplayName(accountProjections[0], senderID); displayName != "" {
-		identity.Name = displayName
+	if actor != nil && actor.Email != "" {
+		identity.Name = actor.Email
 	}
+
 	return identity
 }
 
@@ -246,7 +255,7 @@ func executeSendMessage(ctx context.Context, baseRepo repos.Repos, accountID str
 			MimeType:               command.MimeType,
 			ObjectKey:              command.ObjectKey,
 		},
-		buildSenderIdentity(ctx, baseRepo, accountID),
+		buildSenderIdentity(ctx, roomAgg.Members(), accountID),
 		aggregate.MessageOutboxPayload{
 			Mentions:            mentions.OutboxMentions,
 			MentionAll:          mentions.MentionAll,

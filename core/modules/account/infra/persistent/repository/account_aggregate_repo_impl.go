@@ -17,6 +17,7 @@ import (
 	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -128,7 +129,27 @@ func (r *accountAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.Acco
 		return stackErr.Error(err)
 	}
 
-	if err := r.db.WithContext(ctx).Save(r.projectionWriter.toModel(snapshot)).Error; err != nil {
+	if err := r.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "id"},
+			},
+			DoUpdates: clause.AssignmentColumns([]string{
+				"email",
+				"password",
+				"display_name",
+				"username",
+				"avatar_object_key",
+				"status",
+				"email_verified_at",
+				"last_login_at",
+				"password_changed_at",
+				"banned_reason",
+				"banned_until",
+				"updated_at",
+			}),
+		}).
+		Create(r.projectionWriter.toModel(snapshot)).Error; err != nil {
 		return stackErr.Error(fmt.Errorf("save account projection failed: %w", err))
 	}
 	r.projectionWriter.syncCacheAfterCommit(ctx, snapshot)
