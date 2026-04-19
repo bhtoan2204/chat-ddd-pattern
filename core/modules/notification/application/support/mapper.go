@@ -39,10 +39,10 @@ func ToNotificationResponse(notification *entity.NotificationEntity) out.Notific
 const timeFormat = "2006-01-02T15:04:05.999999999Z07:00"
 
 type RealtimeNotificationData struct {
-	Event        string                   `json:"event"`
-	AccountID    string                   `json:"account_id"`
+	Event        string                    `json:"event"`
+	AccountID    string                    `json:"account_id"`
 	Notification *out.NotificationResponse `json:"notification,omitempty"`
-	UnreadCount  int                      `json:"unread_count"`
+	UnreadCount  int                       `json:"unread_count"`
 }
 
 func NewRealtimeNotificationPayload(

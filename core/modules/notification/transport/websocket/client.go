@@ -18,10 +18,10 @@ const (
 )
 
 type client struct {
-	id       string
+	id        string
 	accountID string
-	conn     *websocket.Conn
-	sendCh   chan []byte
+	conn      *websocket.Conn
+	sendCh    chan []byte
 }
 
 func newClient(conn *websocket.Conn, clientID, accountID string) *client {

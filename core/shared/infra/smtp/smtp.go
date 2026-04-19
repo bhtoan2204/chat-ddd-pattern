@@ -61,7 +61,7 @@ func (s SMTP) Send(ctx context.Context, to, subject, body string) error {
 	auth := smtp.PlainAuth("", s.user, s.pass, s.host)
 
 	if s.secure {
-		if err := s.sendWithTLS(addr, auth, to, msg); err != nil {
+		if err := s.sendWithTLS(ctx, addr, auth, to, msg); err != nil {
 			log.Errorw("failed to send email via tls",
 				zap.String("to", to),
 				zap.String("subject", subject),
@@ -70,7 +70,7 @@ func (s SMTP) Send(ctx context.Context, to, subject, body string) error {
 			return err
 		}
 	} else {
-		if err := s.sendWithSTARTTLS(addr, auth, to, msg); err != nil {
+		if err := s.sendWithSTARTTLS(ctx, addr, auth, to, msg); err != nil {
 			log.Errorw("failed to send email via starttls",
 				zap.String("to", to),
 				zap.String("subject", subject),
@@ -114,7 +114,8 @@ func (s SMTP) RenderTemplate(templateName string, data any) (string, error) {
 	return buf.String(), nil
 }
 
-func (s SMTP) sendWithTLS(addr string, auth smtp.Auth, to string, msg []byte) error {
+func (s SMTP) sendWithTLS(ctx context.Context, addr string, auth smtp.Auth, to string, msg []byte) error {
+	log := logging.FromContext(ctx).Named("sendWithTLS")
 	tlsConfig := &tls.Config{
 		ServerName: s.host,
 		MinVersion: tls.VersionTLS12,
@@ -130,7 +131,11 @@ func (s SMTP) sendWithTLS(addr string, auth smtp.Auth, to string, msg []byte) er
 	if err != nil {
 		return fmt.Errorf("new smtp client: %w", err)
 	}
-	defer client.Quit()
+	defer func() {
+		if err := client.Quit(); err != nil {
+			log.Warnw("failed to quit smtp client", zap.Error(err))
+		}
+	}()
 
 	if err := client.Auth(auth); err != nil {
 		return fmt.Errorf("smtp auth: %w", err)
@@ -158,12 +163,17 @@ func (s SMTP) sendWithTLS(addr string, auth smtp.Auth, to string, msg []byte) er
 	return nil
 }
 
-func (s SMTP) sendWithSTARTTLS(addr string, auth smtp.Auth, to string, msg []byte) error {
+func (s SMTP) sendWithSTARTTLS(ctx context.Context, addr string, auth smtp.Auth, to string, msg []byte) error {
+	log := logging.FromContext(ctx).Named("sendWithSTARTTLS")
 	client, err := smtp.Dial(addr)
 	if err != nil {
 		return fmt.Errorf("smtp dial: %w", err)
 	}
-	defer client.Quit()
+	defer func() {
+		if err := client.Quit(); err != nil {
+			log.Warnw("failed to quit smtp client", zap.Error(err))
+		}
+	}()
 
 	if ok, _ := client.Extension("STARTTLS"); ok {
 		tlsConfig := &tls.Config{

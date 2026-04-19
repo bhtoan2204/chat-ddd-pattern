@@ -29,17 +29,17 @@ var (
 )
 
 type MessageNotificationInput struct {
-	AccountID          string
-	GroupKey           string
-	Subject            string
-	Body               string
-	RoomID             string
-	RoomName           string
-	SenderID           string
-	SenderName         string
-	MessageID          string
-	MessagePreview     string
-	MessageAt          time.Time
+	AccountID      string
+	GroupKey       string
+	Subject        string
+	Body           string
+	RoomID         string
+	RoomName       string
+	SenderID       string
+	SenderName     string
+	MessageID      string
+	MessagePreview string
+	MessageAt      time.Time
 }
 
 type NotificationAggregate struct {

@@ -6,8 +6,8 @@ import (
 
 	"wechat-clone/core/modules/notification/application/dto/in"
 	"wechat-clone/core/modules/notification/application/dto/out"
-	notificationsupport "wechat-clone/core/modules/notification/application/support"
 	notificationservice "wechat-clone/core/modules/notification/application/service"
+	notificationsupport "wechat-clone/core/modules/notification/application/support"
 	notificationrepos "wechat-clone/core/modules/notification/domain/repos"
 	"wechat-clone/core/shared/pkg/actorctx"
 	"wechat-clone/core/shared/pkg/cqrs"

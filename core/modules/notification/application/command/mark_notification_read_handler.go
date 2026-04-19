@@ -7,8 +7,8 @@ import (
 
 	"wechat-clone/core/modules/notification/application/dto/in"
 	"wechat-clone/core/modules/notification/application/dto/out"
-	notificationsupport "wechat-clone/core/modules/notification/application/support"
 	notificationservice "wechat-clone/core/modules/notification/application/service"
+	notificationsupport "wechat-clone/core/modules/notification/application/support"
 	notificationrepos "wechat-clone/core/modules/notification/domain/repos"
 	notificationtypes "wechat-clone/core/modules/notification/types"
 	"wechat-clone/core/shared/pkg/actorctx"
@@ -20,8 +20,8 @@ import (
 )
 
 type markNotificationReadHandler struct {
-	baseRepo  notificationrepos.Repos
-	realtime  notificationservice.RealtimeService
+	baseRepo notificationrepos.Repos
+	realtime notificationservice.RealtimeService
 }
 
 func NewMarkNotificationReadHandler(
@@ -88,6 +88,6 @@ func (h *markNotificationReadHandler) Handle(ctx context.Context, req *in.MarkNo
 			response := notificationsupport.ToNotificationResponse(current)
 			return &response
 		}(),
-		UnreadCount:  unreadCount,
+		UnreadCount: unreadCount,
 	}, nil
 }

@@ -14,8 +14,8 @@ import (
 )
 
 var eventPayloadTypes = map[string]reflect.Type{
-	sharedevents.EventAccountCreated:                 reflect.TypeOf(sharedevents.AccountCreatedEvent{}),
-	sharedevents.EventRoomMessageCreated:             reflect.TypeOf(sharedevents.RoomMessageCreatedEvent{}),
+	sharedevents.EventAccountCreated:                     reflect.TypeOf(sharedevents.AccountCreatedEvent{}),
+	sharedevents.EventRoomMessageCreated:                 reflect.TypeOf(sharedevents.RoomMessageCreatedEvent{}),
 	roomprojection.EventMessageAggregateProjectionSynced: reflect.TypeOf(roomprojection.MessageAggregateSync{}),
 }
 

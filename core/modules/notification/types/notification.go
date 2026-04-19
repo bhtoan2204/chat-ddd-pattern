@@ -34,11 +34,11 @@ func (t NotificationType) Normalize() NotificationType {
 }
 
 const (
-	RealtimeEventNotificationUpsert   = "notification.upsert"
-	RealtimeEventNotificationRead     = "notification.read"
-	RealtimeEventNotificationReadAll  = "notification.read_all"
-	RealtimeEventUnreadCountUpdated   = "notification.unread_count.updated"
-	MessageNotificationGroupPrefix    = "room:"
+	RealtimeEventNotificationUpsert  = "notification.upsert"
+	RealtimeEventNotificationRead    = "notification.read"
+	RealtimeEventNotificationReadAll = "notification.read_all"
+	RealtimeEventUnreadCountUpdated  = "notification.unread_count.updated"
+	MessageNotificationGroupPrefix   = "room:"
 )
 
 type RealtimeMessagePayload struct {
