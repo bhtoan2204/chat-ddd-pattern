@@ -77,11 +77,11 @@ func NewHTTPServer(
 }
 
 func (s *relationshipHTTPServer) RegisterPublicRoutes(routes *gin.RouterGroup) {
-	relationshiphttp.RegisterPublicRoutes(routes, s.sendFriendRequest, s.cancelFriendRequest, s.acceptFriendRequest, s.rejectFriendRequest, s.listIncomingFriendRequests, s.listOutgoingFriendRequests, s.unfriendUser, s.listFriends, s.followUser, s.unfollowUser, s.listFollowers, s.listFollowing, s.blockUser, s.unblockUser, s.listBlockedUsers, s.getRelationshipStatus, s.getMutualFriends, s.getRelationshipSummary)
+	relationshiphttp.RegisterPublicRoutes(routes)
 }
 
 func (s *relationshipHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {
-	relationshiphttp.RegisterPrivateRoutes(routes)
+	relationshiphttp.RegisterPrivateRoutes(routes, s.sendFriendRequest, s.cancelFriendRequest, s.acceptFriendRequest, s.rejectFriendRequest, s.listIncomingFriendRequests, s.listOutgoingFriendRequests, s.unfriendUser, s.listFriends, s.followUser, s.unfollowUser, s.listFollowers, s.listFollowing, s.blockUser, s.unblockUser, s.listBlockedUsers, s.getRelationshipStatus, s.getMutualFriends, s.getRelationshipSummary)
 }
 
 func (s *relationshipHTTPServer) RegisterSocketRoutes(routes *gin.RouterGroup) {

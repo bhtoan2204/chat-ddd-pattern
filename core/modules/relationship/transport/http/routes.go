@@ -11,7 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterPublicRoutes(
+func RegisterPublicRoutes(_ *gin.RouterGroup) {}
+func RegisterPrivateRoutes(
 	routes *gin.RouterGroup,
 	sendFriendRequest cqrs.Dispatcher[*in.SendFriendRequestRequest, *out.SendFriendRequestResponse],
 	cancelFriendRequest cqrs.Dispatcher[*in.CancelFriendRequestRequest, *out.CancelFriendRequestResponse],
@@ -51,4 +52,3 @@ func RegisterPublicRoutes(
 	routes.GET("/relationship/mutual-friends/:target_user_id", httpx.Wrap(handler.NewGetMutualFriendsHandler(getMutualFriends)))
 	routes.GET("/relationship/summary/:target_user_id", httpx.Wrap(handler.NewGetRelationshipSummaryHandler(getRelationshipSummary)))
 }
-func RegisterPrivateRoutes(_ *gin.RouterGroup) {}

@@ -13,6 +13,7 @@ import (
 	ledgerassembly "wechat-clone/core/modules/ledger/assembly"
 	notificationassembly "wechat-clone/core/modules/notification/assembly"
 	paymentassembly "wechat-clone/core/modules/payment/assembly"
+	relationassembly "wechat-clone/core/modules/relationship/assembly"
 	roomassembly "wechat-clone/core/modules/room/assembly"
 	"wechat-clone/core/shared/config"
 	"wechat-clone/core/shared/infra/db"
@@ -60,6 +61,7 @@ func main() {
 		notificationassembly.BuildHTTPServer,
 		roomassembly.BuildHTTPServer,
 		paymentassembly.BuildHTTPServer,
+		relationassembly.BuildHTTPServer,
 	))
 
 	serviceName := "wechat-clone"

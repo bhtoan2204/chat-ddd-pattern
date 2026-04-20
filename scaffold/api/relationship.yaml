@@ -6,6 +6,7 @@ endpoints:
     method: POST
     path: /relationship/friend-requests
     handler: SendFriendRequestHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: SendFriendRequest
@@ -31,6 +32,7 @@ endpoints:
     method: DELETE
     path: /relationship/friend-requests/{target_user_id}
     handler: CancelFriendRequestHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: CancelFriendRequest
@@ -51,6 +53,7 @@ endpoints:
     method: POST
     path: /relationship/friend-requests/{requester_user_id}/accept
     handler: AcceptFriendRequestHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: AcceptFriendRequest
@@ -77,6 +80,7 @@ endpoints:
     method: POST
     path: /relationship/friend-requests/{requester_user_id}/reject
     handler: RejectFriendRequestHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: RejectFriendRequest
@@ -97,6 +101,7 @@ endpoints:
     method: GET
     path: /relationship/friend-requests/incoming
     handler: ListIncomingFriendRequestsHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: ListIncomingFriendRequests
@@ -119,6 +124,7 @@ endpoints:
     method: GET
     path: /relationship/friend-requests/outgoing
     handler: ListOutgoingFriendRequestsHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: ListOutgoingFriendRequests
@@ -141,6 +147,7 @@ endpoints:
     method: DELETE
     path: /relationship/friends/{target_user_id}
     handler: UnfriendUserHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: UnfriendUser
@@ -161,6 +168,7 @@ endpoints:
     method: GET
     path: /relationship/friends
     handler: ListFriendsHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: ListFriends
@@ -187,6 +195,7 @@ endpoints:
     method: POST
     path: /relationship/follows
     handler: FollowUserHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: FollowUser
@@ -210,6 +219,7 @@ endpoints:
     method: DELETE
     path: /relationship/follows/{target_user_id}
     handler: UnfollowUserHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: UnfollowUser
@@ -230,6 +240,7 @@ endpoints:
     method: GET
     path: /relationship/followers
     handler: ListFollowersHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: ListFollowers
@@ -256,6 +267,7 @@ endpoints:
     method: GET
     path: /relationship/following
     handler: ListFollowingHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: ListFollowing
@@ -282,6 +294,7 @@ endpoints:
     method: POST
     path: /relationship/blocks
     handler: BlockUserHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: BlockUser
@@ -305,6 +318,7 @@ endpoints:
     method: DELETE
     path: /relationship/blocks/{target_user_id}
     handler: UnblockUserHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: UnblockUser
@@ -325,6 +339,7 @@ endpoints:
     method: GET
     path: /relationship/blocks
     handler: ListBlockedUsersHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: ListBlockedUsers
@@ -349,6 +364,7 @@ endpoints:
     method: GET
     path: /relationship/status/{target_user_id}
     handler: GetRelationshipStatusHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: GetRelationshipStatus
@@ -387,6 +403,7 @@ endpoints:
     method: GET
     path: /relationship/mutual-friends/{target_user_id}
     handler: GetMutualFriendsHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: GetMutualFriends
@@ -415,6 +432,7 @@ endpoints:
     method: GET
     path: /relationship/summary/{target_user_id}
     handler: GetRelationshipSummaryHandler
+    auth: true
     usecase:
       name: RelationshipUsecase
       method: GetRelationshipSummary
