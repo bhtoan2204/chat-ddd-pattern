@@ -1,1 +1,1 @@
-ALTER TABLE room_outbox_events ADD metadata CLOB DEFAULT '{}' NOT NULL;
+ALTER TABLE room_outbox_events ADD metadata TEXT DEFAULT '{}' NOT NULL;

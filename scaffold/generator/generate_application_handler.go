@@ -183,11 +183,11 @@ func applicationHandlerConfigForEndpoint(module modulePaths, ep models.Endpoint)
 				applicationHandlerParam{Name: "services", Type: "service.Services"},
 			),
 		}, nil
-	case "wechat-clone/core/modules/notification":
-		return applicationHandlerConfig{
-			Imports: commonApplicationHandlerImports(module),
-			Params:  commonApplicationHandlerParams(),
-		}, nil
+	// case "wechat-clone/core/modules/notification":
+	// 	return applicationHandlerConfig{
+	// 		Imports: commonApplicationHandlerImports(module),
+	// 		Params:  commonApplicationHandlerParams(),
+	// 	}, nil
 	case "wechat-clone/core/modules/ledger":
 		return applicationHandlerConfig{
 			Imports: append(commonApplicationHandlerImports(module),
@@ -202,7 +202,10 @@ func applicationHandlerConfigForEndpoint(module modulePaths, ep models.Endpoint)
 	case "wechat-clone/core/modules/room":
 		return roomApplicationHandlerConfig(module, ep), nil
 	default:
-		return applicationHandlerConfig{}, fmt.Errorf("unsupported module import root: %s", module.ImportRoot)
+		return applicationHandlerConfig{
+			Imports: commonApplicationHandlerImports(module),
+			Params:  commonApplicationHandlerParams(),
+		}, nil
 	}
 }
 

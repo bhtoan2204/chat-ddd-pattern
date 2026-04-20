@@ -26,6 +26,11 @@ func main() {
 		log.Fatalf("Failed to generate responses: %v", err)
 	}
 	fmt.Println(msg)
+	msg, err = generator.GenerateModuleBoilerplate(apiSpec)
+	if err != nil {
+		log.Fatalf("Failed to generate module boilerplate: %v", err)
+	}
+	fmt.Println(msg)
 	msg, err = generator.GenerateApplicationHandler(apiSpec.Endpoints)
 	if err != nil {
 		log.Fatalf("Failed to generate application handlers: %v", err)

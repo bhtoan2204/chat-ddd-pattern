@@ -1,14 +1,5 @@
--- =========================
--- DROP: room_members
--- =========================
-DROP TABLE room_members CASCADE CONSTRAINTS;
+DROP TABLE room_members CASCADE;
 
--- =========================
--- DROP: rooms
--- =========================
-DROP TABLE rooms CASCADE CONSTRAINTS;
+DROP TABLE rooms CASCADE;
 
--- =========================
--- DROP: accounts
--- =========================
-DROP TABLE accounts CASCADE CONSTRAINTS;
+DROP TABLE accounts CASCADE;

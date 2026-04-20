@@ -87,7 +87,7 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 	})
 	opts = append(opts, WithLocalBus(localBus))
 
-	webPushService, err := webpush.NewWebPushService(cfg)
+	webPushService, err := webpush.NewWebPush(cfg)
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}

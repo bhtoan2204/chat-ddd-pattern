@@ -1,22 +1,24 @@
 services:
   redis:
-    image: redis:latest
+    image: redis:${REDIS_VERSION}
+    container_name: ${REDIS_CONTAINER_NAME}
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT}:6379"
     volumes:
       - redis_data:/data
+    restart: unless-stopped
 
   cassandra:
-    image: cassandra:5.0
-    container_name: chat-cassandra
+    image: cassandra:${CASSANDRA_VERSION}
+    container_name: ${CASSANDRA_CONTAINER_NAME}
     ports:
-      - "9042:9042"
+      - "${CASSANDRA_PORT}:9042"
     environment:
-      CASSANDRA_CLUSTER_NAME: chat-cluster
-      CASSANDRA_DC: dc1
-      CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
-      MAX_HEAP_SIZE: 768M
-      HEAP_NEWSIZE: 256M
+      CASSANDRA_CLUSTER_NAME: ${CASSANDRA_CLUSTER_NAME}
+      CASSANDRA_DC: ${CASSANDRA_DC}
+      CASSANDRA_ENDPOINT_SNITCH: ${CASSANDRA_ENDPOINT_SNITCH}
+      MAX_HEAP_SIZE: ${CASSANDRA_MAX_HEAP_SIZE}
+      HEAP_NEWSIZE: ${CASSANDRA_HEAP_NEWSIZE}
     volumes:
       - cassandra_data:/var/lib/cassandra
     restart: unless-stopped
@@ -24,7 +26,8 @@ services:
       test:
         [
           "CMD-SHELL",
-          "cqlsh localhost 9042 -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1 || exit 1",
+          "cqlsh localhost 9042 -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1 ||
+            exit 1",
         ]
       interval: 15s
       timeout: 10s
@@ -32,14 +35,14 @@ services:
       start_period: 50s
 
   minio:
-    image: minio/minio:latest
-    container_name: chat-minio
+    image: minio/minio:${MINIO_VERSION}
+    container_name: ${MINIO_CONTAINER_NAME}
     ports:
-      - "9001:9000"
-      - "9002:9001"
+      - "${MINIO_API_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
@@ -48,35 +51,58 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -f http://localhost:9000/minio/health/live >/dev/null 2>&1 || exit 1",
+          "curl -f http://localhost:9000/minio/health/live >/dev/null 2>&1 ||
+            exit 1",
         ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
 
-  oracle-db:
-    image: gvenzl/oracle-free:23.4-slim
-    container_name: oracle23c-free
+  postgres-db:
+    image: postgres:${POSTGRES_VERSION:-17}
+    container_name: ${POSTGRES_CONTAINER_NAME:-chat-postgres}
     ports:
-      - "1521:1521"
-      - "5500:5500"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      ORACLE_PASSWORD: Oracle123
-      APP_USER: appuser
-      APP_USER_PASSWORD: App123
-      ORACLE_ARCHIVE_LOG_DEST: ${ORACLE_ARCHIVE_LOG_DEST:-/opt/oracle/oradata/FREE/archivelog}
-      ORACLE_REDO_LOG_SIZE_MB: ${ORACLE_REDO_LOG_SIZE_MB:-1024}
-      ORACLE_REDO_LOG_GROUP_COUNT: ${ORACLE_REDO_LOG_GROUP_COUNT:-4}
+      POSTGRES_DB: ${POSTGRES_DB:-chat_app}
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-App123}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      PGTZ: ${PGTZ:-Asia/Ho_Chi_Minh}
     volumes:
-      - oracle_data:/opt/oracle/oradata
-      - ./oracle-init:/container-entrypoint-initdb.d
-      - ./oracle-startup:/container-entrypoint-startdb.d
-    shm_size: "1g"
+      - postgres_data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    command:
+      [
+        "postgres",
+        "-c",
+        "wal_level=logical",
+        "-c",
+        "max_wal_senders=10",
+        "-c",
+        "max_replication_slots=10",
+        "-c",
+        "timezone=Asia/Ho_Chi_Minh",
+        "-c",
+        "log_timezone=Asia/Ho_Chi_Minh",
+      ]
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-chat_app}
+            >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
 
 volumes:
   redis_data:
   cassandra_data:
   minio_data:
-  oracle_data:
+  postgres_data:

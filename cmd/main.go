@@ -13,6 +13,7 @@ import (
 	ledgerassembly "wechat-clone/core/modules/ledger/assembly"
 	notificationassembly "wechat-clone/core/modules/notification/assembly"
 	paymentassembly "wechat-clone/core/modules/payment/assembly"
+	relationassembly "wechat-clone/core/modules/relationship/assembly"
 	roomassembly "wechat-clone/core/modules/room/assembly"
 	"wechat-clone/core/shared/config"
 	"wechat-clone/core/shared/infra/db"
@@ -49,7 +50,7 @@ func main() {
 	migrateTool := db.NewMigrateTool()
 	pathMigration := flag.String("path", "migration/", "path to migrations folder")
 	flag.Parse()
-	if err := migrateTool.Migrate(fmt.Sprintf("file://%s", *pathMigration), cfg.DBConfig.ConnectionURL); err != nil {
+	if err := migrateTool.Migrate(fmt.Sprintf("file://%s", *pathMigration), db.DriverPostgres, cfg.DBConfig.ConnectionURL); err != nil {
 		logger.Errorw("Failed to migrate database", zap.Error(err))
 		return
 	}
@@ -60,6 +61,7 @@ func main() {
 		notificationassembly.BuildHTTPServer,
 		roomassembly.BuildHTTPServer,
 		paymentassembly.BuildHTTPServer,
+		relationassembly.BuildHTTPServer,
 	))
 
 	serviceName := "wechat-clone"

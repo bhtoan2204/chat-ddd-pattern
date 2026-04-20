@@ -11,9 +11,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
 	"wechat-clone/core/shared/pkg/stackErr"
 
-	_ "github.com/sijms/go-ora/v2"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var onceIns sync.Once
@@ -22,7 +23,7 @@ var mutex = &sync.Mutex{}
 
 //go:generate mockgen -package=db -destination=migrate_mock.go -source=migrate.go
 type MigrateTool interface {
-	Migrate(source, connStr string) error
+	Migrate(source, driver, connStr string) error
 }
 
 type migrateTool struct{}
@@ -35,18 +36,22 @@ func NewMigrateTool() MigrateTool {
 	return singleton
 }
 
-func (mgt *migrateTool) Migrate(source, connStr string) error {
+func (mgt *migrateTool) Migrate(source, driver, connStr string) error {
 	mutex.Lock()
 	defer mutex.Unlock()
+
+	if _, err := normalizedDriverNameOrError(driver); err != nil {
+		return stackErr.Error(err)
+	}
 
 	path, err := normalizeFileSource(source)
 	if err != nil {
 		return stackErr.Error(err)
 	}
 
-	db, err := sql.Open("oracle", connStr)
+	db, err := sql.Open("pgx", connStr)
 	if err != nil {
-		return stackErr.Error(fmt.Errorf("open oracle failed: %w", err))
+		return stackErr.Error(fmt.Errorf("open db failed: %w", err))
 	}
 	defer db.Close()
 
@@ -101,6 +106,7 @@ func listMigrationFiles(dir string) ([]migrationFile, error) {
 	if err != nil {
 		return nil, stackErr.Error(fmt.Errorf("read migration dir failed: %w", err))
 	}
+
 	var files []migrationFile
 	for _, entry := range entries {
 		if entry.IsDir() {
@@ -119,6 +125,7 @@ func listMigrationFiles(dir string) ([]migrationFile, error) {
 			Version: version,
 		})
 	}
+
 	sort.Slice(files, func(i, j int) bool {
 		return files[i].Version < files[j].Version
 	})
@@ -140,9 +147,9 @@ func parseVersion(name string) (int, error) {
 func ensureSchemaMigrations(db *sql.DB) error {
 	stmt := `
 CREATE TABLE schema_migrations (
-	version NUMBER(10) PRIMARY KEY,
-	applied_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL
-	)`
+	version BIGINT PRIMARY KEY,
+	applied_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+)`
 	if _, err := db.Exec(stmt); err != nil && !isObjectExistsError(err) {
 		return stackErr.Error(fmt.Errorf("create schema_migrations failed: %w", err))
 	}
@@ -155,6 +162,7 @@ func getAppliedVersions(db *sql.DB) (map[int]bool, error) {
 		return nil, stackErr.Error(fmt.Errorf("read schema_migrations failed: %w", err))
 	}
 	defer rows.Close()
+
 	applied := make(map[int]bool)
 	for rows.Next() {
 		var version int
@@ -171,10 +179,8 @@ func applyMigrationFile(db *sql.DB, path string, version int) error {
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("read migration file failed: %w", err))
 	}
-	statements := splitSQLStatements(string(content))
-	if len(statements) == 0 {
-		return stackErr.Error(fmt.Errorf("migration file has no statements: %s", path))
-	}
+
+	statements := splitPostgresSQLStatements(string(content))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -183,6 +189,7 @@ func applyMigrationFile(db *sql.DB, path string, version int) error {
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("begin tx failed: %w", err))
 	}
+
 	for i, stmt := range statements {
 		if _, err := tx.ExecContext(ctx, stmt); err != nil {
 			if isObjectExistsError(err) {
@@ -195,7 +202,8 @@ func applyMigrationFile(db *sql.DB, path string, version int) error {
 			))
 		}
 	}
-	if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migrations(version) VALUES (:1)", version); err != nil {
+
+	if _, err := tx.ExecContext(ctx, "INSERT INTO schema_migrations(version) VALUES ($1)", version); err != nil {
 		_ = tx.Rollback()
 		return stackErr.Error(fmt.Errorf("update schema_migrations failed: %w", err))
 	}
@@ -205,17 +213,14 @@ func applyMigrationFile(db *sql.DB, path string, version int) error {
 	return nil
 }
 
-func splitSQLStatements(input string) []string {
+func splitPostgresSQLStatements(input string) []string {
 	lines := strings.Split(input, "\n")
 	var out []string
 	var current strings.Builder
-	inPLSQLBlock := false
+	inDollarQuotedBlock := false
 
-	flush := func(trimSemicolon bool) {
-		stmt := strings.TrimSpace(current.String())
-		if trimSemicolon {
-			stmt = strings.TrimSpace(strings.TrimSuffix(stmt, ";"))
-		}
+	flush := func() {
+		stmt := strings.TrimSpace(strings.TrimSuffix(current.String(), ";"))
 		if stmt != "" {
 			out = append(out, stmt)
 		}
@@ -228,50 +233,21 @@ func splitSQLStatements(input string) []string {
 			continue
 		}
 
-		upper := strings.ToUpper(trim)
-		if !inPLSQLBlock && isOraclePLSQLBlockStart(upper) {
-			inPLSQLBlock = true
-		}
-
-		if inPLSQLBlock {
-			if trim == "/" {
-				flush(false)
-				inPLSQLBlock = false
-				continue
-			}
-			current.WriteString(line)
-			current.WriteString("\n")
-			continue
-		}
-
 		current.WriteString(line)
 		current.WriteString("\n")
 
-		if strings.HasSuffix(trim, ";") {
-			flush(true)
+		if strings.Count(line, "$$")%2 == 1 {
+			inDollarQuotedBlock = !inDollarQuotedBlock
+		}
+
+		if !inDollarQuotedBlock && strings.HasSuffix(trim, ";") {
+			flush()
 		}
 	}
 
 	if strings.TrimSpace(current.String()) != "" {
-		flush(true)
+		flush()
 	}
+
 	return out
-}
-
-func isOraclePLSQLBlockStart(statement string) bool {
-	switch {
-	case strings.HasPrefix(statement, "CREATE OR REPLACE TRIGGER"):
-		return true
-	case strings.HasPrefix(statement, "CREATE OR REPLACE FUNCTION"):
-		return true
-	case strings.HasPrefix(statement, "CREATE OR REPLACE PROCEDURE"):
-		return true
-	default:
-		return false
-	}
-}
-
-func isObjectExistsError(err error) bool {
-	msg := err.Error()
-	return strings.Contains(msg, "ORA-00955")
 }

@@ -39,15 +39,16 @@ func main() {
 			default:
 			}
 
-			return migrateTool.Migrate("file://"+*pathMigration, cfg.DBConfig.ConnectionURL)
+			return migrateTool.Migrate("file://"+*pathMigration, cfg.DBConfig.Driver, cfg.DBConfig.ConnectionURL)
 		},
 		retry.Attempts(30),
 		retry.Delay(4*time.Second),
 		retry.DelayType(retry.FixedDelay),
 		retry.LastErrorOnly(true),
 		retry.OnRetry(func(n uint, err error) {
-			logger.Warnw("Waiting for Oracle to become ready",
+			logger.Warnw("Waiting for database to become ready",
 				"attempt", n+1,
+				"driver", cfg.DBConfig.Driver,
 				"error", err,
 			)
 		}),

@@ -1,38 +1,61 @@
 package db
 
 import (
+	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
 
-func TestSplitSQLStatements_OracleTriggerBlocks(t *testing.T) {
+func TestSplitSQLStatements_PostgresFunctionBlocks(t *testing.T) {
 	input := `
--- regular table
 CREATE TABLE ledger_transactions (
-    transaction_id VARCHAR2(1024) PRIMARY KEY
+    transaction_id text PRIMARY KEY
 );
 
-CREATE OR REPLACE TRIGGER trg_ledger_entries_append_only
-BEFORE UPDATE OR DELETE ON ledger_entries
-FOR EACH ROW
+CREATE OR REPLACE FUNCTION touch_updated_at()
+RETURNS trigger AS $$
 BEGIN
-    raise_application_error(-20001, 'ledger_entries is append-only');
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
 END;
-/
+$$ LANGUAGE plpgsql;
 
-CREATE INDEX idx_ledger_entries_transaction_id ON ledger_entries(transaction_id);
+CREATE INDEX idx_ledger_entries_transaction_id ON ledger_transactions(transaction_id);
 `
 
-	statements := splitSQLStatements(input)
+	statements := splitPostgresSQLStatements(input)
 	if len(statements) != 3 {
 		t.Fatalf("expected 3 statements, got %d: %#v", len(statements), statements)
 	}
 
-	if !strings.Contains(statements[1], "raise_application_error") {
-		t.Fatalf("expected trigger block to stay intact, got %q", statements[1])
+	if !strings.Contains(statements[1], "RETURNS trigger AS $$") {
+		t.Fatalf("expected function block to stay intact, got %q", statements[1])
+	}
+}
+
+func TestPrepareStatementsForPostgres_AllUpMigrations(t *testing.T) {
+	files, err := filepath.Glob(filepath.Join("..", "..", "..", "..", "migration", "*.up.sql"))
+	if err != nil {
+		t.Fatalf("glob migration files failed: %v", err)
+	}
+	sort.Strings(files)
+	if len(files) == 0 {
+		t.Fatal("expected migration files")
 	}
 
-	if strings.Contains(statements[1], "\n/") || strings.HasSuffix(strings.TrimSpace(statements[1]), "/") {
-		t.Fatalf("expected sqlplus terminator to be removed from trigger block: %q", statements[1])
+	for _, file := range files {
+		t.Run(filepath.Base(file), func(t *testing.T) {
+			content, err := os.ReadFile(file)
+			if err != nil {
+				t.Fatalf("read migration file failed: %v", err)
+			}
+
+			statements := splitPostgresSQLStatements(string(content))
+			if len(statements) == 0 && strings.TrimSpace(string(content)) != "" {
+				t.Fatalf("expected statements for %s", filepath.Base(file))
+			}
+		})
 	}
 }

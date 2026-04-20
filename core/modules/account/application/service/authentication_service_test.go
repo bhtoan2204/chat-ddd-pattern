@@ -470,7 +470,7 @@ func TestAuthenticationService_Register_ReturnsAccountExists(t *testing.T) {
 	txRepos.EXPECT().AccountAggregateRepository().Return(accountAggregateRepo)
 	accountAggregateRepo.EXPECT().
 		Save(gomock.Any(), gomock.AssignableToTypeOf(&aggregate.AccountAggregate{})).
-		Return(errors.New("ORA-00001: unique constraint violated"))
+		Return(errors.New("ERROR: duplicate key value violates unique constraint (SQLSTATE 23505)"))
 
 	service := &authenticationService{
 		baseRepo:             baseRepo,

@@ -24,11 +24,11 @@ type markAllNotificationsReadHandler struct {
 
 func NewMarkAllNotificationsReadHandler(
 	baseRepo notificationrepos.Repos,
-	realtime notificationservice.RealtimeService,
+	services notificationservice.Services,
 ) cqrs.Handler[*in.MarkAllNotificationsReadRequest, *out.MarkAllNotificationsReadResponse] {
 	return &markAllNotificationsReadHandler{
 		baseRepo: baseRepo,
-		realtime: realtime,
+		realtime: services.RealtimeService(),
 	}
 }
 

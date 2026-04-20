@@ -19,12 +19,12 @@ type PushDeliveryService interface {
 
 type pushDeliveryService struct {
 	pushSubscriptions notificationrepos.PushSubscriptionRepository
-	webPush           sharedwebpush.WebPushService
+	webPush           sharedwebpush.WebPush
 }
 
-func NewPushDeliveryService(
+func newPushDeliveryService(
 	pushSubscriptions notificationrepos.PushSubscriptionRepository,
-	webPush sharedwebpush.WebPushService,
+	webPush sharedwebpush.WebPush,
 ) PushDeliveryService {
 	if pushSubscriptions == nil || webPush == nil {
 		return nil

@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type dbTX interface {
@@ -47,29 +48,22 @@ func newLedgerEventStore(dbTX dbTX, serializer eventpkg.Serializer) ledgerEventS
 func (s *ledgerEventStoreImpl) CreateIfNotExist(ctx context.Context, aggregateID, aggregateType string) error {
 	now := time.Now().UTC()
 
-	sql := `
-		MERGE INTO ledger_aggregates t
-		USING (
-			SELECT ? AS id, ? AS aggregate_id, ? AS aggregate_type, ? AS version, ? AS created_at, ? AS updated_at
-			FROM DUAL
-		) src
-		ON (
-			t.aggregate_id = src.aggregate_id
-			AND t.aggregate_type = src.aggregate_type
-		)
-		WHEN NOT MATCHED THEN
-			INSERT (id, aggregate_id, aggregate_type, version, created_at, updated_at)
-			VALUES (src.id, src.aggregate_id, src.aggregate_type, src.version, src.created_at, src.updated_at)
-		`
-	err := s.db.WithContext(ctx).Exec(
-		sql,
-		uuid.NewString(),
-		aggregateID,
-		aggregateType,
-		0,
-		now,
-		now,
-	).Error
+	err := s.db.WithContext(ctx).
+		Clauses(clause.OnConflict{
+			Columns: []clause.Column{
+				{Name: "aggregate_id"},
+				{Name: "aggregate_type"},
+			},
+			DoNothing: true,
+		}).
+		Create(&model.LedgerAggregateModel{
+			ID:            uuid.NewString(),
+			AggregateID:   aggregateID,
+			AggregateType: aggregateType,
+			Version:       0,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}).Error
 
 	return mapError(err)
 }

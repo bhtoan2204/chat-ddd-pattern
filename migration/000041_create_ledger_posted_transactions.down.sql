@@ -1,1 +1,1 @@
-DROP TABLE ledger_posted_transactions CASCADE CONSTRAINTS;
+DROP TABLE ledger_posted_transactions CASCADE;

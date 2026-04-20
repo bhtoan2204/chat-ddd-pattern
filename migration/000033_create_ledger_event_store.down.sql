@@ -1,2 +1,3 @@
-DROP TABLE ledger_events CASCADE CONSTRAINTS;
-DROP TABLE ledger_aggregates CASCADE CONSTRAINTS;
+DROP TABLE ledger_events CASCADE;
+
+DROP TABLE ledger_aggregates CASCADE;

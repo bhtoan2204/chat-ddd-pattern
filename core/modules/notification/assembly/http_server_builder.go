@@ -28,11 +28,11 @@ func buildHTTPServer(_ context.Context, appCtx *appCtx.AppContext) (http.HTTPSer
 		return nil, stackErr.Error(err)
 	}
 
-	realtimeService := notificationservice.NewRealtimeService(appCtx)
+	services := notificationservice.NewServices(appCtx, notificationRepos)
 	savePushSubscription := cqrs.NewDispatcher(notificationcommand.NewSavePushSubscriptionHandler(notificationRepos))
 	listNotification := cqrs.NewDispatcher(notificationquery.NewListNotificationHandler(notificationReadRepo))
-	markNotificationRead := cqrs.NewDispatcher(notificationcommand.NewMarkNotificationReadHandler(notificationRepos, realtimeService))
-	markAllNotificationsRead := cqrs.NewDispatcher(notificationcommand.NewMarkAllNotificationsReadHandler(notificationRepos, realtimeService))
+	markNotificationRead := cqrs.NewDispatcher(notificationcommand.NewMarkNotificationReadHandler(notificationRepos, services))
+	markAllNotificationsRead := cqrs.NewDispatcher(notificationcommand.NewMarkAllNotificationsReadHandler(notificationRepos, services))
 	getUnreadNotificationCount := cqrs.NewDispatcher(notificationquery.NewGetUnreadNotificationCountHandler(notificationReadRepo))
 
 	socketHub := notificationsocket.NewHub(appCtx)

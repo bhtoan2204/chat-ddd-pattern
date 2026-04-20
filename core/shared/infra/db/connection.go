@@ -9,20 +9,22 @@ import (
 	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
 
-	oracle "github.com/godoes/gorm-oracle"
 	"go.uber.org/zap"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func NewConnection(ctx context.Context, cfg *config.Config) (*gorm.DB, error) {
 	logger := logging.FromContext(ctx)
-	dialector := oracle.New(oracle.Config{
-		DSN: cfg.DBConfig.ConnectionURL,
-	})
-	db, err := gorm.Open(dialector, &gorm.Config{})
+	if _, err := normalizedDriverNameOrError(cfg.DBConfig.Driver); err != nil {
+		logger.Errorw("resolve db driver failed", zap.Error(err))
+		return nil, stackErr.Error(err)
+	}
+
+	db, err := gorm.Open(postgres.Open(cfg.DBConfig.ConnectionURL), &gorm.Config{})
 	if err != nil {
-		logger.Errorw("open gorm oracle failed", zap.Error(err))
-		return nil, stackErr.Error(fmt.Errorf("open gorm oracle failed: %w", err))
+		logger.Errorw("open gorm db failed", "driver", DriverPostgres, zap.Error(err))
+		return nil, stackErr.Error(fmt.Errorf("open gorm db failed: %w", err))
 	}
 
 	sqlDB, err := db.DB()

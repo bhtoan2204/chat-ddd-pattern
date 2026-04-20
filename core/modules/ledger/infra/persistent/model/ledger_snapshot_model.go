@@ -7,7 +7,7 @@ type LedgerSnapshotModel struct {
 	AggregateID   string    `gorm:"not null;index:idx_ledger_snapshots_agg_ver"`
 	AggregateType string    `gorm:"not null;index:idx_ledger_snapshots_agg_ver"`
 	Version       int       `gorm:"not null;index:idx_ledger_snapshots_agg_ver"`
-	SnapshotData  string    `gorm:"type:CLOB;not null"`
+	SnapshotData  string    `gorm:"type:text;not null"`
 	CreatedAt     time.Time `gorm:"autoCreateTime"`
 }
 

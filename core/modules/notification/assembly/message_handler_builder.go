@@ -14,7 +14,6 @@ func buildMessagingHandler(cfg *config.Config, appCtx *appCtx.AppContext) (notif
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
-	realtimeService := notificationservice.NewRealtimeService(appCtx)
-	pushDeliveryService := notificationservice.NewPushDeliveryService(repos.PushSubscriptionRepository(), appCtx.GetWebPush())
-	return notificationmessaging.NewMessageHandler(cfg, appCtx.GetSMTP(), repos, realtimeService, pushDeliveryService)
+	services := notificationservice.NewServices(appCtx, repos)
+	return notificationmessaging.NewMessageHandler(cfg, repos, services)
 }

@@ -1,8 +1,9 @@
 package generator
 
 import (
-	"fmt"
 	"strings"
+
+	"wechat-clone/scaffold/utils"
 )
 
 type modulePaths struct {
@@ -12,33 +13,20 @@ type modulePaths struct {
 
 func moduleForUsecase(usecaseName string) (modulePaths, error) {
 	moduleName := strings.TrimSuffix(usecaseName, "Usecase")
+	moduleDir := resolveModuleDir(moduleName)
+	return modulePaths{
+		FsRoot:     "core/modules/" + moduleDir,
+		ImportRoot: "wechat-clone/core/modules/" + moduleDir,
+	}, nil
+}
+
+func resolveModuleDir(moduleName string) string {
 	switch moduleName {
 	case "Auth":
-		return modulePaths{
-			FsRoot:     "core/modules/account",
-			ImportRoot: "wechat-clone/core/modules/account",
-		}, nil
-	case "Room", "Message":
-		return modulePaths{
-			FsRoot:     "core/modules/room",
-			ImportRoot: "wechat-clone/core/modules/room",
-		}, nil
-	case "Notification":
-		return modulePaths{
-			FsRoot:     "core/modules/notification",
-			ImportRoot: "wechat-clone/core/modules/notification",
-		}, nil
-	case "Payment":
-		return modulePaths{
-			FsRoot:     "core/modules/payment",
-			ImportRoot: "wechat-clone/core/modules/payment",
-		}, nil
-	case "Ledger":
-		return modulePaths{
-			FsRoot:     "core/modules/ledger",
-			ImportRoot: "wechat-clone/core/modules/ledger",
-		}, nil
+		return "account"
+	case "Message":
+		return "room"
 	default:
-		return modulePaths{}, fmt.Errorf("unknown usecase: %s", usecaseName)
+		return utils.Snake(moduleName)
 	}
 }

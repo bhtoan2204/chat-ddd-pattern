@@ -36,13 +36,13 @@ func TestNewWebPushService(t *testing.T) {
 		},
 	}
 
-	service, err := NewWebPushService(cfg)
+	service, err := NewWebPush(cfg)
 	if err != nil {
-		t.Fatalf("NewWebPushService() error = %v", err)
+		t.Fatalf("NewWebPush() error = %v", err)
 	}
-	impl, ok := service.(*webPushService)
+	impl, ok := service.(*webPush)
 	if !ok {
-		t.Fatalf("expected *webPushService, got %T", service)
+		t.Fatalf("expected *webPush, got %T", service)
 	}
 
 	if impl.vapidPublicKey != "pub-key" {
@@ -56,8 +56,8 @@ func TestNewWebPushService(t *testing.T) {
 	}
 }
 
-func TestWebPushServiceSendSuccess(t *testing.T) {
-	service := &webPushService{
+func TestWebPushSendSuccess(t *testing.T) {
+	service := &webPush{
 		vapidPublicKey:  "pub",
 		vapidPrivateKey: "pri",
 		ttl:             60,
@@ -118,8 +118,8 @@ func TestWebPushServiceSendSuccess(t *testing.T) {
 	}
 }
 
-func TestWebPushServiceSendError(t *testing.T) {
-	service := &webPushService{
+func TestWebPushSendError(t *testing.T) {
+	service := &webPush{
 		vapidPublicKey:  "pub",
 		vapidPrivateKey: "pri",
 		ttl:             30,
@@ -146,8 +146,8 @@ func TestWebPushServiceSendError(t *testing.T) {
 	}
 }
 
-func TestWebPushServiceSendRejectsInvalidSubscription(t *testing.T) {
-	service := &webPushService{
+func TestWebPushSendRejectsInvalidSubscription(t *testing.T) {
+	service := &webPush{
 		vapidPublicKey:  "pub",
 		vapidPrivateKey: "pri",
 		ttl:             30,
@@ -159,8 +159,8 @@ func TestWebPushServiceSendRejectsInvalidSubscription(t *testing.T) {
 	}
 }
 
-func TestWebPushServiceSendRejectsBadResponse(t *testing.T) {
-	service := &webPushService{
+func TestWebPushSendRejectsBadResponse(t *testing.T) {
+	service := &webPush{
 		vapidPublicKey:  "pub",
 		vapidPrivateKey: "pri",
 		ttl:             30,
@@ -189,8 +189,8 @@ func TestWebPushServiceSendRejectsBadResponse(t *testing.T) {
 	}
 }
 
-func TestWebPushServiceSendMany(t *testing.T) {
-	service := &webPushService{
+func TestWebPushSendMany(t *testing.T) {
+	service := &webPush{
 		vapidPublicKey:  "pub",
 		vapidPrivateKey: "pri",
 		ttl:             30,
@@ -226,7 +226,7 @@ func TestNewWebPushServiceReal(t *testing.T) {
 			TTL:             45,
 		},
 	}
-	webpush, err := NewWebPushService(cfg)
+	webpush, err := NewWebPush(cfg)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

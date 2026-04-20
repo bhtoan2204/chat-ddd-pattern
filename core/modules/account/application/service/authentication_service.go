@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	appCtx "wechat-clone/core/context"
@@ -13,6 +12,7 @@ import (
 	"wechat-clone/core/modules/account/domain/entity"
 	repos "wechat-clone/core/modules/account/domain/repos"
 	valueobject "wechat-clone/core/modules/account/domain/value_object"
+	shareddb "wechat-clone/core/shared/infra/db"
 	"wechat-clone/core/shared/infra/xpaseto"
 	"wechat-clone/core/shared/pkg/hasher"
 	"wechat-clone/core/shared/pkg/stackErr"
@@ -168,7 +168,7 @@ func (s *authenticationService) Register(ctx context.Context, command RegisterAc
 		}
 		return nil
 	}); txErr != nil {
-		if isOracleUniqueConstraintError(txErr) {
+		if shareddb.IsUniqueConstraintError(txErr) {
 			return nil, stackErr.Error(ErrRegistrationAccountExists)
 		}
 		return nil, stackErr.Error(txErr)
@@ -597,13 +597,6 @@ func (s *authenticationService) registerInitialDevice(
 	}
 
 	return deviceAgg, nil
-}
-
-func isOracleUniqueConstraintError(err error) bool {
-	if err == nil {
-		return false
-	}
-	return strings.Contains(strings.ToUpper(err.Error()), "ORA-00001")
 }
 
 func (s *authenticationService) digestRefreshToken(ctx context.Context, token string) (string, error) {

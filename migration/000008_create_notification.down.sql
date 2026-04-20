@@ -1,4 +1,1 @@
--- =========================
--- DROP: notifications
--- =========================
-DROP TABLE notifications CASCADE CONSTRAINTS;
+DROP TABLE notifications CASCADE;

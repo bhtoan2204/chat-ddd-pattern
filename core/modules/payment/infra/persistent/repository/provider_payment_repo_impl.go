@@ -10,6 +10,7 @@ import (
 	"wechat-clone/core/modules/payment/domain/entity"
 	paymentrepos "wechat-clone/core/modules/payment/domain/repos"
 	"wechat-clone/core/modules/payment/infra/persistent/model"
+	shareddb "wechat-clone/core/shared/infra/db"
 	eventpkg "wechat-clone/core/shared/pkg/event"
 	"wechat-clone/core/shared/pkg/stackErr"
 
@@ -132,7 +133,7 @@ func (r *providerPaymentRepoImpl) markProcessed(ctx context.Context, event *enti
 		TransactionID:  event.TransactionID,
 		CreatedAt:      event.CreatedAt,
 	}).Error
-	if isOracleUniqueConstraintError(err) {
+	if shareddb.IsUniqueConstraintError(err) {
 		return paymentrepos.ErrProviderPaymentDuplicateProcessed
 	}
 	return mapError(err)

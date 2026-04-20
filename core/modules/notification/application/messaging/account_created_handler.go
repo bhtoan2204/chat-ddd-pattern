@@ -78,10 +78,7 @@ func (h *messageHandler) handleAccountCreatedEvent(ctx context.Context, raw json
 		}
 	}
 
-	if h.emailSender == nil {
-		return nil
-	}
-	return stackErr.Error(h.emailSender.SendTemplate(ctx, payload.Email, subject, "welcome.html", map[string]string{
+	return stackErr.Error(h.email.SendTemplate(ctx, payload.Email, subject, "welcome.html", map[string]string{
 		"Email": payload.Email,
 	}))
 }

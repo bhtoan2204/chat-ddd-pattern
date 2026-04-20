@@ -19,7 +19,7 @@ type realtimeService struct {
 	localPublisher *pubsub.Bus
 }
 
-func NewRealtimeService(appCtx *appCtx.AppContext) RealtimeService {
+func newRealtimeService(appCtx *appCtx.AppContext) RealtimeService {
 	return &realtimeService{
 		localPublisher: appCtx.LocalBus(),
 	}
