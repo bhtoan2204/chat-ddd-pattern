@@ -8,8 +8,8 @@ type LedgerEventModel struct {
 	AggregateType string    `gorm:"not null;uniqueIndex:idx_ledger_events_agg_type_ver"`
 	Version       int       `gorm:"not null;uniqueIndex:idx_ledger_events_agg_type_ver"`
 	EventName     string    `gorm:"not null;index"`
-	EventData     string    `gorm:"type:CLOB;not null"`
-	Metadata      string    `gorm:"type:CLOB;not null"`
+	EventData     string    `gorm:"type:text;not null"`
+	Metadata      string    `gorm:"type:text;not null"`
 	CreatedAt     time.Time `gorm:"autoCreateTime"`
 }
 

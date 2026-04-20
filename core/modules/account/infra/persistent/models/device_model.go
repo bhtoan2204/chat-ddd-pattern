@@ -15,7 +15,7 @@ type DeviceModel struct {
 	UserAgent     *string
 	LastIPAddress *string
 	LastSeenAt    *time.Time `gorm:"index:ix_dev_seen"`
-	IsTrusted     int8       `gorm:"not null;default:0"` // Oracle-friendly: 0/1
+	IsTrusted     int8       `gorm:"not null;default:0"`
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
 }

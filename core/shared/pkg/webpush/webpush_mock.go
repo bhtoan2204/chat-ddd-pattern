@@ -16,32 +16,32 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
-// MockWebPushService is a mock of WebPushService interface.
-type MockWebPushService struct {
+// MockWebPush is a mock of WebPush interface.
+type MockWebPush struct {
 	ctrl     *gomock.Controller
-	recorder *MockWebPushServiceMockRecorder
+	recorder *MockWebPushMockRecorder
 	isgomock struct{}
 }
 
-// MockWebPushServiceMockRecorder is the mock recorder for MockWebPushService.
-type MockWebPushServiceMockRecorder struct {
-	mock *MockWebPushService
+// MockWebPushMockRecorder is the mock recorder for MockWebPush.
+type MockWebPushMockRecorder struct {
+	mock *MockWebPush
 }
 
-// NewMockWebPushService creates a new mock instance.
-func NewMockWebPushService(ctrl *gomock.Controller) *MockWebPushService {
-	mock := &MockWebPushService{ctrl: ctrl}
-	mock.recorder = &MockWebPushServiceMockRecorder{mock}
+// NewMockWebPush creates a new mock instance.
+func NewMockWebPush(ctrl *gomock.Controller) *MockWebPush {
+	mock := &MockWebPush{ctrl: ctrl}
+	mock.recorder = &MockWebPushMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockWebPushService) EXPECT() *MockWebPushServiceMockRecorder {
+func (m *MockWebPush) EXPECT() *MockWebPushMockRecorder {
 	return m.recorder
 }
 
 // Send mocks base method.
-func (m *MockWebPushService) Send(ctx context.Context, payload []byte, subscription Subscription) error {
+func (m *MockWebPush) Send(ctx context.Context, payload []byte, subscription Subscription) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Send", ctx, payload, subscription)
 	ret0, _ := ret[0].(error)
@@ -49,13 +49,13 @@ func (m *MockWebPushService) Send(ctx context.Context, payload []byte, subscript
 }
 
 // Send indicates an expected call of Send.
-func (mr *MockWebPushServiceMockRecorder) Send(ctx, payload, subscription any) *gomock.Call {
+func (mr *MockWebPushMockRecorder) Send(ctx, payload, subscription any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockWebPushService)(nil).Send), ctx, payload, subscription)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Send", reflect.TypeOf((*MockWebPush)(nil).Send), ctx, payload, subscription)
 }
 
 // SendMany mocks base method.
-func (m *MockWebPushService) SendMany(ctx context.Context, payload []byte, subscriptions []Subscription) error {
+func (m *MockWebPush) SendMany(ctx context.Context, payload []byte, subscriptions []Subscription) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendMany", ctx, payload, subscriptions)
 	ret0, _ := ret[0].(error)
@@ -63,7 +63,7 @@ func (m *MockWebPushService) SendMany(ctx context.Context, payload []byte, subsc
 }
 
 // SendMany indicates an expected call of SendMany.
-func (mr *MockWebPushServiceMockRecorder) SendMany(ctx, payload, subscriptions any) *gomock.Call {
+func (mr *MockWebPushMockRecorder) SendMany(ctx, payload, subscriptions any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMany", reflect.TypeOf((*MockWebPushService)(nil).SendMany), ctx, payload, subscriptions)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMany", reflect.TypeOf((*MockWebPush)(nil).SendMany), ctx, payload, subscriptions)
 }

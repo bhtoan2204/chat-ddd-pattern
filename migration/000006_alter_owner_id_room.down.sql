@@ -1,6 +1,3 @@
--- =========================
--- ROLLBACK: rooms (remove owner_id column from room table)
--- =========================
 ALTER TABLE rooms DROP COLUMN owner_id;
 
 ALTER TABLE rooms

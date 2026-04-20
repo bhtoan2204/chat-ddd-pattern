@@ -26,7 +26,8 @@ services:
       test:
         [
           "CMD-SHELL",
-          "cqlsh localhost 9042 -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1 || exit 1",
+          "cqlsh localhost 9042 -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1 ||
+            exit 1",
         ]
       interval: 15s
       timeout: 10s
@@ -50,35 +51,58 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -f http://localhost:9000/minio/health/live >/dev/null 2>&1 || exit 1",
+          "curl -f http://localhost:9000/minio/health/live >/dev/null 2>&1 ||
+            exit 1",
         ]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 20s
 
-  oracle-db:
-    image: gvenzl/oracle-free:${ORACLE_VERSION}
-    container_name: ${ORACLE_CONTAINER_NAME}
+  postgres-db:
+    image: postgres:${POSTGRES_VERSION:-17}
+    container_name: ${POSTGRES_CONTAINER_NAME:-chat-postgres}
     ports:
-      - "${ORACLE_DB_PORT}:1521"
-      - "${ORACLE_EM_PORT}:5500"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      ORACLE_PASSWORD: ${ORACLE_PASSWORD}
-      APP_USER: ${ORACLE_APP_USER}
-      APP_USER_PASSWORD: ${ORACLE_APP_USER_PASSWORD}
-      ORACLE_ARCHIVE_LOG_DEST: ${ORACLE_ARCHIVE_LOG_DEST:-/opt/oracle/oradata/FREE/archivelog}
-      ORACLE_REDO_LOG_SIZE_MB: ${ORACLE_REDO_LOG_SIZE_MB:-1024}
-      ORACLE_REDO_LOG_GROUP_COUNT: ${ORACLE_REDO_LOG_GROUP_COUNT:-4}
+      POSTGRES_DB: ${POSTGRES_DB:-chat_app}
+      POSTGRES_USER: ${POSTGRES_USER:-appuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-App123}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      PGTZ: ${PGTZ:-Asia/Ho_Chi_Minh}
     volumes:
-      - oracle_data:/opt/oracle/oradata
-      - ./oracle-init:/container-entrypoint-initdb.d
-      - ./oracle-startup:/container-entrypoint-startdb.d
-    shm_size: ${ORACLE_SHM_SIZE}
+      - postgres_data:/var/lib/postgresql/data
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    command:
+      [
+        "postgres",
+        "-c",
+        "wal_level=logical",
+        "-c",
+        "max_wal_senders=10",
+        "-c",
+        "max_replication_slots=10",
+        "-c",
+        "timezone=Asia/Ho_Chi_Minh",
+        "-c",
+        "log_timezone=Asia/Ho_Chi_Minh",
+      ]
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-chat_app}
+            >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
 
 volumes:
   redis_data:
   cassandra_data:
   minio_data:
-  oracle_data:
+  postgres_data:

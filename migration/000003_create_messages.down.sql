@@ -1,4 +1,1 @@
--- =========================
--- DROP: messages
--- =========================
-DROP TABLE messages CASCADE CONSTRAINTS;
+DROP TABLE messages CASCADE;

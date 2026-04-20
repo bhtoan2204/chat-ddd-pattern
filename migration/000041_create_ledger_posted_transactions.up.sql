@@ -1,15 +1,15 @@
 CREATE TABLE ledger_posted_transactions (
-    id                      VARCHAR2(1024) PRIMARY KEY,
-    aggregate_id            VARCHAR2(1024) NOT NULL,
-    aggregate_type          VARCHAR2(255)  NOT NULL,
-    transaction_id          VARCHAR2(1024) NOT NULL,
-    reference_type          VARCHAR2(255)  NOT NULL,
-    reference_id            VARCHAR2(1024) NOT NULL,
-    counterparty_account_id VARCHAR2(1024) NOT NULL,
-    currency                VARCHAR2(16)   NOT NULL,
-    amount_delta            NUMBER(19)     NOT NULL,
-    booked_at               TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at              TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
+    id                      VARCHAR(1024) PRIMARY KEY,
+    aggregate_id            VARCHAR(1024) NOT NULL,
+    aggregate_type          VARCHAR(255)  NOT NULL,
+    transaction_id          VARCHAR(1024) NOT NULL,
+    reference_type          VARCHAR(255)  NOT NULL,
+    reference_id            VARCHAR(1024) NOT NULL,
+    counterparty_account_id VARCHAR(1024) NOT NULL,
+    currency                VARCHAR(16)   NOT NULL,
+    amount_delta            BIGINT     NOT NULL,
+    booked_at               TIMESTAMPTZ NOT NULL,
+    created_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 INSERT INTO ledger_posted_transactions (
@@ -26,28 +26,28 @@ INSERT INTO ledger_posted_transactions (
     created_at
 )
 SELECT
-    LOWER(RAWTOHEX(SYS_GUID())) AS id,
+    LOWER(md5(random()::text || clock_timestamp()::text)) AS id,
     aggregate_id,
     aggregate_type,
-    JSON_VALUE(event_data, '$.transaction_id') AS transaction_id,
+    (event_data::jsonb ->> 'transaction_id') AS transaction_id,
     CASE event_name
-        WHEN 'EventLedgerAccountPaymentBooked' THEN NVL(JSON_VALUE(event_data, '$.reference_type'), 'payment.succeeded')
+        WHEN 'EventLedgerAccountPaymentBooked' THEN COALESCE((event_data::jsonb ->> 'reference_type'), 'payment.succeeded')
         ELSE 'ledger.transfer_to_account'
     END AS reference_type,
     CASE event_name
-        WHEN 'EventLedgerAccountPaymentBooked' THEN JSON_VALUE(event_data, '$.payment_id')
-        ELSE JSON_VALUE(event_data, '$.transaction_id')
+        WHEN 'EventLedgerAccountPaymentBooked' THEN (event_data::jsonb ->> 'payment_id')
+        ELSE (event_data::jsonb ->> 'transaction_id')
     END AS reference_id,
     CASE event_name
-        WHEN 'EventLedgerAccountPaymentBooked' THEN JSON_VALUE(event_data, '$.counterparty_account_id')
-        WHEN 'EventLedgerAccountTransferredToAccount' THEN JSON_VALUE(event_data, '$.to_account_id')
-        WHEN 'EventLedgerAccountReceivedTransfer' THEN JSON_VALUE(event_data, '$.from_account_id')
+        WHEN 'EventLedgerAccountPaymentBooked' THEN (event_data::jsonb ->> 'counterparty_account_id')
+        WHEN 'EventLedgerAccountTransferredToAccount' THEN (event_data::jsonb ->> 'to_account_id')
+        WHEN 'EventLedgerAccountReceivedTransfer' THEN (event_data::jsonb ->> 'from_account_id')
     END AS counterparty_account_id,
-    UPPER(JSON_VALUE(event_data, '$.currency')) AS currency,
+    UPPER((event_data::jsonb ->> 'currency')) AS currency,
     CASE event_name
-        WHEN 'EventLedgerAccountPaymentBooked' THEN JSON_VALUE(event_data, '$.amount_delta' RETURNING NUMBER)
-        WHEN 'EventLedgerAccountTransferredToAccount' THEN -JSON_VALUE(event_data, '$.amount' RETURNING NUMBER)
-        WHEN 'EventLedgerAccountReceivedTransfer' THEN JSON_VALUE(event_data, '$.amount' RETURNING NUMBER)
+        WHEN 'EventLedgerAccountPaymentBooked' THEN NULLIF((event_data::jsonb ->> 'amount_delta'), '')::BIGINT
+        WHEN 'EventLedgerAccountTransferredToAccount' THEN -NULLIF((event_data::jsonb ->> 'amount'), '')::BIGINT
+        WHEN 'EventLedgerAccountReceivedTransfer' THEN NULLIF((event_data::jsonb ->> 'amount'), '')::BIGINT
     END AS amount_delta,
     created_at AS booked_at,
     created_at

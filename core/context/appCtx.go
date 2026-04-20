@@ -36,7 +36,7 @@ type AppContext struct {
 	cassandra     *gocql.Session
 	elasticsearch *es8.Client
 	localBus      *pubsub.Bus
-	webPush       webpush.WebPushService
+	webPush       webpush.WebPush
 }
 
 func NewAppContext(ctx context.Context, opts ...Option) (*AppContext, error) {
@@ -125,7 +125,7 @@ func WithLocalBus(bus *pubsub.Bus) Option {
 	}
 }
 
-func WithWebPush(service webpush.WebPushService) Option {
+func WithWebPush(service webpush.WebPush) Option {
 	return func(appCtx *AppContext) {
 		appCtx.webPush = service
 	}
@@ -186,7 +186,7 @@ func (appCtx *AppContext) LocalBus() *pubsub.Bus {
 	return appCtx.localBus
 }
 
-func (appCtx *AppContext) GetWebPush() webpush.WebPushService {
+func (appCtx *AppContext) GetWebPush() webpush.WebPush {
 	return appCtx.webPush
 }
 

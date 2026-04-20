@@ -49,7 +49,7 @@ func main() {
 	migrateTool := db.NewMigrateTool()
 	pathMigration := flag.String("path", "migration/", "path to migrations folder")
 	flag.Parse()
-	if err := migrateTool.Migrate(fmt.Sprintf("file://%s", *pathMigration), cfg.DBConfig.ConnectionURL); err != nil {
+	if err := migrateTool.Migrate(fmt.Sprintf("file://%s", *pathMigration), db.DriverPostgres, cfg.DBConfig.ConnectionURL); err != nil {
 		logger.Errorw("Failed to migrate database", zap.Error(err))
 		return
 	}

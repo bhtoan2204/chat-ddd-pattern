@@ -1,18 +1,14 @@
--- =========================
--- TABLE: payment_histories
--- =========================
-
 CREATE TABLE payment_histories (
-    id VARCHAR2(36) PRIMARY KEY,
-    type VARCHAR2(50) NOT NULL,
-    amount NUMBER(19) NOT NULL,
-    balance NUMBER(19) NOT NULL,
-    sender_id VARCHAR2(36),
-    receiver_id VARCHAR2(36),
-    sender_name VARCHAR2(255),
-    receiver_name VARCHAR2(255),
-    properties CLOB NOT NULL,
-    created_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL
+    id VARCHAR(36) PRIMARY KEY,
+    type VARCHAR(50) NOT NULL,
+    amount BIGINT NOT NULL,
+    balance BIGINT NOT NULL,
+    sender_id VARCHAR(36),
+    receiver_id VARCHAR(36),
+    sender_name VARCHAR(255),
+    receiver_name VARCHAR(255),
+    properties TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 CREATE INDEX idx_payment_histories_type

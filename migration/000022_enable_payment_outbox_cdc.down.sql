@@ -1,7 +1,1 @@
-BEGIN
-  EXECUTE IMMEDIATE 'REVOKE SELECT ON payment_outbox_events FROM C##DBZUSER';
-EXCEPTION
-  WHEN OTHERS THEN
-    NULL;
-END;
-/
+-- no-op on PostgreSQL

@@ -1,13 +1,10 @@
-ALTER TABLE ledger_transactions ADD (
-    currency VARCHAR2(32)
-);
+ALTER TABLE ledger_transactions ADD COLUMN currency VARCHAR(32);
 
-ALTER TABLE ledger_entries ADD (
-    currency VARCHAR2(32)
-);
+ALTER TABLE ledger_entries ADD COLUMN currency VARCHAR(32);
 
-ALTER TRIGGER trg_ledger_transactions_append_only DISABLE;
-ALTER TRIGGER trg_ledger_entries_append_only DISABLE;
+ALTER TABLE ledger_transactions DISABLE TRIGGER trg_ledger_transactions_append_only;
+
+ALTER TABLE ledger_entries DISABLE TRIGGER trg_ledger_entries_append_only;
 
 UPDATE ledger_transactions lt
 SET currency = (
@@ -16,7 +13,7 @@ SET currency = (
     WHERE pi.transaction_id = REGEXP_REPLACE(lt.transaction_id, '^payment:(.*):succeeded$', '\1')
 )
 WHERE currency IS NULL
-  AND REGEXP_LIKE(lt.transaction_id, '^payment:.*:succeeded$')
+  AND lt.transaction_id ~ '^payment:.*:succeeded$'
   AND EXISTS (
       SELECT 1
       FROM payment_intents pi
@@ -39,16 +36,17 @@ UPDATE ledger_entries
 SET currency = 'UNKNOWN'
 WHERE currency IS NULL;
 
-ALTER TABLE ledger_transactions MODIFY (
-    currency VARCHAR2(32) NOT NULL
-);
+ALTER TABLE ledger_transactions ALTER COLUMN currency TYPE VARCHAR(32);
 
-ALTER TABLE ledger_entries MODIFY (
-    currency VARCHAR2(32) NOT NULL
-);
+ALTER TABLE ledger_transactions ALTER COLUMN currency SET NOT NULL;
+
+ALTER TABLE ledger_entries ALTER COLUMN currency TYPE VARCHAR(32);
+
+ALTER TABLE ledger_entries ALTER COLUMN currency SET NOT NULL;
 
 CREATE INDEX idx_ledger_entries_account_currency_created
     ON ledger_entries(account_id, currency, created_at);
 
-ALTER TRIGGER trg_ledger_transactions_append_only ENABLE;
-ALTER TRIGGER trg_ledger_entries_append_only ENABLE;
+ALTER TABLE ledger_transactions ENABLE TRIGGER trg_ledger_transactions_append_only;
+
+ALTER TABLE ledger_entries ENABLE TRIGGER trg_ledger_entries_append_only;

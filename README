@@ -58,7 +58,7 @@ The important architectural point is that business rules are meant to live in do
 - Go `1.24.1`
 - Gin for HTTP transport
 - Gorilla WebSocket for realtime chat
-- GORM + Oracle for transactional persistence
+- GORM + PostgreSQL for transactional persistence
 - Redis for cache, locking, and presence-related state
 - Cassandra for chat serving projections
 - Elasticsearch for message search indexing
@@ -70,10 +70,10 @@ The important architectural point is that business rules are meant to live in do
 
 ## 4. Run Locally
 
-The repo now has two local infrastructure profiles:
+The local workflow now defaults to the full development stack.
 
-- `docker-compose.dev-min.yml`: first-run profile for core chat development
-- `docker-compose.full.yml`: overlay that adds Kafka, Debezium Connect, and Elasticsearch for projection / CDC work
+- `docker-compose.dev-min.yml`: base infra shared by local development
+- `docker-compose.full.yml`: overlay that adds Kafka, Debezium Connect, and Elasticsearch
 
 Recommended first run:
 
@@ -86,10 +86,10 @@ make run
 
 What each step does:
 
-- `make up` starts the minimal local stack: Oracle, Redis, Cassandra, and MinIO
+- `make up` starts the full local stack: PostgreSQL, Redis, Cassandra, MinIO, Kafka, Debezium Connect, and Elasticsearch
 - `make bootstrap` prepares derived infra needed for local dev, such as bootstrap storage and Cassandra setup
-- `make migrate` applies Oracle migrations without starting the HTTP server
-- `make run` starts the main API from `cmd/main.go` using the minimal dev profile
+- `make migrate` applies PostgreSQL migrations without starting the HTTP server
+- `make run` starts the main API from `cmd/main.go` using the default full local profile
 
 Useful follow-ups:
 
@@ -100,8 +100,8 @@ make connector
 make run-gateway
 ```
 
-- `make up-full` starts the full stack for Kafka / Debezium / Elasticsearch work
-- `make run-full` starts the API with the full local env profile
+- `make up-full` is an alias of `make up`
+- `make run-full` is an alias of `make run`
 - `make connector` registers the Debezium connector after the full stack is healthy
 - `make run-gateway` starts the optional reverse proxy in `gateway/`
 
@@ -111,7 +111,7 @@ Default local URLs:
 - Swagger UI: `http://localhost:35000/swagger`
 - MinIO API: `http://localhost:9001`
 - MinIO Console: `http://localhost:9002`
-- Kafka Connect: `http://localhost:8083` when using the full profile
+- Kafka Connect: `http://localhost:8083`
 
 ## 5. Roadmap
 
@@ -131,7 +131,7 @@ In progress:
 
 - payment intent creation and provider webhook processing
 - ledger transfer and balance APIs
-- Oracle outbox -> projection pipeline for room and ledger modules
+- PostgreSQL outbox -> projection pipeline for room and ledger modules
 - search indexing infrastructure around Elasticsearch
 
 Planned:

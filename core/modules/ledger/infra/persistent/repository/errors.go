@@ -2,9 +2,9 @@ package repository
 
 import (
 	"errors"
-	"strings"
 
 	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	shareddb "wechat-clone/core/shared/infra/db"
 	"wechat-clone/core/shared/pkg/stackErr"
 
 	"gorm.io/gorm"
@@ -23,12 +23,8 @@ func mapError(err error) error {
 		return stackErr.Error(ErrNotFound)
 	}
 
-	if isOracleUniqueConstraintError(err) {
+	if shareddb.IsUniqueConstraintError(err) {
 		return stackErr.Error(ErrDuplicate)
 	}
 	return stackErr.Error(err)
-}
-
-func isOracleUniqueConstraintError(err error) bool {
-	return strings.Contains(strings.ToUpper(err.Error()), "ORA-00001")
 }

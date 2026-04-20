@@ -30,18 +30,18 @@ var (
 )
 
 //go:generate mockgen -package=webpush -destination=webpush_mock.go -source=webpush.go
-type WebPushService interface {
+type WebPush interface {
 	Send(ctx context.Context, payload []byte, subscription Subscription) error
 	SendMany(ctx context.Context, payload []byte, subscriptions []Subscription) error
 }
 
-type webPushService struct {
+type webPush struct {
 	vapidPublicKey  string
 	vapidPrivateKey string
 	ttl             int
 }
 
-func NewWebPushService(cfg *config.Config) (WebPushService, error) {
+func NewWebPush(cfg *config.Config) (WebPush, error) {
 	if cfg == nil {
 		return nil, stackErr.Error(ErrInvalidConfig)
 	}
@@ -54,14 +54,14 @@ func NewWebPushService(cfg *config.Config) (WebPushService, error) {
 		ttl = 30
 	}
 
-	return &webPushService{
+	return &webPush{
 		vapidPublicKey:  cfg.WebPushConfig.VAPIDPublicKey,
 		vapidPrivateKey: cfg.WebPushConfig.VAPIDPrivateKey,
 		ttl:             ttl,
 	}, nil
 }
 
-func (s *webPushService) Send(
+func (s *webPush) Send(
 	ctx context.Context,
 	payload []byte,
 	subscription Subscription,
@@ -94,7 +94,7 @@ func (s *webPushService) Send(
 	return nil
 }
 
-func (s *webPushService) SendMany(
+func (s *webPush) SendMany(
 	ctx context.Context,
 	payload []byte,
 	subscriptions []Subscription,

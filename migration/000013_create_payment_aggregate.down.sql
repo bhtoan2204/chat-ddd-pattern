@@ -1,4 +1,1 @@
--- =========================
--- DROP: payment_aggregates
--- =========================
-DROP TABLE payment_aggregates CASCADE CONSTRAINTS;
+DROP TABLE payment_aggregates CASCADE;
