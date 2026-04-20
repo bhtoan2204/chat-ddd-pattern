@@ -7,7 +7,6 @@ import (
 	"go/format"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"text/template"
 
@@ -207,8 +206,7 @@ func fieldSource(ep models.Endpoint, field models.FieldSpec) string {
 		return field.Source
 	}
 
-	paramPattern := regexp.MustCompile(`:([A-Za-z0-9_]+)`)
-	matches := paramPattern.FindAllStringSubmatch(ep.Path, -1)
+	matches := pathParamPattern.FindAllStringSubmatch(ep.Path, -1)
 	for _, match := range matches {
 		if len(match) >= 2 && match[1] == field.Name {
 			return "path"

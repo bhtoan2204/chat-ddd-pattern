@@ -1,0 +1,440 @@
+version: 1
+basePath: /api/v1
+
+endpoints:
+  - name: SendFriendRequest
+    method: POST
+    path: /relationship/friend-requests
+    handler: SendFriendRequestHandler
+    usecase:
+      name: RelationshipUsecase
+      method: SendFriendRequest
+    request:
+      struct: SendFriendRequestRequest
+      fields:
+        - name: target_user_id
+          type: string
+          required: true
+    response:
+      struct: SendFriendRequestResponse
+      fields:
+        - name: request_id
+          type: string
+        - name: requester_id
+          type: string
+        - name: addressee_id
+          type: string
+        - name: status
+          type: string
+
+  - name: CancelFriendRequest
+    method: DELETE
+    path: /relationship/friend-requests/{target_user_id}
+    handler: CancelFriendRequestHandler
+    usecase:
+      name: RelationshipUsecase
+      method: CancelFriendRequest
+    request:
+      struct: CancelFriendRequestRequest
+      fields:
+        - name: target_user_id
+          type: string
+          source: path
+          required: true
+    response:
+      struct: CancelFriendRequestResponse
+      fields:
+        - name: success
+          type: bool
+
+  - name: AcceptFriendRequest
+    method: POST
+    path: /relationship/friend-requests/{requester_user_id}/accept
+    handler: AcceptFriendRequestHandler
+    usecase:
+      name: RelationshipUsecase
+      method: AcceptFriendRequest
+    request:
+      struct: AcceptFriendRequestRequest
+      fields:
+        - name: requester_user_id
+          type: string
+          source: path
+          required: true
+    response:
+      struct: AcceptFriendRequestResponse
+      fields:
+        - name: friendship_id
+          type: string
+        - name: user_id
+          type: string
+        - name: friend_id
+          type: string
+        - name: created_at
+          type: int64
+
+  - name: RejectFriendRequest
+    method: POST
+    path: /relationship/friend-requests/{requester_user_id}/reject
+    handler: RejectFriendRequestHandler
+    usecase:
+      name: RelationshipUsecase
+      method: RejectFriendRequest
+    request:
+      struct: RejectFriendRequestRequest
+      fields:
+        - name: requester_user_id
+          type: string
+          source: path
+          required: true
+    response:
+      struct: RejectFriendRequestResponse
+      fields:
+        - name: success
+          type: bool
+
+  - name: ListIncomingFriendRequests
+    method: GET
+    path: /relationship/friend-requests/incoming
+    handler: ListIncomingFriendRequestsHandler
+    usecase:
+      name: RelationshipUsecase
+      method: ListIncomingFriendRequests
+    request:
+      struct: ListIncomingFriendRequestsRequest
+      fields:
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+    response:
+      struct: ListIncomingFriendRequestsResponse
+      fields:
+        - name: items
+          type: array
+        - name: next_cursor
+          type: string
+
+  - name: ListOutgoingFriendRequests
+    method: GET
+    path: /relationship/friend-requests/outgoing
+    handler: ListOutgoingFriendRequestsHandler
+    usecase:
+      name: RelationshipUsecase
+      method: ListOutgoingFriendRequests
+    request:
+      struct: ListOutgoingFriendRequestsRequest
+      fields:
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+    response:
+      struct: ListOutgoingFriendRequestsResponse
+      fields:
+        - name: items
+          type: array
+        - name: next_cursor
+          type: string
+
+  - name: UnfriendUser
+    method: DELETE
+    path: /relationship/friends/{target_user_id}
+    handler: UnfriendUserHandler
+    usecase:
+      name: RelationshipUsecase
+      method: UnfriendUser
+    request:
+      struct: UnfriendUserRequest
+      fields:
+        - name: target_user_id
+          type: string
+          source: path
+          required: true
+    response:
+      struct: UnfriendUserResponse
+      fields:
+        - name: success
+          type: bool
+
+  - name: ListFriends
+    method: GET
+    path: /relationship/friends
+    handler: ListFriendsHandler
+    usecase:
+      name: RelationshipUsecase
+      method: ListFriends
+    request:
+      struct: ListFriendsRequest
+      fields:
+        - name: user_id
+          type: string
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+    response:
+      struct: ListFriendsResponse
+      fields:
+        - name: items
+          type: array
+        - name: next_cursor
+          type: string
+        - name: total
+          type: int64
+
+  - name: FollowUser
+    method: POST
+    path: /relationship/follows
+    handler: FollowUserHandler
+    usecase:
+      name: RelationshipUsecase
+      method: FollowUser
+    request:
+      struct: FollowUserRequest
+      fields:
+        - name: target_user_id
+          type: string
+          required: true
+    response:
+      struct: FollowUserResponse
+      fields:
+        - name: follower_id
+          type: string
+        - name: followee_id
+          type: string
+        - name: created_at
+          type: int64
+
+  - name: UnfollowUser
+    method: DELETE
+    path: /relationship/follows/{target_user_id}
+    handler: UnfollowUserHandler
+    usecase:
+      name: RelationshipUsecase
+      method: UnfollowUser
+    request:
+      struct: UnfollowUserRequest
+      fields:
+        - name: target_user_id
+          type: string
+          source: path
+          required: true
+    response:
+      struct: UnfollowUserResponse
+      fields:
+        - name: success
+          type: bool
+
+  - name: ListFollowers
+    method: GET
+    path: /relationship/followers
+    handler: ListFollowersHandler
+    usecase:
+      name: RelationshipUsecase
+      method: ListFollowers
+    request:
+      struct: ListFollowersRequest
+      fields:
+        - name: user_id
+          type: string
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+    response:
+      struct: ListFollowersResponse
+      fields:
+        - name: items
+          type: array
+        - name: next_cursor
+          type: string
+        - name: total
+          type: int64
+
+  - name: ListFollowing
+    method: GET
+    path: /relationship/following
+    handler: ListFollowingHandler
+    usecase:
+      name: RelationshipUsecase
+      method: ListFollowing
+    request:
+      struct: ListFollowingRequest
+      fields:
+        - name: user_id
+          type: string
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+    response:
+      struct: ListFollowingResponse
+      fields:
+        - name: items
+          type: array
+        - name: next_cursor
+          type: string
+        - name: total
+          type: int64
+
+  - name: BlockUser
+    method: POST
+    path: /relationship/blocks
+    handler: BlockUserHandler
+    usecase:
+      name: RelationshipUsecase
+      method: BlockUser
+    request:
+      struct: BlockUserRequest
+      fields:
+        - name: target_user_id
+          type: string
+          required: true
+    response:
+      struct: BlockUserResponse
+      fields:
+        - name: blocker_id
+          type: string
+        - name: blocked_id
+          type: string
+        - name: created_at
+          type: int64
+
+  - name: UnblockUser
+    method: DELETE
+    path: /relationship/blocks/{target_user_id}
+    handler: UnblockUserHandler
+    usecase:
+      name: RelationshipUsecase
+      method: UnblockUser
+    request:
+      struct: UnblockUserRequest
+      fields:
+        - name: target_user_id
+          type: string
+          source: path
+          required: true
+    response:
+      struct: UnblockUserResponse
+      fields:
+        - name: success
+          type: bool
+
+  - name: ListBlockedUsers
+    method: GET
+    path: /relationship/blocks
+    handler: ListBlockedUsersHandler
+    usecase:
+      name: RelationshipUsecase
+      method: ListBlockedUsers
+    request:
+      struct: ListBlockedUsersRequest
+      fields:
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+    response:
+      struct: ListBlockedUsersResponse
+      fields:
+        - name: items
+          type: array
+        - name: next_cursor
+          type: string
+        - name: total
+          type: int64
+
+  - name: GetRelationshipStatus
+    method: GET
+    path: /relationship/status/{target_user_id}
+    handler: GetRelationshipStatusHandler
+    usecase:
+      name: RelationshipUsecase
+      method: GetRelationshipStatus
+    request:
+      struct: GetRelationshipStatusRequest
+      fields:
+        - name: target_user_id
+          type: string
+          source: path
+          required: true
+    response:
+      struct: GetRelationshipStatusResponse
+      fields:
+        - name: is_self
+          type: bool
+        - name: is_friend
+          type: bool
+        - name: is_following
+          type: bool
+        - name: is_follower
+          type: bool
+        - name: has_blocked
+          type: bool
+        - name: is_blocked_by
+          type: bool
+        - name: outgoing_friend_request_pending
+          type: bool
+        - name: incoming_friend_request_pending
+          type: bool
+        - name: can_send_friend_request
+          type: bool
+        - name: can_follow
+          type: bool
+
+  - name: GetMutualFriends
+    method: GET
+    path: /relationship/mutual-friends/{target_user_id}
+    handler: GetMutualFriendsHandler
+    usecase:
+      name: RelationshipUsecase
+      method: GetMutualFriends
+    request:
+      struct: GetMutualFriendsRequest
+      fields:
+        - name: target_user_id
+          type: string
+          source: path
+          required: true
+        - name: cursor
+          type: string
+        - name: limit
+          type: int
+    response:
+      struct: GetMutualFriendsResponse
+      fields:
+        - name: items
+          type: array
+        - name: next_cursor
+          type: string
+        - name: total
+          type: int64
+
+  - name: GetRelationshipSummary
+    method: GET
+    path: /relationship/summary/{target_user_id}
+    handler: GetRelationshipSummaryHandler
+    usecase:
+      name: RelationshipUsecase
+      method: GetRelationshipSummary
+    request:
+      struct: GetRelationshipSummaryRequest
+      fields:
+        - name: target_user_id
+          type: string
+          source: path
+          required: true
+    response:
+      struct: GetRelationshipSummaryResponse
+      fields:
+        - name: friends_count
+          type: int64
+        - name: followers_count
+          type: int64
+        - name: following_count
+          type: int64
+        - name: mutual_friends_count
+          type: int64
+        - name: relationship_status
+          type: string

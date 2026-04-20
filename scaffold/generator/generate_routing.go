@@ -7,6 +7,7 @@ import (
 	"go/format"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -89,6 +90,8 @@ type routingRoute struct {
 	ParamName   string
 }
 
+var pathParamPattern = regexp.MustCompile(`[:{]([A-Za-z0-9_]+)\}?`)
+
 func buildRoutingTemplateData(group moduleEndpoints) routingTemplateData {
 	data := routingTemplateData{
 		PackageName:       "http",
@@ -110,7 +113,7 @@ func buildRoutingTemplateData(group moduleEndpoints) routingTemplateData {
 		}
 		route := routingRoute{
 			Method:      stringsToUpper(ep.Method),
-			Path:        ep.Path,
+			Path:        normalizeRoutePath(ep.Path),
 			HandlerName: ep.Handler,
 			ParamName:   param.Name,
 		}
@@ -136,4 +139,8 @@ func buildRoutingTemplateData(group moduleEndpoints) routingTemplateData {
 
 func stringsToUpper(s string) string {
 	return strings.ToUpper(s)
+}
+
+func normalizeRoutePath(path string) string {
+	return pathParamPattern.ReplaceAllString(path, ":$1")
 }

@@ -21,3 +21,7 @@ modules:
     kinds:
       - http
       - projection
+
+  - name: relationship
+    kinds:
+      - http

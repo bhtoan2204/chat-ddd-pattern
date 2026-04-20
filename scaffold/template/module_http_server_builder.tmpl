@@ -1,0 +1,37 @@
+// CODE_GENERATOR: module-http-server-builder
+package assembly
+
+import (
+	"context"
+
+	appCtx "wechat-clone/core/context"
+{{- if .HasCommand }}
+	{{.CommandAlias}} "{{.CommandImport}}"
+{{- end }}
+{{- if .HasQuery }}
+	{{.QueryAlias}} "{{.QueryImport}}"
+{{- end }}
+	{{.RepoAlias}} "{{.RepoImport}}"
+	{{.ServerAlias}} "{{.ServerImport}}"
+	"wechat-clone/core/shared/pkg/cqrs"
+	"wechat-clone/core/shared/pkg/stackErr"
+	"wechat-clone/core/shared/transport/http"
+)
+
+func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTTPServer, error) {
+	{{.ReposVar}} := {{.RepoAlias}}.NewRepoImpl(appContext)
+{{- range .Dispatchers }}
+	{{.VarName}} := cqrs.NewDispatcher({{.Ctor}})
+{{- end }}
+
+	server, err := {{.ServerAlias}}.NewHTTPServer(
+{{- range .ServerArgs }}
+		{{.}},
+{{- end }}
+	)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	return server, nil
+}
