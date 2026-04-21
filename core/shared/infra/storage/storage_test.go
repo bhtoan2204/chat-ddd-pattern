@@ -1,9 +1,6 @@
 package storage
 
-import (
-	"net/url"
-	"testing"
-)
+import "testing"
 
 func TestParsePublicBaseURL(t *testing.T) {
 	t.Parallel()
@@ -29,38 +26,14 @@ func TestParsePublicBaseURLEmpty(t *testing.T) {
 	}
 }
 
-func TestPublicURLRewritesSchemeAndHost(t *testing.T) {
+func TestParsePublicBaseURLKeepsHostPort(t *testing.T) {
 	t.Parallel()
 
-	presignedURL, err := url.Parse("http://chat-minio:9000/chat-media/avatar/acc-1?X-Amz-Signature=abc")
-	if err != nil {
-		t.Fatalf("url.Parse() error = %v", err)
-	}
-
-	publicBaseURL, err := parsePublicBaseURL("https://files.example.com")
+	publicBaseURL, err := parsePublicBaseURL("http://20.2.92.187:9001")
 	if err != nil {
 		t.Fatalf("parsePublicBaseURL() error = %v", err)
 	}
-
-	s := &minioStorage{publicBaseURL: publicBaseURL}
-	got := s.publicURL(presignedURL)
-	want := "https://files.example.com/chat-media/avatar/acc-1?X-Amz-Signature=abc"
-	if got != want {
-		t.Fatalf("expected %s, got %s", want, got)
-	}
-}
-
-func TestPublicURLLeavesOriginalWhenPublicBaseURLMissing(t *testing.T) {
-	t.Parallel()
-
-	presignedURL, err := url.Parse("http://chat-minio:9000/chat-media/avatar/acc-1?X-Amz-Signature=abc")
-	if err != nil {
-		t.Fatalf("url.Parse() error = %v", err)
-	}
-
-	s := &minioStorage{}
-	got := s.publicURL(presignedURL)
-	if got != presignedURL.String() {
-		t.Fatalf("expected original url, got %s", got)
+	if publicBaseURL.Host != "20.2.92.187:9001" {
+		t.Fatalf("expected host with port, got %s", publicBaseURL.Host)
 	}
 }
