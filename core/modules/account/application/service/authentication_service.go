@@ -242,8 +242,26 @@ func (s *authenticationService) OpenAuthenticate(ctx context.Context, command Op
 	}
 
 	var tokenPair *TokenPairResult
+	if txErr := s.openAuthenticateTransaction(ctx, email, command, now, &tokenPair); txErr != nil {
+		if shareddb.IsUniqueConstraintError(txErr) {
+			txErr = s.openAuthenticateTransaction(ctx, email, command, now, &tokenPair)
+		}
+		if txErr != nil {
+			return nil, stackErr.Error(txErr)
+		}
+	}
 
-	if txErr := s.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
+	return tokenPair, nil
+}
+
+func (s *authenticationService) openAuthenticateTransaction(
+	ctx context.Context,
+	email valueobject.Email,
+	command OpenAuthenticateAccountCommand,
+	now time.Time,
+	tokenPair **TokenPairResult,
+) error {
+	return s.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		accountRepo := txRepos.AccountAggregateRepository()
 		accountAggregate, err := accountRepo.LoadByEmail(ctx, email.Value())
 		if err != nil {
@@ -268,20 +286,14 @@ func (s *authenticationService) OpenAuthenticate(ctx context.Context, command Op
 			}
 
 			if err := accountRepo.Save(ctx, accountAggregate); err != nil {
-				reloadedAgg, reloadErr := accountRepo.LoadByEmail(ctx, email.Value())
-				if reloadErr != nil {
-					return stackErr.Error(fmt.Errorf("save new account aggregate failed: %w", err))
-				}
-				accountAggregate = reloadedAgg
+				return stackErr.Error(fmt.Errorf("save new account aggregate failed: %w", err))
 			}
-		} else {
-			if !accountAggregate.IsEmailVerified() {
-				if err := accountAggregate.ConfirmEmailVerified(email, now); err != nil {
-					return stackErr.Error(err)
-				}
-				if err := accountRepo.Save(ctx, accountAggregate); err != nil {
-					return stackErr.Error(fmt.Errorf("save verified account aggregate failed: %w", err))
-				}
+		} else if !accountAggregate.IsEmailVerified() {
+			if err := accountAggregate.ConfirmEmailVerified(email, now); err != nil {
+				return stackErr.Error(err)
+			}
+			if err := accountRepo.Save(ctx, accountAggregate); err != nil {
+				return stackErr.Error(fmt.Errorf("save verified account aggregate failed: %w", err))
 			}
 		}
 
@@ -295,17 +307,13 @@ func (s *authenticationService) OpenAuthenticate(ctx context.Context, command Op
 			return stackErr.Error(err)
 		}
 
-		tokenPair, err = s.createSessionTokenPair(ctx, txRepos.SessionRepository(), accountSnapshot, deviceAgg.DeviceID(), command.Device, now)
+		*tokenPair, err = s.createSessionTokenPair(ctx, txRepos.SessionRepository(), accountSnapshot, deviceAgg.DeviceID(), command.Device, now)
 		if err != nil {
 			return stackErr.Error(err)
 		}
 
 		return nil
-	}); txErr != nil {
-		return nil, stackErr.Error(txErr)
-	}
-
-	return tokenPair, nil
+	})
 }
 
 func (s *authenticationService) RefreshAuthenticate(ctx context.Context, command RefreshTokenCommand) (*TokenPairResult, error) {
