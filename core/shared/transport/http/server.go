@@ -9,7 +9,7 @@ import (
 	"wechat-clone/core/shared/constant"
 	"wechat-clone/core/shared/infra/idempotency"
 	"wechat-clone/core/shared/pkg/logging"
-	"wechat-clone/core/shared/pkg/server"
+	baseserver "wechat-clone/core/shared/pkg/server"
 	"wechat-clone/core/shared/pkg/stackErr"
 	"wechat-clone/core/shared/transport/http/middleware"
 
@@ -95,8 +95,8 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 
 	if os.Getenv("ENVIRONMENT") != "production" {
 		s.prepareSwaggerDocs(ctx)
+		s.registerSwaggerRoutes()
 	}
-	s.registerSwaggerRoutes()
 
 	// public api
 	s.registerPublicAPI()
@@ -105,15 +105,19 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 }
 
 func (s *Server) Start(ctx context.Context, appCtx *appCtx.AppContext) error {
+	srv, err := baseserver.New(s.cfg.ServerConfig.Port)
+	if err != nil {
+		return stackErr.Error(err)
+	}
+
+	return s.StartWithServer(ctx, appCtx, srv)
+}
+
+func (s *Server) StartWithServer(ctx context.Context, appCtx *appCtx.AppContext, srv *baseserver.Server) error {
 	if err := s.buildModuleServers(ctx, appCtx); err != nil {
 		return stackErr.Error(err)
 	}
 	defer s.stopModuleServers(ctx)
-
-	srv, err := server.New(s.cfg.ServerConfig.Port)
-	if err != nil {
-		return stackErr.Error(err)
-	}
 
 	return srv.ServeHTTPHandler(ctx, s.Routes(ctx, appCtx))
 }

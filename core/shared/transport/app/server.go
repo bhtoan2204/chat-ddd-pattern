@@ -11,6 +11,7 @@ import (
 	roomassembly "wechat-clone/core/modules/room/assembly"
 	"wechat-clone/core/shared/config"
 	"wechat-clone/core/shared/pkg/logging"
+	baseserver "wechat-clone/core/shared/pkg/server"
 	"wechat-clone/core/shared/pkg/stackErr"
 	modruntime "wechat-clone/core/shared/runtime"
 	httptransport "wechat-clone/core/shared/transport/http"
@@ -21,6 +22,7 @@ import (
 //go:generate mockgen -package=app -destination=server_mock.go -source=server.go
 type Server interface {
 	Start(ctx context.Context, appCtx *appCtx.AppContext) error
+	StartWithServer(ctx context.Context, appCtx *appCtx.AppContext, srv *baseserver.Server) error
 }
 
 type appServer struct {
@@ -58,6 +60,10 @@ func NewServer(cfg *config.Config, opts ...Option) Server {
 }
 
 func (s *appServer) Start(ctx context.Context, appContext *appCtx.AppContext) error {
+	return s.StartWithServer(ctx, appContext, nil)
+}
+
+func (s *appServer) StartWithServer(ctx context.Context, appContext *appCtx.AppContext, srv *baseserver.Server) error {
 	if err := s.buildModuleRuntimes(appContext); err != nil {
 		return stackErr.Error(err)
 	}
@@ -66,6 +72,10 @@ func (s *appServer) Start(ctx context.Context, appContext *appCtx.AppContext) er
 		return stackErr.Error(err)
 	}
 	defer s.stopModuleRuntimes(ctx)
+
+	if srv != nil {
+		return s.httpServer.StartWithServer(ctx, appContext, srv)
+	}
 
 	return s.httpServer.Start(ctx, appContext)
 }

@@ -20,6 +20,4 @@ RUN apt-get update \
 COPY --from=builder /out/wechat-clone /app/wechat-clone
 COPY migration /app/migration
 
-EXPOSE 35000
-
 ENTRYPOINT ["/app/wechat-clone", "-path", "/app/migration"]

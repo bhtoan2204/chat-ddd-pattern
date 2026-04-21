@@ -18,6 +18,7 @@ import (
 	"wechat-clone/core/shared/config"
 	"wechat-clone/core/shared/infra/db"
 	"wechat-clone/core/shared/pkg/logging"
+	baseserver "wechat-clone/core/shared/pkg/server"
 	apptransport "wechat-clone/core/shared/transport/app"
 	"wechat-clone/core/shared/utils"
 
@@ -71,7 +72,18 @@ func main() {
 		serviceAddress = "127.0.0.1"
 	}
 
-	servicePort := cfg.ServerConfig.Port
+	httpServer, err := baseserver.New(cfg.ServerConfig.Port)
+	if err != nil {
+		logger.Errorw("Failed to bind HTTP server", zap.Error(err))
+		return
+	}
+
+	servicePort, err := strconv.Atoi(httpServer.Port())
+	if err != nil {
+		logger.Errorw("Failed to parse bound HTTP port", zap.String("port", httpServer.Port()), zap.Error(err))
+		return
+	}
+
 	serviceID := fmt.Sprintf("%s-%s-%d", serviceName, serviceAddress, servicePort)
 	if hostName, hostErr := os.Hostname(); hostErr == nil {
 		serviceID = fmt.Sprintf("%s-%s-%d", serviceName, hostName, servicePort)
@@ -102,7 +114,7 @@ func main() {
 		"servicePort", strconv.Itoa(servicePort),
 	)
 
-	if err := appServer.Start(ctx, appContext); err != nil {
+	if err := appServer.StartWithServer(ctx, appContext, httpServer); err != nil {
 		logger.Errorw("Failed to start app server", zap.Error(err))
 		return
 	}
