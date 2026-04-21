@@ -28,8 +28,8 @@ services:
       test:
         [
           "CMD-SHELL",
-          "cqlsh localhost 9042 -e 'DESCRIBE KEYSPACES' >/dev/null 2>&1 ||
-            exit 1",
+          "cqlsh ${CASSANDRA_CONTAINER_NAME} 9042 -e 'DESCRIBE KEYSPACES'
+            >/dev/null 2>&1 || exit 1",
         ]
       interval: 15s
       timeout: 10s

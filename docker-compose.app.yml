@@ -22,13 +22,12 @@ services:
       - ./secret/.env
     depends_on:
       - consul
-      - fluent-bit
     networks:
       - shared-network
     logging:
       driver: fluentd
       options:
-        fluentd-address: localhost:24224
+        fluentd-address: ${FLUENT_BIT_CONTAINER_NAME}:24224
         fluentd-async: "true"
         tag: app
     deploy:
@@ -44,13 +43,12 @@ services:
       - "8080:8080"
     depends_on:
       - consul
-      - fluent-bit
     networks:
       - shared-network
     logging:
       driver: fluentd
       options:
-        fluentd-address: localhost:24224
+        fluentd-address: ${FLUENT_BIT_CONTAINER_NAME}:24224
         fluentd-async: "true"
         tag: gateway
 

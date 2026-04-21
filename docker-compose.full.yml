@@ -16,8 +16,8 @@ services:
         [
           "CMD-SHELL",
           "curl -fsS
-            http://localhost:9200/_cluster/health?wait_for_status=yellow&timeou\
-            t=1s >/dev/null 2>&1 || exit 1",
+            http://elasticsearch:9200/_cluster/health?wait_for_status=yellow&ti\
+            meout=1s >/dev/null 2>&1 || exit 1",
         ]
       interval: 15s
       timeout: 10s
@@ -112,7 +112,12 @@ services:
     volumes:
       - connector_data:/kafka/connect
     healthcheck:
-      test: [ "CMD-SHELL", "curl -f http://localhost:8083/ >/dev/null 2>&1 || exit 1" ]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -f http://${CONNECT_CONTAINER_NAME}:8083/ >/dev/null 2>&1 ||
+            exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 15
