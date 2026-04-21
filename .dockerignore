@@ -4,4 +4,4 @@
 .codex
 *.md
 secret/.env
-gateway/secret/.env
+gateway
