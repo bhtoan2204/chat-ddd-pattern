@@ -1,0 +1,32 @@
+services:
+  consul:
+    image: hashicorp/consul:1.22
+    container_name: ${CONSUL_CONTAINER_NAME}
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0 -datacenter=dc1
+    ports:
+      - "8500:8500"
+      - "8600:8600/tcp"
+      - "8600:8600/udp"
+    volumes:
+      - consul-data:/consul/data
+
+  app:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    deploy:
+      replicas: 3
+    depends_on:
+      - consul
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: ./Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - consul
+
+volumes:
+  consul-data:
