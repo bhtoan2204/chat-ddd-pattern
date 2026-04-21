@@ -16,8 +16,8 @@ services:
         [
           "CMD-SHELL",
           "curl -fsS
-            http://elasticsearch:9200/_cluster/health?wait_for_status=yellow&ti\
-            meout=1s >/dev/null 2>&1 || exit 1",
+            http://${ELASTICSEARCH_CONTAINER_NAME}:9200/_cluster/health?wait_fo\
+            r_status=yellow&timeout=1s >/dev/null 2>&1 || exit 1",
         ]
       interval: 15s
       timeout: 10s
