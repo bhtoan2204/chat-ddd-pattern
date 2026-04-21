@@ -37,3 +37,13 @@ func TestParsePublicBaseURLKeepsHostPort(t *testing.T) {
 		t.Fatalf("expected host with port, got %s", publicBaseURL.Host)
 	}
 }
+
+func TestJoinURLPath(t *testing.T) {
+	t.Parallel()
+
+	got := joinURLPath("/storage", "/chat-media/avatar/file")
+	want := "/storage/chat-media/avatar/file"
+	if got != want {
+		t.Fatalf("expected %s, got %s", want, got)
+	}
+}

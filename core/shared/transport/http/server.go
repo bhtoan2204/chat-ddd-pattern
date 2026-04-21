@@ -3,7 +3,9 @@ package http
 import (
 	"context"
 	"net/http"
+	"net/http/httputil"
 	"os"
+	"strings"
 	appCtx "wechat-clone/core/context"
 	"wechat-clone/core/shared/config"
 	"wechat-clone/core/shared/constant"
@@ -98,6 +100,8 @@ func (s *Server) Routes(ctx context.Context, appCtx *appCtx.AppContext) *gin.Eng
 		s.registerSwaggerRoutes()
 	}
 
+	s.registerStorageProxy()
+
 	// public api
 	s.registerPublicAPI()
 	s.registerPrivateAPI()
@@ -158,4 +162,35 @@ func (s *Server) stopModuleServers(ctx context.Context) {
 			logging.FromContext(ctx).Errorw("failed to stop http module server", zap.Error(err))
 		}
 	}
+}
+
+func (s *Server) registerStorageProxy() {
+	upstream := strings.TrimSpace(s.cfg.StorageConfig.MinIOEndpoint)
+	bucket := strings.TrimSpace(s.cfg.StorageConfig.MinIOBucket)
+	if upstream == "" || bucket == "" {
+		return
+	}
+
+	prefix := "/storage/" + strings.TrimPrefix(bucket, "/")
+	proxy := &httputil.ReverseProxy{
+		Director: func(req *http.Request) {
+			req.URL.Scheme = "http"
+			if s.cfg.StorageConfig.MinIOUseSSL {
+				req.URL.Scheme = "https"
+			}
+			req.URL.Host = upstream
+			req.Host = upstream
+			req.Header.Set("Host", upstream)
+			req.URL.Path = strings.TrimPrefix(req.URL.Path, "/storage")
+			if req.URL.Path == "" {
+				req.URL.Path = "/"
+			}
+		},
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			http.Error(w, "Bad Gateway: MinIO is unavailable", http.StatusBadGateway)
+		},
+	}
+
+	s.router.Any(prefix, gin.WrapH(proxy))
+	s.router.Any(prefix+"/*path", gin.WrapH(proxy))
 }
