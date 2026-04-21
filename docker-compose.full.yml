@@ -26,6 +26,35 @@ services:
     networks:
       - shared-network
 
+  kibana:
+    image: docker.elastic.co/kibana/kibana:${ELASTICSEARCH_VERSION}
+    container_name: ${KIBANA_CONTAINER_NAME:-chat-kibana}
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://${ELASTICSEARCH_CONTAINER_NAME}:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shared-network
+
+  fluent-bit:
+    image: cr.fluentbit.io/fluent/fluent-bit:3.1
+    container_name: ${FLUENT_BIT_CONTAINER_NAME:-chat-fluent-bit}
+    ports:
+      - "24224:24224"
+    volumes:
+      - ./observability/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./observability/fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shared-network
+
   kafka:
     image: confluentinc/cp-kafka:${KAFKA_VERSION}
     container_name: ${KAFKA_CONTAINER_NAME}

@@ -80,7 +80,7 @@ func NewLogger(logLevel string, env string) *zap.SugaredLogger {
 		config = &zap.Config{
 			Level:            zap.NewAtomicLevelAt(toZapLevel(level)),
 			Development:      true,
-			Encoding:         encodingConsole,
+			Encoding:         encodingJSON,
 			EncoderConfig:    productionEncoderConfig,
 			OutputPaths:      outputStderr,
 			ErrorOutputPaths: outputStderr,
