@@ -160,8 +160,9 @@ func TestAuthenticationService_RefreshAuthenticate_RotatesRefreshToken(t *testin
 	hasherMock := hasher.NewMockHasher(ctrl)
 	pasetoMock := xpaseto.NewMockPasetoService(ctrl)
 
-	accessExpiresAt := time.Date(2026, time.April, 14, 12, 0, 0, 0, time.UTC)
-	refreshExpiresAt := time.Date(2026, time.April, 21, 12, 0, 0, 0, time.UTC)
+	now := time.Now().UTC()
+	accessExpiresAt := now.Add(15 * time.Minute).Truncate(time.Second)
+	refreshExpiresAt := now.Add(7 * 24 * time.Hour).Truncate(time.Second)
 	deviceAgg := newKnownDeviceAggregate(t, "acc-1", "dev-1", "browser-1")
 	refreshDigester := mustNewTestTokenDigester(t)
 	storedRefreshDigest, err := refreshDigester.Digest(context.Background(), "incoming-refresh-token")

@@ -20,10 +20,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const (
-	accountAggregateType = "AccountAggregate"
-)
-
 type accountAggregateRepoImpl struct {
 	db               *gorm.DB
 	serializer       eventpkg.Serializer
