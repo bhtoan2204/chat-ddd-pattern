@@ -93,7 +93,7 @@ jobs:
     needs: quality
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
+    environment: SSH_KEY_SERVER
     steps:
       - name: Deploy to server via SSH
         uses: appleboy/ssh-action@v1
