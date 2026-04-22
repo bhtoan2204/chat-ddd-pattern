@@ -1,14 +1,14 @@
 package views
 
 type ProjectionTableNames struct {
-	PairByPair           string
-	FriendsByUser        string
-	FollowersByUser      string
-	FollowingByUser      string
-	BlocksByUser         string
+	PairByPair             string
+	FriendsByUser          string
+	FollowersByUser        string
+	FollowingByUser        string
+	BlocksByUser           string
 	IncomingRequestsByUser string
 	OutgoingRequestsByUser string
-	SchemaMigrations     string
+	SchemaMigrations       string
 }
 
 func DefaultProjectionTableNames() ProjectionTableNames {

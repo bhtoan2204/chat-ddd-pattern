@@ -4,8 +4,8 @@ import (
 	"context"
 	"reflect"
 
-	relationshipaggregate "wechat-clone/core/modules/relationship/domain/aggregate"
 	relationshipprojection "wechat-clone/core/modules/relationship/application/projection"
+	relationshipaggregate "wechat-clone/core/modules/relationship/domain/aggregate"
 	"wechat-clone/core/shared/contracts"
 	"wechat-clone/core/shared/pkg/stackErr"
 )
