@@ -2,7 +2,7 @@
 package out
 
 type GetMutualFriendsResponse struct {
-	Items      []string `json:"items,omitempty"`
-	NextCursor string   `json:"next_cursor,omitempty"`
-	Total      int64    `json:"total,omitempty"`
+	Items      []RelationshipAccountSummaryResponse `json:"items,omitempty"`
+	NextCursor string                               `json:"next_cursor,omitempty"`
+	Total      int64                                `json:"total,omitempty"`
 }

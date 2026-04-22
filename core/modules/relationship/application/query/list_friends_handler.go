@@ -6,19 +6,22 @@ import (
 	"wechat-clone/core/modules/relationship/application/dto/in"
 	"wechat-clone/core/modules/relationship/application/dto/out"
 	relationshipprojection "wechat-clone/core/modules/relationship/application/projection"
+	"wechat-clone/core/modules/relationship/domain/repos"
 	"wechat-clone/core/shared/pkg/cqrs"
 	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type listFriendsHandler struct {
-	projRepo relationshipprojection.ReadRepository
+	projRepo    relationshipprojection.ReadRepository
+	accountRepo repos.RelationshipAccountRepository
 }
 
 func NewListFriends(
 	appCtx *appCtx.AppContext,
 	projRepo relationshipprojection.ReadRepository,
+	accountRepo repos.RelationshipAccountRepository,
 ) cqrs.Handler[*in.ListFriendsRequest, *out.ListFriendsResponse] {
-	return &listFriendsHandler{projRepo: projRepo}
+	return &listFriendsHandler{projRepo: projRepo, accountRepo: accountRepo}
 }
 
 func (u *listFriendsHandler) Handle(ctx context.Context, req *in.ListFriendsRequest) (*out.ListFriendsResponse, error) {
@@ -33,5 +36,9 @@ func (u *listFriendsHandler) Handle(ctx context.Context, req *in.ListFriendsRequ
 	if result == nil {
 		result = emptyListResult()
 	}
-	return &out.ListFriendsResponse{Items: result.Items, NextCursor: result.NextCursor, Total: result.Total}, nil
+	items, err := mapRelationshipAccountSummaries(ctx, u.accountRepo, result.Items)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	return &out.ListFriendsResponse{Items: items, NextCursor: result.NextCursor, Total: result.Total}, nil
 }

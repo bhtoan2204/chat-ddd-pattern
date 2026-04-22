@@ -6,19 +6,22 @@ import (
 	"wechat-clone/core/modules/relationship/application/dto/in"
 	"wechat-clone/core/modules/relationship/application/dto/out"
 	relationshipprojection "wechat-clone/core/modules/relationship/application/projection"
+	"wechat-clone/core/modules/relationship/domain/repos"
 	"wechat-clone/core/shared/pkg/cqrs"
 	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type getMutualFriendsHandler struct {
-	projRepo relationshipprojection.ReadRepository
+	projRepo    relationshipprojection.ReadRepository
+	accountRepo repos.RelationshipAccountRepository
 }
 
 func NewGetMutualFriends(
 	appCtx *appCtx.AppContext,
 	projRepo relationshipprojection.ReadRepository,
+	accountRepo repos.RelationshipAccountRepository,
 ) cqrs.Handler[*in.GetMutualFriendsRequest, *out.GetMutualFriendsResponse] {
-	return &getMutualFriendsHandler{projRepo: projRepo}
+	return &getMutualFriendsHandler{projRepo: projRepo, accountRepo: accountRepo}
 }
 
 func (u *getMutualFriendsHandler) Handle(ctx context.Context, req *in.GetMutualFriendsRequest) (*out.GetMutualFriendsResponse, error) {
@@ -33,5 +36,9 @@ func (u *getMutualFriendsHandler) Handle(ctx context.Context, req *in.GetMutualF
 	if result == nil {
 		result = emptyListResult()
 	}
-	return &out.GetMutualFriendsResponse{Items: result.Items, NextCursor: result.NextCursor, Total: result.Total}, nil
+	items, err := mapRelationshipAccountSummaries(ctx, u.accountRepo, result.Items)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	return &out.GetMutualFriendsResponse{Items: items, NextCursor: result.NextCursor, Total: result.Total}, nil
 }

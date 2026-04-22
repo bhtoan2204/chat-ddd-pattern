@@ -6,19 +6,22 @@ import (
 	"wechat-clone/core/modules/relationship/application/dto/in"
 	"wechat-clone/core/modules/relationship/application/dto/out"
 	relationshipprojection "wechat-clone/core/modules/relationship/application/projection"
+	"wechat-clone/core/modules/relationship/domain/repos"
 	"wechat-clone/core/shared/pkg/cqrs"
 	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type listIncomingFriendRequestsHandler struct {
-	projRepo relationshipprojection.ReadRepository
+	projRepo    relationshipprojection.ReadRepository
+	accountRepo repos.RelationshipAccountRepository
 }
 
 func NewListIncomingFriendRequests(
 	appCtx *appCtx.AppContext,
 	projRepo relationshipprojection.ReadRepository,
+	accountRepo repos.RelationshipAccountRepository,
 ) cqrs.Handler[*in.ListIncomingFriendRequestsRequest, *out.ListIncomingFriendRequestsResponse] {
-	return &listIncomingFriendRequestsHandler{projRepo: projRepo}
+	return &listIncomingFriendRequestsHandler{projRepo: projRepo, accountRepo: accountRepo}
 }
 
 func (u *listIncomingFriendRequestsHandler) Handle(ctx context.Context, req *in.ListIncomingFriendRequestsRequest) (*out.ListIncomingFriendRequestsResponse, error) {
@@ -33,5 +36,9 @@ func (u *listIncomingFriendRequestsHandler) Handle(ctx context.Context, req *in.
 	if result == nil {
 		result = emptyListResult()
 	}
-	return &out.ListIncomingFriendRequestsResponse{Items: result.Items, NextCursor: result.NextCursor}, nil
+	items, err := mapRelationshipAccountSummaries(ctx, u.accountRepo, result.Items)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	return &out.ListIncomingFriendRequestsResponse{Items: items, NextCursor: result.NextCursor}, nil
 }

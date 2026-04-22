@@ -6,19 +6,22 @@ import (
 	"wechat-clone/core/modules/relationship/application/dto/in"
 	"wechat-clone/core/modules/relationship/application/dto/out"
 	relationshipprojection "wechat-clone/core/modules/relationship/application/projection"
+	"wechat-clone/core/modules/relationship/domain/repos"
 	"wechat-clone/core/shared/pkg/cqrs"
 	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type listBlockedUsersHandler struct {
-	projRepo relationshipprojection.ReadRepository
+	projRepo    relationshipprojection.ReadRepository
+	accountRepo repos.RelationshipAccountRepository
 }
 
 func NewListBlockedUsers(
 	appCtx *appCtx.AppContext,
 	projRepo relationshipprojection.ReadRepository,
+	accountRepo repos.RelationshipAccountRepository,
 ) cqrs.Handler[*in.ListBlockedUsersRequest, *out.ListBlockedUsersResponse] {
-	return &listBlockedUsersHandler{projRepo: projRepo}
+	return &listBlockedUsersHandler{projRepo: projRepo, accountRepo: accountRepo}
 }
 
 func (u *listBlockedUsersHandler) Handle(ctx context.Context, req *in.ListBlockedUsersRequest) (*out.ListBlockedUsersResponse, error) {
@@ -33,5 +36,9 @@ func (u *listBlockedUsersHandler) Handle(ctx context.Context, req *in.ListBlocke
 	if result == nil {
 		result = emptyListResult()
 	}
-	return &out.ListBlockedUsersResponse{Items: result.Items, NextCursor: result.NextCursor, Total: result.Total}, nil
+	items, err := mapRelationshipAccountSummaries(ctx, u.accountRepo, result.Items)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	return &out.ListBlockedUsersResponse{Items: items, NextCursor: result.NextCursor, Total: result.Total}, nil
 }

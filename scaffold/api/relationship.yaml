@@ -117,6 +117,17 @@ endpoints:
       fields:
         - name: items
           type: array
+          items:
+            struct: RelationshipAccountSummaryResponse
+            fields:
+              - name: account_id
+                type: string
+              - name: display_name
+                type: string
+              - name: username
+                type: string
+              - name: avatar_object_key
+                type: string
         - name: next_cursor
           type: string
 
@@ -140,6 +151,17 @@ endpoints:
       fields:
         - name: items
           type: array
+          items:
+            struct: RelationshipAccountSummaryResponse
+            fields:
+              - name: account_id
+                type: string
+              - name: display_name
+                type: string
+              - name: username
+                type: string
+              - name: avatar_object_key
+                type: string
         - name: next_cursor
           type: string
 
@@ -186,6 +208,17 @@ endpoints:
       fields:
         - name: items
           type: array
+          items:
+            struct: RelationshipAccountSummaryResponse
+            fields:
+              - name: account_id
+                type: string
+              - name: display_name
+                type: string
+              - name: username
+                type: string
+              - name: avatar_object_key
+                type: string
         - name: next_cursor
           type: string
         - name: total
@@ -258,6 +291,17 @@ endpoints:
       fields:
         - name: items
           type: array
+          items:
+            struct: RelationshipAccountSummaryResponse
+            fields:
+              - name: account_id
+                type: string
+              - name: display_name
+                type: string
+              - name: username
+                type: string
+              - name: avatar_object_key
+                type: string
         - name: next_cursor
           type: string
         - name: total
@@ -285,6 +329,17 @@ endpoints:
       fields:
         - name: items
           type: array
+          items:
+            struct: RelationshipAccountSummaryResponse
+            fields:
+              - name: account_id
+                type: string
+              - name: display_name
+                type: string
+              - name: username
+                type: string
+              - name: avatar_object_key
+                type: string
         - name: next_cursor
           type: string
         - name: total
@@ -355,6 +410,17 @@ endpoints:
       fields:
         - name: items
           type: array
+          items:
+            struct: RelationshipAccountSummaryResponse
+            fields:
+              - name: account_id
+                type: string
+              - name: display_name
+                type: string
+              - name: username
+                type: string
+              - name: avatar_object_key
+                type: string
         - name: next_cursor
           type: string
         - name: total
@@ -423,6 +489,17 @@ endpoints:
       fields:
         - name: items
           type: array
+          items:
+            struct: RelationshipAccountSummaryResponse
+            fields:
+              - name: account_id
+                type: string
+              - name: display_name
+                type: string
+              - name: username
+                type: string
+              - name: avatar_object_key
+                type: string
         - name: next_cursor
           type: string
         - name: total

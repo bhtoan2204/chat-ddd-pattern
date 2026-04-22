@@ -6,19 +6,22 @@ import (
 	"wechat-clone/core/modules/relationship/application/dto/in"
 	"wechat-clone/core/modules/relationship/application/dto/out"
 	relationshipprojection "wechat-clone/core/modules/relationship/application/projection"
+	"wechat-clone/core/modules/relationship/domain/repos"
 	"wechat-clone/core/shared/pkg/cqrs"
 	"wechat-clone/core/shared/pkg/stackErr"
 )
 
 type listFollowingHandler struct {
-	projRepo relationshipprojection.ReadRepository
+	projRepo    relationshipprojection.ReadRepository
+	accountRepo repos.RelationshipAccountRepository
 }
 
 func NewListFollowing(
 	appCtx *appCtx.AppContext,
 	projRepo relationshipprojection.ReadRepository,
+	accountRepo repos.RelationshipAccountRepository,
 ) cqrs.Handler[*in.ListFollowingRequest, *out.ListFollowingResponse] {
-	return &listFollowingHandler{projRepo: projRepo}
+	return &listFollowingHandler{projRepo: projRepo, accountRepo: accountRepo}
 }
 
 func (u *listFollowingHandler) Handle(ctx context.Context, req *in.ListFollowingRequest) (*out.ListFollowingResponse, error) {
@@ -33,5 +36,9 @@ func (u *listFollowingHandler) Handle(ctx context.Context, req *in.ListFollowing
 	if result == nil {
 		result = emptyListResult()
 	}
-	return &out.ListFollowingResponse{Items: result.Items, NextCursor: result.NextCursor, Total: result.Total}, nil
+	items, err := mapRelationshipAccountSummaries(ctx, u.accountRepo, result.Items)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	return &out.ListFollowingResponse{Items: items, NextCursor: result.NextCursor, Total: result.Total}, nil
 }
