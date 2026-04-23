@@ -31,6 +31,7 @@ func buildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.H
 		return nil, stackErr.Error(err)
 	}
 	roomService := roomservice.NewService(appContext, roomReadRepos)
+	videoCallService := roomservice.NewVideoCallService(appContext, roomRepos)
 	createDirectConversation := cqrs.NewDispatcher(roomcommand.NewCreateDirectConversationHandler(roomRepos))
 	createGroupChat := cqrs.NewDispatcher(roomcommand.NewCreateGroupChatHandler(roomRepos))
 	updateGroupChat := cqrs.NewDispatcher(roomcommand.NewUpdateGroupChatHandler(roomRepos, roomService))
@@ -51,7 +52,7 @@ func buildHTTPServer(ctx context.Context, appContext *appCtx.AppContext) (http.H
 	createChatMessagePresignedURL := cqrs.NewDispatcher(roomcommand.NewCreateChatMessagePresignedURLHandler(appContext, roomRepos))
 	getChatMessageMedia := cqrs.NewDispatcher(roomquery.NewGetChatMessageMediaHandler(appContext, roomRepos))
 	toggleChatMessageReaction := cqrs.NewDispatcher(roomcommand.NewToggleChatMessageReactionHandler(roomRepos, roomService))
-	socketHub := roomsocket.NewHub(ctx, appContext)
+	socketHub := roomsocket.NewHub(ctx, appContext, videoCallService)
 	socketUpgrader := sharedsocket.NewUpgrader()
 	socketHandler := roomsocket.NewWSHandler(appContext, socketHub, socketUpgrader)
 	server, err := roomserver.NewHTTPServer(

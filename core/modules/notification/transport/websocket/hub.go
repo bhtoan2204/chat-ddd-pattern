@@ -97,13 +97,10 @@ func (h *Hub) JoinRoom(ctx context.Context, c *client, roomID string) error {
 		h.clientRooms[c.id] = make(map[string]struct{})
 	}
 	h.clientRooms[c.id][roomID] = struct{}{}
-	_, subscribed := h.subscriptions[roomID]
 	h.mu.Unlock()
 
-	if !subscribed {
-		if err := h.subscribeRoom(ctx, roomID); err != nil {
-			return stackErr.Error(err)
-		}
+	if err := h.subscribeRoom(ctx, roomID); err != nil {
+		return stackErr.Error(err)
 	}
 	return nil
 }
@@ -176,18 +173,32 @@ func (h *Hub) Close(ctx context.Context) {
 }
 
 func (h *Hub) subscribeRoom(ctx context.Context, roomID string) error {
+	h.mu.Lock()
+	if h.closed {
+		h.mu.Unlock()
+		return stackErr.Error(fmt.Errorf("notification hub is closed"))
+	}
+	if _, exists := h.subscriptions[roomID]; exists {
+		h.mu.Unlock()
+		return nil
+	}
+
 	subCtx, cancel := context.WithCancel(ctx)
 	pubsub := h.redisClient.Subscribe(subCtx, roomChannelName(roomID))
 	sub := &roomSubscription{pubsub: pubsub, cancel: cancel}
+	h.subscriptions[roomID] = sub
+	h.mu.Unlock()
 
 	if _, err := pubsub.Receive(subCtx); err != nil {
+		h.mu.Lock()
+		current := h.subscriptions[roomID]
+		if current == sub {
+			delete(h.subscriptions, roomID)
+		}
+		h.mu.Unlock()
 		_ = sub.Close()
 		return stackErr.Error(fmt.Errorf("subscribe notification room failed: %w", err))
 	}
-
-	h.mu.Lock()
-	h.subscriptions[roomID] = sub
-	h.mu.Unlock()
 
 	go h.consumeRoomMessages(subCtx, roomID, sub)
 	return nil

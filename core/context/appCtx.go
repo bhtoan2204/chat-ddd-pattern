@@ -26,6 +26,7 @@ type AppContext struct {
 	cfg           *config.Config
 	redisClient   *redis.Client
 	db            *gorm.DB
+	queryDB       *gorm.DB
 	cache         cache.Cache
 	hasher        hasher.Hasher
 	paseto        xpaseto.PasetoService
@@ -68,6 +69,15 @@ func WithCache(cache cache.Cache) Option {
 func WithDB(db *gorm.DB) Option {
 	return func(appCtx *AppContext) {
 		appCtx.db = db
+		if db == nil {
+			appCtx.queryDB = nil
+			return
+		}
+		if os.Getenv("ENVIRONMENT") != "production" {
+			appCtx.queryDB = db.Debug()
+			return
+		}
+		appCtx.queryDB = db
 	}
 }
 
@@ -140,8 +150,8 @@ func (appCtx *AppContext) GetConfig() *config.Config {
 }
 
 func (appCtx *AppContext) GetDB() *gorm.DB {
-	if os.Getenv("ENVIRONMENT") != "production" {
-		return appCtx.db.Debug()
+	if appCtx.queryDB != nil {
+		return appCtx.queryDB
 	}
 	return appCtx.db
 }

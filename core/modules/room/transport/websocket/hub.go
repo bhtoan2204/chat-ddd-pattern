@@ -10,6 +10,8 @@ import (
 	"time"
 	appCtx "wechat-clone/core/context"
 	"wechat-clone/core/modules/room/application/dto/in"
+	roomservice "wechat-clone/core/modules/room/application/service"
+	apptypes "wechat-clone/core/modules/room/application/types"
 	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
 
@@ -40,6 +42,7 @@ func (s *roomSubscription) Close() error {
 
 type Hub struct {
 	redisClient *redis.Client
+	videoCall   roomservice.VideoCallService
 
 	mu            sync.RWMutex
 	clients       map[string]IClient
@@ -51,9 +54,10 @@ type Hub struct {
 	isClosed bool
 }
 
-func NewHub(ctx context.Context, appCtx *appCtx.AppContext) *Hub {
+func NewHub(ctx context.Context, appCtx *appCtx.AppContext, videoCall roomservice.VideoCallService) *Hub {
 	return &Hub{
 		redisClient:   appCtx.GetRedisClient(),
+		videoCall:     videoCall,
 		clients:       make(map[string]IClient),
 		rooms:         make(map[string]IRoom),
 		clientRooms:   make(map[string]map[string]struct{}),
@@ -130,6 +134,11 @@ func (h *Hub) JoinRoom(ctx context.Context, client IClient, roomID string) error
 	if roomID == "" {
 		return stackErr.Error(errors.New("room_id is required"))
 	}
+	if h.videoCall != nil {
+		if err := h.videoCall.EnsureRoomMember(ctx, roomID, client.GetUserID()); err != nil {
+			return stackErr.Error(err)
+		}
+	}
 
 	h.mu.Lock()
 	if h.isClosed {
@@ -151,13 +160,10 @@ func (h *Hub) JoinRoom(ctx context.Context, client IClient, roomID string) error
 	}
 	h.clientRooms[client.GetID()][roomID] = struct{}{}
 
-	_, hasSubscription := h.subscriptions[roomID]
 	h.mu.Unlock()
 
-	if !hasSubscription {
-		if err := h.subscribeRoom(ctx, roomID); err != nil {
-			return stackErr.Error(err)
-		}
+	if err := h.subscribeRoom(ctx, roomID); err != nil {
+		return stackErr.Error(err)
 	}
 
 	return nil
@@ -207,6 +213,9 @@ func (h *Hub) HandleMessage(ctx context.Context, client IClient, msg Message) er
 	switch msg.Action {
 	case ActionJoinRoom:
 		err = h.JoinRoom(ctx, client, msg.RoomID)
+		if err == nil {
+			h.pushActiveVideoCallState(ctx, client, msg.RoomID)
+		}
 	case ActionLeaveRoom:
 		err = h.LeaveRoom(ctx, client, msg.RoomID)
 	case ActionChatMessage:
@@ -219,6 +228,16 @@ func (h *Hub) HandleMessage(ctx context.Context, client IClient, msg Message) er
 			msg.SenderID = client.GetID()
 		}
 		err = h.Publish(ctx, msg)
+	case ActionVideoCallStart:
+		err = h.handleVideoCallStart(ctx, client, msg)
+	case ActionVideoCallJoin:
+		err = h.handleVideoCallJoin(ctx, client, msg)
+	case ActionVideoCallLeave:
+		err = h.handleVideoCallLeave(ctx, client, msg)
+	case ActionVideoCallEnd:
+		err = h.handleVideoCallEnd(ctx, client, msg)
+	case ActionVideoCallSignal:
+		err = h.handleVideoCallSignal(ctx, client, msg)
 	case ActionPresence:
 		h.publishPresence(ctx, client.GetUserID(), "online")
 		err = nil
@@ -257,13 +276,9 @@ func (h *Hub) sendAck(ctx context.Context, client IClient, msg Message, err erro
 }
 
 func (h *Hub) Publish(ctx context.Context, msg Message) error {
-	log := logging.FromContext(ctx)
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("marshal websocket message: %w", err))
-	}
-	if msg.Data != nil {
-		log.Infow("Publish data", zap.String("payload", string(payload)))
 	}
 
 	roomID := strings.TrimSpace(msg.RoomID)
@@ -301,6 +316,192 @@ func (h *Hub) handleChatMessage(_ context.Context, _ IClient, msg Message) error
 	}
 	req.RoomID = strings.TrimSpace(msg.RoomID)
 	return nil
+}
+
+func (h *Hub) handleVideoCallStart(ctx context.Context, client IClient, msg Message) error {
+	if h.videoCall == nil {
+		return stackErr.Error(errors.New("video call service is not initialized"))
+	}
+	result, err := h.videoCall.StartCall(ctx, apptypes.StartVideoCallCommand{
+		RoomID:  strings.TrimSpace(msg.RoomID),
+		ActorID: client.GetUserID(),
+	})
+	if err != nil {
+		return stackErr.Error(err)
+	}
+	return stackErr.Error(h.publishJSON(ctx, Message{
+		Action: ActionVideoCallStarted,
+		RoomID: result.RoomID,
+		Data:   mustMarshalRawMessage(result),
+	}))
+}
+
+func (h *Hub) handleVideoCallJoin(ctx context.Context, client IClient, msg Message) error {
+	if h.videoCall == nil {
+		return stackErr.Error(errors.New("video call service is not initialized"))
+	}
+
+	var req videoCallSessionRequest
+	if len(msg.Data) > 0 {
+		if err := json.Unmarshal(msg.Data, &req); err != nil {
+			return stackErr.Error(fmt.Errorf("unmarshal websocket video call join payload: %w", err))
+		}
+	}
+
+	result, err := h.videoCall.JoinCall(ctx, apptypes.JoinVideoCallCommand{
+		RoomID:    strings.TrimSpace(msg.RoomID),
+		SessionID: strings.TrimSpace(req.SessionID),
+		ActorID:   client.GetUserID(),
+	})
+	if err != nil {
+		return stackErr.Error(err)
+	}
+	return stackErr.Error(h.publishJSON(ctx, Message{
+		Action: ActionVideoCallJoined,
+		RoomID: result.RoomID,
+		Data:   mustMarshalRawMessage(result),
+	}))
+}
+
+func (h *Hub) handleVideoCallLeave(ctx context.Context, client IClient, msg Message) error {
+	if h.videoCall == nil {
+		return stackErr.Error(errors.New("video call service is not initialized"))
+	}
+
+	var req videoCallSessionRequest
+	if len(msg.Data) > 0 {
+		if err := json.Unmarshal(msg.Data, &req); err != nil {
+			return stackErr.Error(fmt.Errorf("unmarshal websocket video call leave payload: %w", err))
+		}
+	}
+
+	result, err := h.videoCall.LeaveCall(ctx, apptypes.LeaveVideoCallCommand{
+		RoomID:    strings.TrimSpace(msg.RoomID),
+		SessionID: strings.TrimSpace(req.SessionID),
+		ActorID:   client.GetUserID(),
+	})
+	if err != nil {
+		return stackErr.Error(err)
+	}
+
+	action := ActionVideoCallLeft
+	if result != nil && result.Status == "ended" {
+		action = ActionVideoCallEnded
+	}
+	return stackErr.Error(h.publishJSON(ctx, Message{
+		Action: action,
+		RoomID: strings.TrimSpace(msg.RoomID),
+		Data:   mustMarshalRawMessage(result),
+	}))
+}
+
+func (h *Hub) handleVideoCallEnd(ctx context.Context, client IClient, msg Message) error {
+	if h.videoCall == nil {
+		return stackErr.Error(errors.New("video call service is not initialized"))
+	}
+
+	var req videoCallSessionRequest
+	if len(msg.Data) > 0 {
+		if err := json.Unmarshal(msg.Data, &req); err != nil {
+			return stackErr.Error(fmt.Errorf("unmarshal websocket video call end payload: %w", err))
+		}
+	}
+
+	result, err := h.videoCall.EndCall(ctx, apptypes.EndVideoCallCommand{
+		RoomID:    strings.TrimSpace(msg.RoomID),
+		SessionID: strings.TrimSpace(req.SessionID),
+		ActorID:   client.GetUserID(),
+	})
+	if err != nil {
+		return stackErr.Error(err)
+	}
+	return stackErr.Error(h.publishJSON(ctx, Message{
+		Action: ActionVideoCallEnded,
+		RoomID: result.RoomID,
+		Data:   mustMarshalRawMessage(result),
+	}))
+}
+
+func (h *Hub) handleVideoCallSignal(ctx context.Context, client IClient, msg Message) error {
+	if h.videoCall == nil {
+		return stackErr.Error(errors.New("video call service is not initialized"))
+	}
+
+	var req videoCallSignalRequest
+	if len(msg.Data) > 0 {
+		if err := json.Unmarshal(msg.Data, &req); err != nil {
+			return stackErr.Error(fmt.Errorf("unmarshal websocket video call signal payload: %w", err))
+		}
+	}
+
+	result, err := h.videoCall.RelaySignal(ctx, apptypes.RelayVideoCallSignalCommand{
+		RoomID:           strings.TrimSpace(msg.RoomID),
+		SessionID:        strings.TrimSpace(req.SessionID),
+		ActorID:          client.GetUserID(),
+		TargetAccountID:  strings.TrimSpace(req.TargetAccountID),
+		SignalType:       strings.TrimSpace(req.SignalType),
+		SignalPayloadRaw: cloneRawMessage(req.SignalPayload),
+	})
+	if err != nil {
+		return stackErr.Error(err)
+	}
+
+	return stackErr.Error(h.publishJSON(ctx, Message{
+		Action:       ActionVideoCallSignal,
+		RoomID:       result.RoomID,
+		Data:         mustMarshalRawMessage(result),
+		RecipientIDs: []string{result.TargetAccountID},
+	}))
+}
+
+func (h *Hub) pushActiveVideoCallState(ctx context.Context, client IClient, roomID string) {
+	if h.videoCall == nil || client == nil {
+		return
+	}
+	result, err := h.videoCall.GetActiveCall(ctx, apptypes.GetActiveVideoCallQuery{
+		RoomID:  strings.TrimSpace(roomID),
+		ActorID: client.GetUserID(),
+	})
+	if err != nil || result == nil {
+		return
+	}
+	client.Send(ctx, mustMarshalEnvelope(Message{
+		Action: ActionVideoCallState,
+		RoomID: result.RoomID,
+		Data:   mustMarshalRawMessage(result),
+	}))
+}
+
+func (h *Hub) publishJSON(ctx context.Context, message Message) error {
+	return stackErr.Error(h.Publish(ctx, message))
+}
+
+func mustMarshalRawMessage(payload any) json.RawMessage {
+	if payload == nil {
+		return nil
+	}
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return nil
+	}
+	return data
+}
+
+func mustMarshalEnvelope(message Message) []byte {
+	data, err := json.Marshal(message)
+	if err != nil {
+		return nil
+	}
+	return data
+}
+
+func cloneRawMessage(payload json.RawMessage) json.RawMessage {
+	if len(payload) == 0 {
+		return nil
+	}
+	cloned := make([]byte, len(payload))
+	copy(cloned, payload)
+	return json.RawMessage(cloned)
 }
 
 func (h *Hub) Close(ctx context.Context) {
@@ -485,11 +686,16 @@ func (h *Hub) roomsForUser(userID string) []string {
 	defer h.mu.RUnlock()
 
 	roomIDs := make([]string, 0)
+	seen := make(map[string]struct{})
 	for _, client := range h.clients {
 		if client.GetUserID() != userID {
 			continue
 		}
 		for roomID := range h.clientRooms[client.GetID()] {
+			if _, exists := seen[roomID]; exists {
+				continue
+			}
+			seen[roomID] = struct{}{}
 			roomIDs = append(roomIDs, roomID)
 		}
 	}

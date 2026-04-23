@@ -2,6 +2,7 @@ package socket
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"wechat-clone/core/shared/pkg/logging"
@@ -22,6 +23,7 @@ type client struct {
 	accountID string
 	conn      *websocket.Conn
 	sendCh    chan []byte
+	closeOnce sync.Once
 }
 
 func newClient(conn *websocket.Conn, clientID, accountID string) *client {
@@ -95,9 +97,11 @@ func (c *client) send(_ context.Context, payload []byte) {
 }
 
 func (c *client) close(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-	default:
-	}
-	_ = c.conn.Close()
+	c.closeOnce.Do(func() {
+		select {
+		case <-ctx.Done():
+		default:
+		}
+		_ = c.conn.Close()
+	})
 }
