@@ -5,10 +5,43 @@ import (
 	"strings"
 )
 
-const (
-	corsAllowMethods  = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
-	corsAllowHeaders  = "Authorization, Content-Type, Accept, Idempotency-Key, X-Requested-With, X-Device-UID, X-Device-Name, X-Device-Type, X-Device-OS-Name, X-Device-OS-Version, X-Device-App-Version"
-	corsExposeHeaders = "Content-Length, Content-Type"
+var (
+	corsAllowMethods = []string{
+		http.MethodGet,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodOptions,
+	}
+
+	// Generic/common request headers
+	corsGenericAllowHeaders = []string{
+		"Accept",
+		"Accept-Language",
+		"Authorization",
+		"Content-Type",
+		"Origin",
+		"Referer",
+		"User-Agent",
+		"X-Requested-With",
+		"Idempotency-Key",
+	}
+
+	// Device/app-specific headers
+	corsDeviceAllowHeaders = []string{
+		"X-Device-UID",
+		"X-Device-Name",
+		"X-Device-Type",
+		"X-Device-OS-Name",
+		"X-Device-OS-Version",
+		"X-Device-App-Version",
+	}
+
+	corsExposeHeaders = []string{
+		"Content-Length",
+		"Content-Type",
+	}
 )
 
 func ApplyCORSHeaders(header http.Header, origin string) {
@@ -17,11 +50,16 @@ func ApplyCORSHeaders(header http.Header, origin string) {
 		return
 	}
 
+	allowHeaders := append(
+		append([]string{}, corsGenericAllowHeaders...),
+		corsDeviceAllowHeaders...,
+	)
+
 	header.Set("Access-Control-Allow-Origin", origin)
 	header.Set("Vary", "Origin")
-	header.Set("Access-Control-Allow-Methods", corsAllowMethods)
-	header.Set("Access-Control-Allow-Headers", corsAllowHeaders)
-	header.Set("Access-Control-Expose-Headers", corsExposeHeaders)
+	header.Set("Access-Control-Allow-Methods", strings.Join(corsAllowMethods, ", "))
+	header.Set("Access-Control-Allow-Headers", strings.Join(allowHeaders, ", "))
+	header.Set("Access-Control-Expose-Headers", strings.Join(corsExposeHeaders, ", "))
 	header.Set("Access-Control-Max-Age", "600")
 }
 
