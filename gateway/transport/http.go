@@ -24,6 +24,15 @@ import (
 	"go.uber.org/zap"
 )
 
+type requestLogSnapshot struct {
+	Method     string `json:"method,omitempty"`
+	Host       string `json:"host,omitempty"`
+	Path       string `json:"path,omitempty"`
+	RawQuery   string `json:"raw_query,omitempty"`
+	RemoteAddr string `json:"remote_addr,omitempty"`
+	UserAgent  string `json:"user_agent,omitempty"`
+}
+
 type HTTPTransport struct {
 	cfg          *config.Config
 	server       *http.Server
@@ -110,6 +119,26 @@ func chain(h http.Handler, middlewares ...func(http.Handler) http.Handler) http.
 	return h
 }
 
+func snapshotRequestForLog(r *http.Request) requestLogSnapshot {
+	if r == nil {
+		return requestLogSnapshot{}
+	}
+
+	snapshot := requestLogSnapshot{
+		Method:     strings.TrimSpace(r.Method),
+		Host:       strings.TrimSpace(r.Host),
+		RemoteAddr: strings.TrimSpace(r.RemoteAddr),
+		UserAgent:  strings.TrimSpace(r.UserAgent()),
+	}
+
+	if r.URL != nil {
+		snapshot.Path = strings.TrimSpace(r.URL.Path)
+		snapshot.RawQuery = strings.TrimSpace(r.URL.RawQuery)
+	}
+
+	return snapshot
+}
+
 func (t *HTTPTransport) Start() error {
 	log := logging.DefaultLogger()
 	addr := normalizeListenAddr(t.cfg.HTTP.Port)
@@ -141,9 +170,14 @@ func (t *HTTPTransport) Start() error {
 			req.Host = targetHost
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			log.Errorw("ErrorHandler", zap.Error(err), zap.Any("request", r))
+			log.Errorw(
+				"reverse proxy request failed",
+				zap.Error(err),
+				zap.Any("request", snapshotRequestForLog(r)),
+			)
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadGateway)
-			w.Write([]byte(`{"error": "Bad Gateway: Service 'wechat-clone' is currently unavailable or not found in Consul"}`))
+			_, _ = w.Write([]byte(`{"error":"Bad Gateway: Service 'wechat-clone' is currently unavailable or not found in Consul"}`))
 		},
 	}
 
