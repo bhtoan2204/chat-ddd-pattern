@@ -303,7 +303,7 @@ func mustRehydratePaymentAggregate(
 ) *paymentaggregate.PaymentIntentAggregate {
 	t.Helper()
 
-	intent, err := entity.NewProviderTopUpIntent(transactionID, provider, amount, currency, creditAccountID, time.Now().UTC())
+	intent, err := entity.NewProviderTopUpIntent(transactionID, provider, amount, 0, currency, creditAccountID, time.Now().UTC())
 	if err != nil {
 		t.Fatalf("new provider top up intent: %v", err)
 	}

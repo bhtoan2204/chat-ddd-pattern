@@ -169,6 +169,53 @@ func (p *Provider) CreatePayment(ctx context.Context, req providers.CreatePaymen
 	}, nil
 }
 
+func (p *Provider) CreateWithdrawal(ctx context.Context, intent *entity.PaymentIntent, _ map[string]string) (*providers.CreatePaymentResponse, error) {
+	if !p.Enabled() {
+		return nil, fmt.Errorf("stripe provider is not configured")
+	}
+	if intent == nil {
+		return nil, fmt.Errorf("payment intent is required")
+	}
+
+	destinationAccountID := strings.TrimSpace(intent.DestinationAccountID)
+	if destinationAccountID == "" {
+		return nil, fmt.Errorf("stripe destination_account is required for withdrawal")
+	}
+
+	params := &stripe.TransferParams{
+		Params: stripe.Params{
+			Context: ctx,
+			Headers: http.Header{
+				"Stripe-Version": []string{apiVersion},
+			},
+		},
+		Amount:      stripe.Int64(intent.ProviderAmount),
+		Currency:    stripe.String(strings.ToLower(intent.Currency)),
+		Destination: stripe.String(destinationAccountID),
+		Description: stripe.String("Wallet withdrawal"),
+		Metadata: map[string]string{
+			"transaction_id": intent.TransactionID,
+			"workflow":       intent.Workflow,
+		},
+		TransferGroup: stripe.String(intent.TransactionID),
+	}
+
+	transfer, err := p.stripeClient().Transfers.New(params)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if transfer == nil || strings.TrimSpace(transfer.ID) == "" {
+		return nil, fmt.Errorf("stripe transfer response missing id")
+	}
+
+	return &providers.CreatePaymentResponse{
+		Provider:      ProviderName,
+		TransactionID: intent.TransactionID,
+		ExternalRef:   transfer.ID,
+		Status:        entity.PaymentStatusSuccess,
+	}, nil
+}
+
 func (p *Provider) VerifyWebhook(_ context.Context, payload []byte, signature string) (*providers.WebhookEvent, error) {
 	if strings.TrimSpace(p.webhookSecret) == "" {
 		return nil, fmt.Errorf("stripe webhook secret is not configured")

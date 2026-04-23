@@ -56,6 +56,11 @@ func NewMessageHandler(
 			return instance.handleRoomOutboxEvent(ctx, value)
 		}
 	}
+	if topic := strings.TrimSpace(cfg.KafkaConfig.KafkaNotificationConsumer.PaymentOutboxTopic); topic != "" {
+		topicHandlers[topic] = func(ctx context.Context, value []byte) error {
+			return instance.handlePaymentOutboxEvent(ctx, value)
+		}
+	}
 	if topic := strings.TrimSpace(cfg.KafkaConfig.KafkaRelationshipConsumer.RelationshipOutboxTopic); topic != "" {
 		topicHandlers[topic] = func(ctx context.Context, value []byte) error {
 			return instance.handleRelationshipOutboxEvent(ctx, value)

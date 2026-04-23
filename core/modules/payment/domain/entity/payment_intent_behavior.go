@@ -11,72 +11,135 @@ import (
 )
 
 var (
-	ErrPaymentProviderRequired          = errors.New("provider is required")
-	ErrPaymentTransactionIDRequired     = errors.New("transaction_id is required")
-	ErrPaymentAmountInvalid             = errors.New("amount must be greater than 0")
-	ErrPaymentCurrencyRequired          = errors.New("currency is required")
-	ErrPaymentClearingAccountKeyMissing = errors.New("clearing_account_key is required")
-	ErrPaymentCreditAccountRequired     = errors.New("credit_account_id is required")
-	ErrPaymentStatusInvalid             = errors.New("status is invalid")
-	ErrPaymentProviderAmountMismatch    = errors.New("provider amount does not match reserved payment")
-	ErrPaymentProviderCurrencyMismatch  = errors.New("provider currency does not match reserved payment")
-	ErrPaymentProcessedProviderRequired = errors.New("provider is required")
-	ErrPaymentProcessedKeyRequired      = errors.New("idempotency_key is required")
-	ErrPaymentProcessedTxnRequired      = errors.New("transaction_id is required")
+	ErrPaymentProviderRequired           = errors.New("provider is required")
+	ErrPaymentTransactionIDRequired      = errors.New("transaction_id is required")
+	ErrPaymentWorkflowInvalid            = errors.New("workflow is invalid")
+	ErrPaymentAmountInvalid              = errors.New("amount must be greater than 0")
+	ErrPaymentFeeAmountInvalid           = errors.New("fee_amount must be greater than or equal to 0")
+	ErrPaymentProviderAmountInvalid      = errors.New("provider_amount must be greater than 0")
+	ErrPaymentCurrencyRequired           = errors.New("currency is required")
+	ErrPaymentClearingAccountKeyMissing  = errors.New("clearing_account_key is required")
+	ErrPaymentDestinationAccountRequired = errors.New("destination_account_id is required")
+	ErrPaymentDebitAccountRequired       = errors.New("debit_account_id is required")
+	ErrPaymentCreditAccountRequired      = errors.New("credit_account_id is required")
+	ErrPaymentAccountsConflict           = errors.New("debit_account_id and credit_account_id must be different")
+	ErrPaymentStatusInvalid              = errors.New("status is invalid")
+	ErrPaymentProviderAmountMismatch     = errors.New("provider amount does not match reserved payment")
+	ErrPaymentProviderCurrencyMismatch   = errors.New("provider currency does not match reserved payment")
+	ErrPaymentProcessedProviderRequired  = errors.New("provider is required")
+	ErrPaymentProcessedKeyRequired       = errors.New("idempotency_key is required")
+	ErrPaymentProcessedTxnRequired       = errors.New("transaction_id is required")
+)
+
+const (
+	PaymentWorkflowTopUp      = "TOP_UP"
+	PaymentWorkflowWithdrawal = "WITHDRAWAL"
 )
 
 func NewProviderTopUpIntent(
 	transactionID,
 	provider string,
 	amount int64,
+	feeAmount int64,
 	currency,
 	beneficiaryAccountID string,
 	now time.Time,
 ) (*PaymentIntent, error) {
 	return newPaymentIntent(
+		PaymentWorkflowTopUp,
 		transactionID,
 		provider,
 		amount,
+		feeAmount,
+		amount+feeAmount,
 		currency,
 		providerClearingAccountKey(provider),
+		"",
+		"",
 		beneficiaryAccountID,
 		now,
 	)
 }
 
-func newPaymentIntent(transactionID, provider string, amount int64, currency, clearingAccountKey, creditAccountID string, now time.Time) (*PaymentIntent, error) {
+func NewProviderWithdrawalIntent(
+	transactionID,
+	provider string,
+	amount int64,
+	feeAmount int64,
+	currency,
+	destinationAccountID,
+	debitAccountID string,
+	now time.Time,
+) (*PaymentIntent, error) {
+	return newPaymentIntent(
+		PaymentWorkflowWithdrawal,
+		transactionID,
+		provider,
+		amount,
+		feeAmount,
+		amount,
+		currency,
+		providerClearingAccountKey(provider),
+		destinationAccountID,
+		debitAccountID,
+		"",
+		now,
+	)
+}
+
+func newPaymentIntent(workflow, transactionID, provider string, amount int64, feeAmount int64, providerAmount int64, currency, clearingAccountKey, destinationAccountID, debitAccountID, creditAccountID string, now time.Time) (*PaymentIntent, error) {
+	workflow = NormalizePaymentWorkflow(workflow)
 	transactionID = strings.TrimSpace(transactionID)
 	provider = strings.ToLower(strings.TrimSpace(provider))
 	currency = strings.ToUpper(strings.TrimSpace(currency))
 	clearingAccountKey = effectivePaymentClearingAccountKey(provider, clearingAccountKey)
+	destinationAccountID = strings.TrimSpace(destinationAccountID)
+	debitAccountID = strings.TrimSpace(debitAccountID)
 	creditAccountID = strings.TrimSpace(creditAccountID)
 
 	switch {
+	case workflow == "":
+		return nil, ErrPaymentWorkflowInvalid
 	case provider == "":
 		return nil, ErrPaymentProviderRequired
 	case transactionID == "":
 		return nil, ErrPaymentTransactionIDRequired
 	case amount <= 0:
 		return nil, ErrPaymentAmountInvalid
+	case feeAmount < 0:
+		return nil, ErrPaymentFeeAmountInvalid
+	case providerAmount <= 0:
+		return nil, ErrPaymentProviderAmountInvalid
 	case currency == "":
 		return nil, ErrPaymentCurrencyRequired
 	case clearingAccountKey == "":
 		return nil, ErrPaymentClearingAccountKeyMissing
-	case creditAccountID == "":
+	case workflow == PaymentWorkflowTopUp && creditAccountID == "":
 		return nil, ErrPaymentCreditAccountRequired
+	case workflow == PaymentWorkflowWithdrawal && debitAccountID == "":
+		return nil, ErrPaymentDebitAccountRequired
+	case workflow == PaymentWorkflowWithdrawal && destinationAccountID == "":
+		return nil, ErrPaymentDestinationAccountRequired
+	case debitAccountID != "" && creditAccountID != "" && debitAccountID == creditAccountID:
+		return nil, ErrPaymentAccountsConflict
 	}
 
 	now = normalizePaymentTime(now)
 	return &PaymentIntent{
-		TransactionID:      transactionID,
-		Provider:           provider,
-		Amount:             amount,
-		Currency:           currency,
-		ClearingAccountKey: clearingAccountKey,
-		CreditAccountID:    creditAccountID,
-		Status:             PaymentStatusCreating,
-		CreatedAt:          now,
-		UpdatedAt:          now,
+		Workflow:             workflow,
+		TransactionID:        transactionID,
+		Provider:             provider,
+		DestinationAccountID: destinationAccountID,
+		Amount:               amount,
+		FeeAmount:            feeAmount,
+		ProviderAmount:       providerAmount,
+		Currency:             currency,
+		ClearingAccountKey:   clearingAccountKey,
+		DebitAccountID:       debitAccountID,
+		CreditAccountID:      creditAccountID,
+		Status:               PaymentStatusCreating,
+		CreatedAt:            now,
+		UpdatedAt:            now,
 	}, nil
 }
 
@@ -93,6 +156,17 @@ func effectivePaymentClearingAccountKey(provider, clearingAccountKey string) str
 		return clearingAccountKey
 	}
 	return providerClearingAccountKey(provider)
+}
+
+func NormalizePaymentWorkflow(workflow string) string {
+	switch strings.ToUpper(strings.TrimSpace(workflow)) {
+	case PaymentWorkflowTopUp:
+		return PaymentWorkflowTopUp
+	case PaymentWorkflowWithdrawal:
+		return PaymentWorkflowWithdrawal
+	default:
+		return ""
+	}
 }
 
 func NormalizePaymentStatus(status string) string {
@@ -237,6 +311,14 @@ func (p *PaymentIntent) IsSucceeded() bool {
 	return p != nil && p.Status == PaymentStatusSuccess
 }
 
+func (p *PaymentIntent) IsTopUp() bool {
+	return p != nil && p.Workflow == PaymentWorkflowTopUp
+}
+
+func (p *PaymentIntent) IsWithdrawal() bool {
+	return p != nil && p.Workflow == PaymentWorkflowWithdrawal
+}
+
 func (p *PaymentIntent) IsFailed() bool {
 	return p != nil && p.Status == PaymentStatusFailed
 }
@@ -274,6 +356,9 @@ func (p *PaymentIntent) ShouldEmitCheckoutSessionCreated(checkoutURL string) boo
 	if p == nil {
 		return false
 	}
+	if p.Workflow != PaymentWorkflowTopUp {
+		return false
+	}
 	return strings.TrimSpace(checkoutURL) != "" || strings.TrimSpace(p.ExternalRef) != ""
 }
 
@@ -293,11 +378,11 @@ func (p *PaymentIntent) ValidateProviderResultForStatus(status string, amount in
 
 	switch normalizedStatus {
 	case PaymentStatusRefunded, PaymentStatusChargeback:
-		if amount != 0 && amount > p.Amount {
+		if amount != 0 && amount > p.ProviderAmount {
 			return ErrPaymentProviderAmountMismatch
 		}
 	default:
-		if amount != 0 && amount != p.Amount {
+		if amount != 0 && amount != p.ProviderAmount {
 			return ErrPaymentProviderAmountMismatch
 		}
 	}
@@ -329,12 +414,16 @@ func (p *PaymentIntent) BuildCreatedEventData(metadata map[string]string, create
 	p.ensureWorkflowDefaults()
 	occurredAt := normalizePaymentTime(createdAt)
 	return sharedevents.PaymentCreatedEvent{
+		Workflow:           p.Workflow,
 		PaymentID:          p.TransactionID,
 		TransactionID:      p.TransactionID,
 		Provider:           p.Provider,
 		ClearingAccountKey: p.ClearingAccountKey,
 		Amount:             p.Amount,
+		FeeAmount:          p.FeeAmount,
+		ProviderAmount:     p.ProviderAmount,
 		Currency:           p.Currency,
+		DebitAccountID:     p.DebitAccountID,
 		CreditAccountID:    p.CreditAccountID,
 		Status:             p.Status,
 		Metadata:           metadata,
@@ -346,12 +435,15 @@ func (p *PaymentIntent) BuildCheckoutSessionCreatedEventData(checkoutURL string,
 	p.ensureWorkflowDefaults()
 	eventTime := normalizePaymentTime(occurredAt)
 	return sharedevents.PaymentCheckoutSessionCreatedEvent{
+		Workflow:           p.Workflow,
 		PaymentID:          p.TransactionID,
 		TransactionID:      p.TransactionID,
 		Provider:           p.Provider,
 		ProviderPaymentRef: p.ExternalRef,
 		CheckoutURL:        strings.TrimSpace(checkoutURL),
 		Amount:             p.Amount,
+		FeeAmount:          p.FeeAmount,
+		ProviderAmount:     p.ProviderAmount,
 		Currency:           p.Currency,
 		Status:             p.Status,
 		OccurredAt:         eventTime,
@@ -362,14 +454,18 @@ func (p *PaymentIntent) BuildSucceededEventData(result PaymentProviderResult, oc
 	p.ensureWorkflowDefaults()
 	eventTime := normalizePaymentTime(occurredAt)
 	return sharedevents.PaymentSucceededEvent{
+		Workflow:           p.Workflow,
 		PaymentID:          p.TransactionID,
 		TransactionID:      p.TransactionID,
 		Provider:           p.Provider,
 		ClearingAccountKey: p.ClearingAccountKey,
+		DebitAccountID:     p.DebitAccountID,
 		ProviderEventID:    strings.TrimSpace(result.EventID),
 		ProviderEventType:  strings.TrimSpace(result.EventType),
 		ProviderPaymentRef: coalescePaymentValue(result.ExternalRef, p.ExternalRef),
 		Amount:             p.Amount,
+		FeeAmount:          p.FeeAmount,
+		ProviderAmount:     p.ProviderAmount,
 		Currency:           p.Currency,
 		CreditAccountID:    p.CreditAccountID,
 		IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentSucceeded),
@@ -381,14 +477,20 @@ func (p *PaymentIntent) BuildFailedEventData(result PaymentProviderResult, occur
 	p.ensureWorkflowDefaults()
 	eventTime := normalizePaymentTime(occurredAt)
 	return sharedevents.PaymentFailedEvent{
+		Workflow:           p.Workflow,
 		PaymentID:          p.TransactionID,
 		TransactionID:      p.TransactionID,
 		Provider:           p.Provider,
+		ClearingAccountKey: p.ClearingAccountKey,
+		DebitAccountID:     p.DebitAccountID,
 		ProviderEventID:    strings.TrimSpace(result.EventID),
 		ProviderEventType:  strings.TrimSpace(result.EventType),
 		ProviderPaymentRef: coalescePaymentValue(result.ExternalRef, p.ExternalRef),
 		Amount:             p.Amount,
+		FeeAmount:          p.FeeAmount,
+		ProviderAmount:     p.ProviderAmount,
 		Currency:           p.Currency,
+		CreditAccountID:    p.CreditAccountID,
 		Status:             NormalizePaymentStatusOrPending(result.Status),
 		OccurredAt:         eventTime,
 	}
@@ -399,14 +501,18 @@ func (p *PaymentIntent) BuildRefundedEventData(result PaymentProviderResult, occ
 	eventTime := normalizePaymentTime(occurredAt)
 	current := p.CurrentProviderResult(result)
 	return sharedevents.PaymentRefundedEvent{
+		Workflow:           p.Workflow,
 		PaymentID:          p.TransactionID,
 		TransactionID:      p.TransactionID,
 		Provider:           p.Provider,
 		ClearingAccountKey: p.ClearingAccountKey,
+		DebitAccountID:     p.DebitAccountID,
 		ProviderEventID:    strings.TrimSpace(current.EventID),
 		ProviderEventType:  strings.TrimSpace(current.EventType),
 		ProviderPaymentRef: coalescePaymentValue(current.ExternalRef, p.ExternalRef),
 		Amount:             paymentResultAmountOrDefault(current.Amount, p.Amount),
+		FeeAmount:          p.FeeAmount,
+		ProviderAmount:     p.ProviderAmount,
 		Currency:           p.Currency,
 		CreditAccountID:    p.CreditAccountID,
 		IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentRefunded),
@@ -419,14 +525,18 @@ func (p *PaymentIntent) BuildChargebackEventData(result PaymentProviderResult, o
 	eventTime := normalizePaymentTime(occurredAt)
 	current := p.CurrentProviderResult(result)
 	return sharedevents.PaymentChargebackEvent{
+		Workflow:           p.Workflow,
 		PaymentID:          p.TransactionID,
 		TransactionID:      p.TransactionID,
 		Provider:           p.Provider,
 		ClearingAccountKey: p.ClearingAccountKey,
+		DebitAccountID:     p.DebitAccountID,
 		ProviderEventID:    strings.TrimSpace(current.EventID),
 		ProviderEventType:  strings.TrimSpace(current.EventType),
 		ProviderPaymentRef: coalescePaymentValue(current.ExternalRef, p.ExternalRef),
 		Amount:             paymentResultAmountOrDefault(current.Amount, p.Amount),
+		FeeAmount:          p.FeeAmount,
+		ProviderAmount:     p.ProviderAmount,
 		Currency:           p.Currency,
 		CreditAccountID:    p.CreditAccountID,
 		IdempotencyKey:     p.TransitionIdempotencyKey(sharedevents.EventPaymentChargeback),
@@ -502,11 +612,24 @@ func (p *PaymentIntent) ensureWorkflowDefaults() {
 		return
 	}
 	p.TransactionID = strings.TrimSpace(p.TransactionID)
+	if p.Workflow = NormalizePaymentWorkflow(p.Workflow); p.Workflow == "" {
+		p.Workflow = PaymentWorkflowTopUp
+	}
 	p.Provider = strings.ToLower(strings.TrimSpace(p.Provider))
 	p.ExternalRef = strings.TrimSpace(p.ExternalRef)
+	p.DestinationAccountID = strings.TrimSpace(p.DestinationAccountID)
 	p.Currency = strings.ToUpper(strings.TrimSpace(p.Currency))
 	p.ClearingAccountKey = effectivePaymentClearingAccountKey(p.Provider, p.ClearingAccountKey)
+	p.DebitAccountID = strings.TrimSpace(p.DebitAccountID)
 	p.CreditAccountID = strings.TrimSpace(p.CreditAccountID)
+	if p.ProviderAmount <= 0 {
+		switch p.Workflow {
+		case PaymentWorkflowWithdrawal:
+			p.ProviderAmount = p.Amount
+		default:
+			p.ProviderAmount = p.Amount + p.FeeAmount
+		}
+	}
 	if p.Status = NormalizePaymentStatus(p.Status); p.Status == "" {
 		p.Status = PaymentStatusCreating
 	}
@@ -519,7 +642,7 @@ func (p *PaymentIntent) CurrentProviderResult(source PaymentProviderResult) Paym
 
 	amount := source.Amount
 	if amount == 0 {
-		amount = p.Amount
+		amount = p.ProviderAmount
 	}
 
 	return PaymentProviderResult{

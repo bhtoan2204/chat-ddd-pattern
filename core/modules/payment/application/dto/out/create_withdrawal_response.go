@@ -1,7 +1,7 @@
 // CODE_GENERATOR - do not edit: response
 package out
 
-type CreatePaymentResponse struct {
+type CreateWithdrawalResponse struct {
 	Provider       string `json:"provider,omitempty"`
 	Workflow       string `json:"workflow,omitempty"`
 	TransactionID  string `json:"transaction_id,omitempty"`
@@ -10,5 +10,4 @@ type CreatePaymentResponse struct {
 	FeeAmount      int64  `json:"fee_amount,omitempty"`
 	ProviderAmount int64  `json:"provider_amount,omitempty"`
 	Status         string `json:"status,omitempty"`
-	CheckoutURL    string `json:"checkout_url,omitempty"`
 }

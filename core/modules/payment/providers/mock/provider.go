@@ -42,6 +42,23 @@ func (p *Provider) CreatePayment(_ context.Context, req providers.CreatePaymentR
 	}, nil
 }
 
+func (p *Provider) CreateWithdrawal(_ context.Context, intent *entity.PaymentIntent, _ map[string]string) (*providers.CreatePaymentResponse, error) {
+	if intent == nil {
+		return nil, fmt.Errorf("payment intent is required")
+	}
+	if strings.TrimSpace(intent.DestinationAccountID) == "" {
+		return nil, fmt.Errorf("destination account is required")
+	}
+
+	externalRef := fmt.Sprintf("mock_transfer_%s", intent.TransactionID)
+	return &providers.CreatePaymentResponse{
+		Provider:      ProviderName,
+		TransactionID: intent.TransactionID,
+		ExternalRef:   externalRef,
+		Status:        entity.PaymentStatusSuccess,
+	}, nil
+}
+
 func (p *Provider) VerifyWebhook(_ context.Context, payload []byte, signature string) (*providers.WebhookEvent, error) {
 	if strings.TrimSpace(signature) != p.webhookSecret {
 		return nil, providers.ErrInvalidWebhookSignature

@@ -12,6 +12,7 @@ package providers
 import (
 	context "context"
 	reflect "reflect"
+	entity "wechat-clone/core/modules/payment/domain/entity"
 
 	gomock "go.uber.org/mock/gomock"
 )
@@ -53,6 +54,21 @@ func (m *MockPaymentProvider) CreatePayment(ctx context.Context, req CreatePayme
 func (mr *MockPaymentProviderMockRecorder) CreatePayment(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePayment", reflect.TypeOf((*MockPaymentProvider)(nil).CreatePayment), ctx, req)
+}
+
+// CreateWithdrawal mocks base method.
+func (m *MockPaymentProvider) CreateWithdrawal(ctx context.Context, intent *entity.PaymentIntent, metadata map[string]string) (*CreatePaymentResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateWithdrawal", ctx, intent, metadata)
+	ret0, _ := ret[0].(*CreatePaymentResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateWithdrawal indicates an expected call of CreateWithdrawal.
+func (mr *MockPaymentProviderMockRecorder) CreateWithdrawal(ctx, intent, metadata any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWithdrawal", reflect.TypeOf((*MockPaymentProvider)(nil).CreateWithdrawal), ctx, intent, metadata)
 }
 
 // Name mocks base method.

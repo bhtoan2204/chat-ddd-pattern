@@ -223,6 +223,130 @@ func TestHandlePaymentOutboxEventLocksPaymentChargebackByAffectedAccounts(t *tes
 	}
 }
 
+func TestHandlePaymentOutboxEventBooksWithdrawalReservationOnCreated(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	locker := sharedlock.NewMockLock(ctrl)
+	ledgerService := ledgerservice.NewMockLedgerService(ctrl)
+
+	handler := &messageHandler{
+		ledgerService: ledgerService,
+		locker:        locker,
+		feeAccountID:  "ledger:fee:provider:stripe",
+	}
+
+	messageValue := mustMarshalOutboxMessage(t, paymentOutboxMessage{
+		AggregateID: "pay-withdrawal-1",
+		EventName:   sharedevents.EventPaymentCreated,
+		EventData: mustMarshalRawMessage(t, sharedevents.PaymentCreatedEvent{
+			Workflow:           "WITHDRAWAL",
+			PaymentID:          "pay-withdrawal-1",
+			TransactionID:      "txn-withdrawal-1",
+			ClearingAccountKey: "provider:stripe",
+			DebitAccountID:     "wallet:available",
+			Currency:           "VND",
+			Amount:             100,
+			FeeAmount:          5,
+			CreatedAt:          time.Date(2026, 4, 24, 10, 0, 0, 0, time.UTC),
+		}),
+	})
+
+	gomock.InOrder(
+		locker.EXPECT().
+			AcquireLock(gomock.Any(), "ledger-account:ledger:clearing:provider:stripe", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
+			Return(true, nil),
+		locker.EXPECT().
+			AcquireLock(gomock.Any(), "ledger-account:ledger:fee:provider:stripe", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
+			Return(true, nil),
+		locker.EXPECT().
+			AcquireLock(gomock.Any(), "ledger-account:wallet:available", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
+			Return(true, nil),
+		ledgerService.EXPECT().
+			RecordLedgerEvents(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, command ledgerservice.RecordLedgerEventsCommand) error {
+				assertLedgerPaymentEvent(t, command.Events, 0, "wallet:available", ledgeraggregate.EventNameLedgerAccountTransferredToAccount)
+				assertLedgerPaymentEvent(t, command.Events, 1, "ledger:clearing:provider:stripe", ledgeraggregate.EventNameLedgerAccountReceivedTransfer)
+				assertLedgerPaymentEvent(t, command.Events, 2, "wallet:available", ledgeraggregate.EventNameLedgerAccountTransferredToAccount)
+				assertLedgerPaymentEvent(t, command.Events, 3, "ledger:fee:provider:stripe", ledgeraggregate.EventNameLedgerAccountReceivedTransfer)
+				return nil
+			}),
+		locker.EXPECT().
+			ReleaseLock(gomock.Any(), "ledger-account:wallet:available", gomock.Any()).
+			Return(true, nil),
+		locker.EXPECT().
+			ReleaseLock(gomock.Any(), "ledger-account:ledger:fee:provider:stripe", gomock.Any()).
+			Return(true, nil),
+		locker.EXPECT().
+			ReleaseLock(gomock.Any(), "ledger-account:ledger:clearing:provider:stripe", gomock.Any()).
+			Return(true, nil),
+	)
+
+	if err := handler.handlePaymentOutboxEvent(context.Background(), messageValue); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+func TestHandlePaymentOutboxEventReversesWithdrawalReservationOnFailed(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	locker := sharedlock.NewMockLock(ctrl)
+	ledgerService := ledgerservice.NewMockLedgerService(ctrl)
+
+	handler := &messageHandler{
+		ledgerService: ledgerService,
+		locker:        locker,
+		feeAccountID:  "ledger:fee:provider:stripe",
+	}
+
+	messageValue := mustMarshalOutboxMessage(t, paymentOutboxMessage{
+		AggregateID: "pay-withdrawal-2",
+		EventName:   sharedevents.EventPaymentFailed,
+		EventData: mustMarshalRawMessage(t, sharedevents.PaymentFailedEvent{
+			Workflow:           "WITHDRAWAL",
+			PaymentID:          "pay-withdrawal-2",
+			TransactionID:      "txn-withdrawal-2",
+			ClearingAccountKey: "provider:stripe",
+			DebitAccountID:     "wallet:available",
+			Currency:           "VND",
+			Amount:             100,
+			FeeAmount:          5,
+			OccurredAt:         time.Date(2026, 4, 24, 11, 0, 0, 0, time.UTC),
+		}),
+	})
+
+	gomock.InOrder(
+		locker.EXPECT().
+			AcquireLock(gomock.Any(), "ledger-account:ledger:clearing:provider:stripe", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
+			Return(true, nil),
+		locker.EXPECT().
+			AcquireLock(gomock.Any(), "ledger-account:ledger:fee:provider:stripe", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
+			Return(true, nil),
+		locker.EXPECT().
+			AcquireLock(gomock.Any(), "ledger-account:wallet:available", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).
+			Return(true, nil),
+		ledgerService.EXPECT().
+			RecordLedgerEvents(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(_ context.Context, command ledgerservice.RecordLedgerEventsCommand) error {
+				assertLedgerPaymentEvent(t, command.Events, 0, "ledger:clearing:provider:stripe", ledgeraggregate.EventNameLedgerAccountTransferredToAccount)
+				assertLedgerPaymentEvent(t, command.Events, 1, "wallet:available", ledgeraggregate.EventNameLedgerAccountReceivedTransfer)
+				assertLedgerPaymentEvent(t, command.Events, 2, "ledger:fee:provider:stripe", ledgeraggregate.EventNameLedgerAccountTransferredToAccount)
+				assertLedgerPaymentEvent(t, command.Events, 3, "wallet:available", ledgeraggregate.EventNameLedgerAccountReceivedTransfer)
+				return nil
+			}),
+		locker.EXPECT().
+			ReleaseLock(gomock.Any(), "ledger-account:wallet:available", gomock.Any()).
+			Return(true, nil),
+		locker.EXPECT().
+			ReleaseLock(gomock.Any(), "ledger-account:ledger:fee:provider:stripe", gomock.Any()).
+			Return(true, nil),
+		locker.EXPECT().
+			ReleaseLock(gomock.Any(), "ledger-account:ledger:clearing:provider:stripe", gomock.Any()).
+			Return(true, nil),
+	)
+
+	if err := handler.handlePaymentOutboxEvent(context.Background(), messageValue); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
 func mustMarshalOutboxMessage(t *testing.T, message paymentOutboxMessage) []byte {
 	t.Helper()
 

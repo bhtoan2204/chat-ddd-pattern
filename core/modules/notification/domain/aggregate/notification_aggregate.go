@@ -343,6 +343,10 @@ func normalizeNotificationType(value types.NotificationType) (types.Notification
 		return types.NotificationTypeFriendRequestAccepted, nil
 	case types.NotificationTypeFriendRequestRejected:
 		return types.NotificationTypeFriendRequestRejected, nil
+	case types.NotificationTypeWithdrawalSucceeded:
+		return types.NotificationTypeWithdrawalSucceeded, nil
+	case types.NotificationTypeWithdrawalFailed:
+		return types.NotificationTypeWithdrawalFailed, nil
 	default:
 		return "", stackErr.Error(ErrNotificationTypeRequired)
 	}
@@ -413,5 +417,12 @@ func RoomMessageNotificationID(accountID, groupKey string) string {
 	return uuid.NewSHA1(
 		uuid.NameSpaceOID,
 		[]byte("notification:room-message:"+strings.TrimSpace(accountID)+":"+strings.TrimSpace(groupKey)),
+	).String()
+}
+
+func PaymentNotificationID(notificationType types.NotificationType, paymentID, accountID string) string {
+	return uuid.NewSHA1(
+		uuid.NameSpaceOID,
+		[]byte("notification:payment:"+notificationType.String()+":"+strings.TrimSpace(paymentID)+":"+strings.TrimSpace(accountID)),
 	).String()
 }

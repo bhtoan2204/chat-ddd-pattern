@@ -27,6 +27,8 @@ const (
 	NotificationTypeFriendRequestCancelled NotificationType = "relationship.friend_request.cancelled"
 	NotificationTypeFriendRequestAccepted  NotificationType = "relationship.friend_request.accepted"
 	NotificationTypeFriendRequestRejected  NotificationType = "relationship.friend_request.rejected"
+	NotificationTypeWithdrawalSucceeded    NotificationType = "payment.withdrawal.succeeded"
+	NotificationTypeWithdrawalFailed       NotificationType = "payment.withdrawal.failed"
 )
 
 func (t NotificationType) String() string {

@@ -27,6 +27,7 @@ type messageHandler struct {
 	consumer      []infraMessaging.Consumer
 	ledgerService service.LedgerService
 	locker        lock.Lock
+	feeAccountID  string
 }
 
 func NewMessageHandler(
@@ -39,6 +40,7 @@ func NewMessageHandler(
 		consumer:      make([]infraMessaging.Consumer, 0, 1),
 		ledgerService: ledgerSvc,
 		locker:        appCtx.Locker(),
+		feeAccountID:  strings.TrimSpace(cfg.LedgerConfig.Stripe.FeeAccountID),
 	}
 
 	topic := strings.TrimSpace(cfg.KafkaConfig.KafkaLedgerConsumer.PaymentOutboxTopic)

@@ -42,7 +42,7 @@ func (a *paymentProviderAdapter) CreatePayment(
 ) (*domainservice.PaymentCreation, error) {
 	response, err := a.provider.CreatePayment(ctx, providers.CreatePaymentRequest{
 		TransactionID: intent.TransactionID,
-		Amount:        intent.Amount,
+		Amount:        intent.ProviderAmount,
 		Currency:      intent.Currency,
 		Metadata:      metadata,
 	})
@@ -58,6 +58,28 @@ func (a *paymentProviderAdapter) CreatePayment(
 			ExternalRef:   strings.TrimSpace(response.ExternalRef),
 		},
 		CheckoutURL: strings.TrimSpace(response.CheckoutURL),
+	}, nil
+}
+
+func (a *paymentProviderAdapter) CreateWithdrawal(
+	ctx context.Context,
+	intent *entity.PaymentIntent,
+	metadata map[string]string,
+) (*domainservice.PaymentCreation, error) {
+	response, err := a.provider.CreateWithdrawal(ctx, intent, metadata)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	return &domainservice.PaymentCreation{
+		Provider: a.Name(),
+		Result: entity.PaymentProviderResult{
+			TransactionID: coalesceProviderValue(response.TransactionID, intent.TransactionID),
+			Status:        entity.NormalizePaymentStatusOrPending(response.Status),
+			Amount:        intent.ProviderAmount,
+			Currency:      intent.Currency,
+			ExternalRef:   strings.TrimSpace(response.ExternalRef),
+		},
 	}, nil
 }
 

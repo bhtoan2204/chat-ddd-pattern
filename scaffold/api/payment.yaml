@@ -32,13 +32,64 @@ endpoints:
       fields:
         - name: provider
           type: string
+        - name: workflow
+          type: string
         - name: transaction_id
           type: string
         - name: external_ref
           type: string
+        - name: amount
+          type: int64
+        - name: fee_amount
+          type: int64
+        - name: provider_amount
+          type: int64
         - name: status
           type: string
         - name: checkout_url
+          type: string
+
+  - name: PaymentCreateWithdrawal
+    method: POST
+    path: /payment/withdrawals
+    handler: CreateWithdrawalHandler
+    auth: true
+    successStatus: 201
+    usecase:
+      name: PaymentUsecase
+      method: CreateWithdrawal
+    request:
+      struct: CreateWithdrawalRequest
+      fields:
+        - name: provider
+          type: string
+          required: true
+        - name: amount
+          type: int64
+          required: true
+        - name: currency
+          type: string
+          required: true
+        - name: metadata
+          type: object
+    response:
+      struct: CreateWithdrawalResponse
+      fields:
+        - name: provider
+          type: string
+        - name: workflow
+          type: string
+        - name: transaction_id
+          type: string
+        - name: external_ref
+          type: string
+        - name: amount
+          type: int64
+        - name: fee_amount
+          type: int64
+        - name: provider_amount
+          type: int64
+        - name: status
           type: string
 
   - name: PaymentProcessWebhook

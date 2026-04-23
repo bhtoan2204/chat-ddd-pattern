@@ -26,10 +26,12 @@ func buildHTTPServer(_ context.Context, appContext *appCtx.AppContext) (http.HTT
 	paymentCommandService := paymentservice.NewPaymentCommandService(appContext, paymentRepos, provideradapter.NewPaymentProviderRegistry(providerRegistry))
 
 	createPayment := cqrs.NewDispatcher(paymentcommand.NewCreatePayment(paymentCommandService))
+	createWithdrawal := cqrs.NewDispatcher(paymentcommand.NewCreateWithdrawal(paymentCommandService))
 	processWebhook := cqrs.NewDispatcher(paymentcommand.NewProcessWebhook(paymentCommandService))
 
 	server, err := paymentserver.NewHTTPServer(
 		createPayment,
+		createWithdrawal,
 		processWebhook,
 	)
 	if err != nil {

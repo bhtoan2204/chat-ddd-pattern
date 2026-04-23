@@ -71,8 +71,9 @@ type KafkaConfig struct {
 type KafkaNotificationConsumer struct {
 	NotificationGroup string `env:"KAFKA_NOTIFICATION_CONSUMER_GROUP"`
 
-	AccountTopic    string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
-	RoomOutboxTopic string `env:"KAFKA_CONSUMER_ROOM_OUTBOX_TOPIC"`
+	AccountTopic       string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
+	RoomOutboxTopic    string `env:"KAFKA_CONSUMER_ROOM_OUTBOX_TOPIC"`
+	PaymentOutboxTopic string `env:"KAFKA_CONSUMER_PAYMENT_OUTBOX_TOPIC"`
 }
 
 type KafkaPaymentConsumer struct {
@@ -127,11 +128,16 @@ type LedgerConfig struct {
 }
 
 type LedgerStripeConfig struct {
-	PublicKey     string `env:"LEDGER_STRIPE_PUBLIC_KEY"`
-	SecretKey     string `env:"LEDGER_STRIPE_SECRET_KEY"`
-	WebhookSecret string `env:"LEDGER_STRIPE_WEBHOOK_SECRET"`
-	SuccessURL    string `env:"LEDGER_STRIPE_SUCCESS_URL"`
-	CancelURL     string `env:"LEDGER_STRIPE_CANCEL_URL"`
+	PublicKey                    string `env:"LEDGER_STRIPE_PUBLIC_KEY"`
+	SecretKey                    string `env:"LEDGER_STRIPE_SECRET_KEY"`
+	WebhookSecret                string `env:"LEDGER_STRIPE_WEBHOOK_SECRET"`
+	SuccessURL                   string `env:"LEDGER_STRIPE_SUCCESS_URL"`
+	CancelURL                    string `env:"LEDGER_STRIPE_CANCEL_URL"`
+	FeeRateBPS                   int64  `env:"LEDGER_STRIPE_FEE_RATE_BPS,default=0"`
+	FeeFlatAmount                int64  `env:"LEDGER_STRIPE_FEE_FLAT_AMOUNT,default=0"`
+	FeeAccountID                 string `env:"LEDGER_STRIPE_FEE_ACCOUNT_ID,default=ledger:fee:provider:stripe"`
+	WithdrawalPollIntervalSecond int    `env:"LEDGER_STRIPE_WITHDRAWAL_POLL_INTERVAL_SECONDS,default=5"`
+	WithdrawalBatchSize          int    `env:"LEDGER_STRIPE_WITHDRAWAL_BATCH_SIZE,default=20"`
 }
 
 type StorageConfig struct {

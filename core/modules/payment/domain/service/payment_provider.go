@@ -10,6 +10,7 @@ import (
 type PaymentProvider interface {
 	Name() string
 	CreatePayment(ctx context.Context, intent *entity.PaymentIntent, metadata map[string]string) (*PaymentCreation, error)
+	CreateWithdrawal(ctx context.Context, intent *entity.PaymentIntent, metadata map[string]string) (*PaymentCreation, error)
 	ParseWebhook(ctx context.Context, payload []byte, signature string) (*PaymentWebhook, error)
 }
 

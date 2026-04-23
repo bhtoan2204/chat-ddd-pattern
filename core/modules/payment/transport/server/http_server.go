@@ -14,17 +14,20 @@ import (
 )
 
 type paymentHTTPServer struct {
-	createPayment  cqrs.Dispatcher[*in.CreatePaymentRequest, *out.CreatePaymentResponse]
-	processWebhook cqrs.Dispatcher[*in.ProcessWebhookRequest, *out.ProcessWebhookResponse]
+	createPayment    cqrs.Dispatcher[*in.CreatePaymentRequest, *out.CreatePaymentResponse]
+	createWithdrawal cqrs.Dispatcher[*in.CreateWithdrawalRequest, *out.CreateWithdrawalResponse]
+	processWebhook   cqrs.Dispatcher[*in.ProcessWebhookRequest, *out.ProcessWebhookResponse]
 }
 
 func NewHTTPServer(
 	createPayment cqrs.Dispatcher[*in.CreatePaymentRequest, *out.CreatePaymentResponse],
+	createWithdrawal cqrs.Dispatcher[*in.CreateWithdrawalRequest, *out.CreateWithdrawalResponse],
 	processWebhook cqrs.Dispatcher[*in.ProcessWebhookRequest, *out.ProcessWebhookResponse],
 ) (infrahttp.HTTPServer, error) {
 	return &paymentHTTPServer{
-		createPayment:  createPayment,
-		processWebhook: processWebhook,
+		createPayment:    createPayment,
+		createWithdrawal: createWithdrawal,
+		processWebhook:   processWebhook,
 	}, nil
 }
 
@@ -33,7 +36,7 @@ func (s *paymentHTTPServer) RegisterPublicRoutes(routes *gin.RouterGroup) {
 }
 
 func (s *paymentHTTPServer) RegisterPrivateRoutes(routes *gin.RouterGroup) {
-	paymenthttp.RegisterPrivateRoutes(routes, s.createPayment)
+	paymenthttp.RegisterPrivateRoutes(routes, s.createPayment, s.createWithdrawal)
 }
 
 func (s *paymentHTTPServer) RegisterSocketRoutes(routes *gin.RouterGroup) {

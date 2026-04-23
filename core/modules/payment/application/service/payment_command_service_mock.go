@@ -57,6 +57,35 @@ func (mr *MockPaymentCommandServiceMockRecorder) CreatePayment(ctx, req any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePayment", reflect.TypeOf((*MockPaymentCommandService)(nil).CreatePayment), ctx, req)
 }
 
+// CreateWithdrawal mocks base method.
+func (m *MockPaymentCommandService) CreateWithdrawal(ctx context.Context, req *in.CreateWithdrawalRequest) (*out.CreateWithdrawalResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateWithdrawal", ctx, req)
+	ret0, _ := ret[0].(*out.CreateWithdrawalResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateWithdrawal indicates an expected call of CreateWithdrawal.
+func (mr *MockPaymentCommandServiceMockRecorder) CreateWithdrawal(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWithdrawal", reflect.TypeOf((*MockPaymentCommandService)(nil).CreateWithdrawal), ctx, req)
+}
+
+// ProcessPendingWithdrawals mocks base method.
+func (m *MockPaymentCommandService) ProcessPendingWithdrawals(ctx context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ProcessPendingWithdrawals", ctx)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ProcessPendingWithdrawals indicates an expected call of ProcessPendingWithdrawals.
+func (mr *MockPaymentCommandServiceMockRecorder) ProcessPendingWithdrawals(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProcessPendingWithdrawals", reflect.TypeOf((*MockPaymentCommandService)(nil).ProcessPendingWithdrawals), ctx)
+}
+
 // ProcessWebhook mocks base method.
 func (m *MockPaymentCommandService) ProcessWebhook(ctx context.Context, req *in.ProcessWebhookRequest) (*out.ProcessWebhookResponse, error) {
 	m.ctrl.T.Helper()

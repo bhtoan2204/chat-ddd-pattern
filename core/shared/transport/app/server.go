@@ -7,6 +7,7 @@ import (
 	appCtx "wechat-clone/core/context"
 	ledgerassembly "wechat-clone/core/modules/ledger/assembly"
 	notificationassembly "wechat-clone/core/modules/notification/assembly"
+	paymentassembly "wechat-clone/core/modules/payment/assembly"
 	relationshipassembly "wechat-clone/core/modules/relationship/assembly"
 	roomassembly "wechat-clone/core/modules/room/assembly"
 	"wechat-clone/core/shared/config"
@@ -106,12 +107,18 @@ func (s *appServer) buildModuleRuntimes(appContext *appCtx.AppContext) error {
 		return stackErr.Error(fmt.Errorf("build relationship messaging runtime failed: %w", err))
 	}
 
+	paymentMessagingRuntime, err := paymentassembly.BuildMessagingRuntime(s.cfg, appContext)
+	if err != nil {
+		return stackErr.Error(fmt.Errorf("build payment messaging runtime failed: %w", err))
+	}
+
 	s.moduleRuntimes = []modruntime.Module{
 		notificationRuntime,
 		ledgerMessagingRuntime,
 		roomProjectionRuntime,
 		relationshipMessagingRuntime,
 		ledgerProjectionRuntime,
+		paymentMessagingRuntime,
 	}
 	return nil
 }

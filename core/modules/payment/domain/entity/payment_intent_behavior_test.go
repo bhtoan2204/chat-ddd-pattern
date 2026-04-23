@@ -11,7 +11,7 @@ import (
 func TestNewPaymentIntentNormalizesFields(t *testing.T) {
 	now := time.Date(2026, 4, 5, 10, 0, 0, 0, time.UTC)
 
-	intent, err := NewProviderTopUpIntent(" txn-1 ", " STRIPE ", 100, " vnd ", " credit ", now)
+	intent, err := NewProviderTopUpIntent(" txn-1 ", " STRIPE ", 100, 0, " vnd ", " credit ", now)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -37,7 +37,7 @@ func TestNewPaymentIntentNormalizesFields(t *testing.T) {
 }
 
 func TestNewPaymentIntentDerivesClearingAccountKeyWhenMissing(t *testing.T) {
-	intent, err := newPaymentIntent("txn-1", "stripe", 100, "VND", "", "credit", time.Now().UTC())
+	intent, err := newPaymentIntent(PaymentWorkflowTopUp, "txn-1", "stripe", 100, 0, 100, "VND", "", "", "", "credit", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -47,7 +47,7 @@ func TestNewPaymentIntentDerivesClearingAccountKeyWhenMissing(t *testing.T) {
 }
 
 func TestPaymentIntentProviderBehaviors(t *testing.T) {
-	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "credit", time.Now().UTC())
+	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "credit", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -82,7 +82,7 @@ func TestPaymentIntentProviderBehaviors(t *testing.T) {
 
 func TestPaymentIntentTransitionIgnoresFailAfterSuccess(t *testing.T) {
 	now := time.Date(2026, 4, 17, 8, 0, 0, 0, time.UTC)
-	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "credit", now)
+	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "credit", now)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -122,7 +122,7 @@ func TestPaymentIntentTransitionIgnoresFailAfterSuccess(t *testing.T) {
 
 func TestPaymentIntentTransitionAllowsSuccessThenRefunded(t *testing.T) {
 	now := time.Date(2026, 4, 17, 8, 0, 0, 0, time.UTC)
-	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "credit", now)
+	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "credit", now)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -162,7 +162,7 @@ func TestPaymentIntentTransitionAllowsSuccessThenRefunded(t *testing.T) {
 
 func TestPaymentIntentTransitionAllowsSuccessThenChargeback(t *testing.T) {
 	now := time.Date(2026, 4, 17, 8, 0, 0, 0, time.UTC)
-	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "credit", now)
+	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "credit", now)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -199,7 +199,7 @@ func TestPaymentIntentTransitionAllowsSuccessThenChargeback(t *testing.T) {
 
 func TestPaymentIntentTerminalFailureIgnoresLateSuccess(t *testing.T) {
 	now := time.Date(2026, 4, 17, 8, 0, 0, 0, time.UTC)
-	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "credit", now)
+	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "credit", now)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -256,7 +256,7 @@ func TestPaymentIntentApplyProviderResultRestoresClearingAccountKey(t *testing.T
 
 func TestPaymentIntentBuildsEventData(t *testing.T) {
 	now := time.Date(2026, 4, 7, 8, 0, 0, 0, time.UTC)
-	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "credit", now)
+	intent, err := NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "credit", now)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

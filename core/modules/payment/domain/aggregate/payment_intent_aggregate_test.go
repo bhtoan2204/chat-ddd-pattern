@@ -10,7 +10,7 @@ import (
 
 func TestNewProviderTopUpAggregateQueuesCreatedEvent(t *testing.T) {
 	now := time.Date(2026, 4, 17, 10, 0, 0, 0, time.UTC)
-	agg, err := NewProviderTopUpAggregate("txn-1", "stripe", 100, "VND", "wallet:available", map[string]string{"source": "test"}, now)
+	agg, err := NewProviderTopUpAggregate("txn-1", "stripe", 100, 0, "VND", "wallet:available", map[string]string{"source": "test"}, now)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -49,7 +49,7 @@ func TestNewProviderTopUpAggregateQueuesCreatedEvent(t *testing.T) {
 }
 
 func TestPaymentIntentAggregateApplySuccessQueuesProcessedAndOutbox(t *testing.T) {
-	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "wallet:available", time.Now().UTC())
+	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "wallet:available", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -108,7 +108,7 @@ func TestPaymentIntentAggregateApplySuccessQueuesProcessedAndOutbox(t *testing.T
 }
 
 func TestPaymentIntentAggregateAssignsSequentialEnvelopeVersions(t *testing.T) {
-	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "wallet:available", time.Now().UTC())
+	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "wallet:available", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -148,7 +148,7 @@ func TestPaymentIntentAggregateAssignsSequentialEnvelopeVersions(t *testing.T) {
 }
 
 func TestPaymentIntentAggregateRestoreWithVersionContinuesEnvelopeSequence(t *testing.T) {
-	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "wallet:available", time.Now().UTC())
+	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "wallet:available", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -184,7 +184,7 @@ func TestPaymentIntentAggregateRestoreWithVersionContinuesEnvelopeSequence(t *te
 }
 
 func TestPaymentIntentAggregateIgnoresLateFailureAfterSuccess(t *testing.T) {
-	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, "VND", "wallet:available", time.Now().UTC())
+	intent, err := entity.NewProviderTopUpIntent("txn-1", "stripe", 100, 0, "VND", "wallet:available", time.Now().UTC())
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}

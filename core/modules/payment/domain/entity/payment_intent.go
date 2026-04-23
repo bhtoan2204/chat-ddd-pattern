@@ -44,16 +44,21 @@ type PaymentTransition struct {
 }
 
 type PaymentIntent struct {
-	TransactionID      string
-	Provider           string
-	ExternalRef        string
-	Amount             int64
-	Currency           string
-	ClearingAccountKey string
-	CreditAccountID    string
-	Status             string
-	CreatedAt          time.Time
-	UpdatedAt          time.Time
+	Workflow             string
+	TransactionID        string
+	Provider             string
+	ExternalRef          string
+	DestinationAccountID string
+	Amount               int64
+	FeeAmount            int64
+	ProviderAmount       int64
+	Currency             string
+	ClearingAccountKey   string
+	DebitAccountID       string
+	CreditAccountID      string
+	Status               string
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
 }
 
 type PaymentProviderResult struct {

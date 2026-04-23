@@ -21,6 +21,8 @@ type TransferToAccountCommand struct {
 	ToAccountID   string
 	Currency      string
 	Amount        int64
+	FeeAmount     int64
+	FeeAccountID  string
 }
 
 type RecordPaymentSucceededCommand struct {
@@ -81,10 +83,33 @@ func (s *ledgerService) TransferToAccount(ctx context.Context, command TransferT
 	if err != nil {
 		return nil, stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
 	}
+	feeAccountID := strings.TrimSpace(command.FeeAccountID)
+	if command.FeeAmount < 0 {
+		return nil, stackErr.Error(fmt.Errorf("%w: fee_amount must be greater than or equal to 0", ErrValidation))
+	}
+	if command.FeeAmount > 0 && feeAccountID == "" {
+		return nil, stackErr.Error(fmt.Errorf("%w: fee_account_id is required when fee_amount > 0", ErrValidation))
+	}
 
 	transaction, err := entity.NewLedgerTransaction(strings.TrimSpace(command.TransactionID), booking.LedgerEntries())
 	if err != nil {
 		return nil, stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
+	}
+	var feeTransaction *entity.LedgerTransaction
+	if command.FeeAmount > 0 {
+		feeBooking, feeErr := entity.NewTransferBooking(entity.TransferBookingInput{
+			FromAccountID: command.FromAccountID,
+			ToAccountID:   feeAccountID,
+			Currency:      command.Currency,
+			Amount:        command.FeeAmount,
+		})
+		if feeErr != nil {
+			return nil, stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, feeErr))
+		}
+		feeTransaction, err = entity.NewLedgerTransaction(strings.TrimSpace(command.TransactionID)+":fee", feeBooking.LedgerEntries())
+		if err != nil {
+			return nil, stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
+		}
 	}
 
 	fromPosting, err := ledgeraggregate.NewLedgerAccountTransferOutPosting(
@@ -113,17 +138,60 @@ func (s *ledgerService) TransferToAccount(ctx context.Context, command TransferT
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
+	var (
+		feeFromPosting entity.LedgerAccountPosting
+		feeToPosting   entity.LedgerAccountPosting
+	)
+	if feeTransaction != nil {
+		feeFromPosting, err = ledgeraggregate.NewLedgerAccountTransferOutPosting(
+			valueobject.LedgerAccountTransferPostingInput{
+				AccountID:             command.FromAccountID,
+				TransactionID:         feeTransaction.TransactionID,
+				CounterpartyAccountID: feeAccountID,
+				Currency:              feeTransaction.Currency,
+				Amount:                command.FeeAmount,
+				BookedAt:              feeTransaction.CreatedAt,
+			},
+		)
+		if err != nil {
+			return nil, stackErr.Error(err)
+		}
+		feeToPosting, err = ledgeraggregate.NewLedgerAccountTransferInPosting(
+			valueobject.LedgerAccountTransferPostingInput{
+				AccountID:             feeAccountID,
+				TransactionID:         feeTransaction.TransactionID,
+				CounterpartyAccountID: command.FromAccountID,
+				Currency:              feeTransaction.Currency,
+				Amount:                command.FeeAmount,
+				BookedAt:              feeTransaction.CreatedAt,
+			},
+		)
+		if err != nil {
+			return nil, stackErr.Error(err)
+		}
+	}
 
 	if err := s.baseRepo.WithTransaction(ctx, func(txRepos ledgerrepos.Repos) error {
-		accounts, err := s.loadLedgerAccounts(ctx, txRepos, booking.FromAccountID, booking.ToAccountID)
+		accountIDs := []string{booking.FromAccountID, booking.ToAccountID}
+		if feeTransaction != nil {
+			accountIDs = append(accountIDs, feeAccountID)
+		}
+		accounts, err := s.loadLedgerAccounts(ctx, txRepos, accountIDs...)
 		if err != nil {
 			return stackErr.Error(err)
 		}
 
-		alreadyApplied, err := s.ensureLedgerPostingsState(accounts, []expectedLedgerPosting{
+		expectedPostings := []expectedLedgerPosting{
 			{accountID: booking.FromAccountID, posting: fromPosting},
 			{accountID: booking.ToAccountID, posting: toPosting},
-		})
+		}
+		if feeTransaction != nil {
+			expectedPostings = append(expectedPostings,
+				expectedLedgerPosting{accountID: command.FromAccountID, posting: feeFromPosting},
+				expectedLedgerPosting{accountID: feeAccountID, posting: feeToPosting},
+			)
+		}
+		alreadyApplied, err := s.ensureLedgerPostingsState(accounts, expectedPostings)
 		if err != nil {
 			return stackErr.Error(err)
 		}
@@ -133,6 +201,10 @@ func (s *ledgerService) TransferToAccount(ctx context.Context, command TransferT
 
 		fromAgg := accounts.account(booking.FromAccountID)
 		toAgg := accounts.account(booking.ToAccountID)
+		var feeAgg *ledgeraggregate.LedgerAccountAggregate
+		if feeTransaction != nil {
+			feeAgg = accounts.account(feeAccountID)
+		}
 
 		fromApplied, err := fromAgg.TransferToAccount(
 			transaction.TransactionID,
@@ -157,10 +229,39 @@ func (s *ledgerService) TransferToAccount(ctx context.Context, command TransferT
 		if err != nil {
 			return stackErr.Error(err)
 		}
+		feeApplied := false
+		if feeTransaction != nil {
+			feeApplied, err = fromAgg.TransferToAccount(
+				feeTransaction.TransactionID,
+				feeAccountID,
+				feeTransaction.Currency,
+				command.FeeAmount,
+				feeTransaction.CreatedAt,
+			)
+			if err != nil {
+				if errors.Is(err, ledgeraggregate.ErrLedgerAccountInsufficientFunds) {
+					return stackErr.Error(fmt.Errorf("%w: %w", ErrInsufficientFunds, err))
+				}
+				return stackErr.Error(err)
+			}
+			feeReceived, receiveErr := feeAgg.ReceiveTransfer(
+				feeTransaction.TransactionID,
+				command.FromAccountID,
+				feeTransaction.Currency,
+				command.FeeAmount,
+				feeTransaction.CreatedAt,
+			)
+			if receiveErr != nil {
+				return stackErr.Error(receiveErr)
+			}
+			if feeApplied != feeReceived {
+				return stackErr.Error(fmt.Errorf("ledger fee transfer became inconsistent for transaction_id=%s", feeTransaction.TransactionID))
+			}
+		}
 		if fromApplied != toApplied {
 			return stackErr.Error(fmt.Errorf("ledger transfer posting became inconsistent for transaction_id=%s", transaction.TransactionID))
 		}
-		if !fromApplied {
+		if !fromApplied && !feeApplied {
 			return nil
 		}
 
@@ -174,11 +275,21 @@ func (s *ledgerService) TransferToAccount(ctx context.Context, command TransferT
 		} else if alreadyApplied {
 			return stackErr.Error(fmt.Errorf("ledger transfer duplicate state became inconsistent for transaction_id=%s", transaction.TransactionID))
 		}
+		if feeTransaction != nil {
+			if alreadyApplied, err := s.saveLedgerAccount(ctx, txRepos, feeAgg); err != nil {
+				return stackErr.Error(err)
+			} else if alreadyApplied {
+				return stackErr.Error(fmt.Errorf("ledger fee duplicate state became inconsistent for transaction_id=%s", feeTransaction.TransactionID))
+			}
+		}
 		return nil
 	}); err != nil {
 		return nil, stackErr.Error(err)
 	}
 
+	if feeTransaction != nil {
+		transaction.Entries = append(transaction.Entries, feeTransaction.Entries...)
+	}
 	return transaction, nil
 }
 

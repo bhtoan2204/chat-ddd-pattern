@@ -194,3 +194,61 @@ func TestDecodeRelationshipPayloadObject(t *testing.T) {
 		t.Fatal("expected payload, got nil")
 	}
 }
+
+func TestHandlePaymentEventCreatesWithdrawalSuccessNotification(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	repo := notificationrepos.NewMockNotificationRepository(ctrl)
+	realtime := notificationservice.NewMockRealtimeService(ctrl)
+	baseRepo := notificationrepos.NewMockRepos(ctrl)
+	baseRepo.EXPECT().NotificationRepository().Return(repo).AnyTimes()
+
+	accountID := "acc-withdraw"
+	paymentID := "pay-withdraw-1"
+	notificationID := aggregate.PaymentNotificationID(notificationtypes.NotificationTypeWithdrawalSucceeded, paymentID, accountID)
+
+	repo.EXPECT().Load(gomock.Any(), notificationID).Return(nil, notificationrepos.ErrNotificationNotFound)
+	repo.EXPECT().Save(gomock.Any(), gomock.AssignableToTypeOf(&aggregate.NotificationAggregate{})).DoAndReturn(func(_ context.Context, agg *aggregate.NotificationAggregate) error {
+		snapshot, err := agg.Snapshot()
+		if err != nil {
+			t.Fatalf("Snapshot() error = %v", err)
+		}
+		if snapshot.AccountID != accountID {
+			t.Fatalf("AccountID = %s, want %s", snapshot.AccountID, accountID)
+		}
+		if snapshot.Type != notificationtypes.NotificationTypeWithdrawalSucceeded {
+			t.Fatalf("Type = %s, want %s", snapshot.Type, notificationtypes.NotificationTypeWithdrawalSucceeded)
+		}
+		return nil
+	})
+	repo.EXPECT().CountUnread(gomock.Any(), accountID).Return(1, nil)
+	realtime.EXPECT().EmitMessage(gomock.Any(), gomock.Any()).Return(nil)
+
+	handler := &messageHandler{
+		baseRepo: baseRepo,
+		realtime: realtime,
+	}
+
+	raw := []byte(`{
+		"id": 21,
+		"aggregate_id": "pay-withdraw-1",
+		"aggregate_type": "PaymentIntentAggregate",
+		"version": 2,
+		"event_name": "PaymentSucceededEvent",
+		"event_data": {
+			"workflow":"WITHDRAWAL",
+			"payment_id":"pay-withdraw-1",
+			"transaction_id":"txn-withdraw-1",
+			"debit_account_id":"acc-withdraw",
+			"amount":100,
+			"currency":"VND",
+			"succeeded_at":"2026-04-24T10:00:00Z"
+		},
+		"created_at": "2026-04-24T10:00:00Z"
+	}`)
+
+	if err := handler.handlePaymentOutboxEvent(context.Background(), raw); err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}

@@ -9,6 +9,7 @@ import (
 	"wechat-clone/core/modules/ledger/application/dto/in"
 	"wechat-clone/core/modules/ledger/application/dto/out"
 	ledgerservice "wechat-clone/core/modules/ledger/application/service"
+	"wechat-clone/core/shared/finance"
 	"wechat-clone/core/shared/infra/lock"
 	"wechat-clone/core/shared/pkg/actorctx"
 	"wechat-clone/core/shared/pkg/cqrs"
@@ -20,6 +21,8 @@ import (
 type transferTransactionHandler struct {
 	ledgerService ledgerservice.LedgerService
 	locker        lock.Lock
+	feePolicy     finance.StripeFeePolicy
+	feeAccountID  string
 }
 
 func NewTransferTransaction(
@@ -29,6 +32,11 @@ func NewTransferTransaction(
 	return &transferTransactionHandler{
 		ledgerService: ledgerService,
 		locker:        appCtx.Locker(),
+		feePolicy: finance.StripeFeePolicy{
+			RateBPS:    appCtx.GetConfig().LedgerConfig.Stripe.FeeRateBPS,
+			FlatAmount: appCtx.GetConfig().LedgerConfig.Stripe.FeeFlatAmount,
+		},
+		feeAccountID: appCtx.GetConfig().LedgerConfig.Stripe.FeeAccountID,
 	}
 }
 
@@ -39,12 +47,18 @@ func (u *transferTransactionHandler) Handle(ctx context.Context, req *in.Transfe
 	}
 
 	transferFn := func() (*out.TransactionTransactionResponse, error) {
+		feeAmount, err := u.feePolicy.Compute(req.Amount)
+		if err != nil {
+			return nil, stackErr.Error(fmt.Errorf("%w: %w", ledgerservice.ErrValidation, err))
+		}
 		transaction, err := u.ledgerService.TransferToAccount(ctx, ledgerservice.TransferToAccountCommand{
 			TransactionID: uuid.NewString(),
 			FromAccountID: fromAccountID,
 			ToAccountID:   req.ToAccountID,
 			Currency:      req.Currency,
 			Amount:        req.Amount,
+			FeeAmount:     feeAmount,
+			FeeAccountID:  u.feeAccountID,
 		})
 		if err != nil {
 			return nil, stackErr.Error(err)
@@ -73,10 +87,15 @@ func (u *transferTransactionHandler) Handle(ctx context.Context, req *in.Transfe
 	opts := lock.DefaultMultiLockOptions()
 	opts.KeyPrefix = ledgerservice.LedgerAccountLockKeyPrefix
 
+	lockKeys := []string{fromAccountID, req.ToAccountID}
+	if u.feeAccountID != "" {
+		lockKeys = append(lockKeys, u.feeAccountID)
+	}
+
 	response, err := lock.WithLocks(
 		ctx,
 		u.locker,
-		[]string{fromAccountID, req.ToAccountID},
+		lockKeys,
 		opts,
 		transferFn,
 	)

@@ -3,6 +3,8 @@ package providers
 import (
 	"context"
 	"errors"
+
+	"wechat-clone/core/modules/payment/domain/entity"
 )
 
 var (
@@ -47,6 +49,7 @@ type PaymentResult struct {
 type PaymentProvider interface {
 	Name() string
 	CreatePayment(ctx context.Context, req CreatePaymentRequest) (*CreatePaymentResponse, error)
+	CreateWithdrawal(ctx context.Context, intent *entity.PaymentIntent, metadata map[string]string) (*CreatePaymentResponse, error)
 	VerifyWebhook(ctx context.Context, payload []byte, signature string) (*WebhookEvent, error)
 	ParseEvent(ctx context.Context, event *WebhookEvent) (*PaymentResult, error)
 }

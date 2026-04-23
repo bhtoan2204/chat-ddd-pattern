@@ -30,6 +30,7 @@ func NewProviderTopUpAggregate(
 	transactionID,
 	provider string,
 	amount int64,
+	feeAmount int64,
 	currency,
 	creditAccountID string,
 	metadata map[string]string,
@@ -43,8 +44,43 @@ func NewProviderTopUpAggregate(
 		transactionID,
 		provider,
 		amount,
+		feeAmount,
 		currency,
 		creditAccountID,
+		now,
+	)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	agg := &PaymentIntentAggregate{intent: intent}
+	agg.recordOutboxEvent(sharedevents.EventPaymentCreated, intent.BuildCreatedEventData(metadata, now), now)
+	return agg, nil
+}
+
+func NewProviderWithdrawalAggregate(
+	transactionID,
+	provider string,
+	amount int64,
+	feeAmount int64,
+	currency,
+	destinationAccountID,
+	debitAccountID string,
+	metadata map[string]string,
+	now time.Time,
+) (*PaymentIntentAggregate, error) {
+	now, err := normalizePaymentIntentOccurredAt(now)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	intent, err := paymententity.NewProviderWithdrawalIntent(
+		transactionID,
+		provider,
+		amount,
+		feeAmount,
+		currency,
+		destinationAccountID,
+		debitAccountID,
 		now,
 	)
 	if err != nil {
@@ -100,6 +136,13 @@ func (a *PaymentIntentAggregate) Provider() string {
 		return ""
 	}
 	return a.intent.Provider
+}
+
+func (a *PaymentIntentAggregate) Workflow() string {
+	if a == nil || a.intent == nil {
+		return ""
+	}
+	return a.intent.Workflow
 }
 
 func (a *PaymentIntentAggregate) ExternalRef() string {

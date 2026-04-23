@@ -20,6 +20,8 @@ func RegisterPublicRoutes(
 func RegisterPrivateRoutes(
 	routes *gin.RouterGroup,
 	createPayment cqrs.Dispatcher[*in.CreatePaymentRequest, *out.CreatePaymentResponse],
+	createWithdrawal cqrs.Dispatcher[*in.CreateWithdrawalRequest, *out.CreateWithdrawalResponse],
 ) {
 	routes.POST("/payment/intents", httpx.Wrap(handler.NewCreatePaymentHandler(createPayment)))
+	routes.POST("/payment/withdrawals", httpx.Wrap(handler.NewCreateWithdrawalHandler(createWithdrawal)))
 }
