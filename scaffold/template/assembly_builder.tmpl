@@ -11,6 +11,8 @@ import (
 {{- end }}
 {{- if .IsHTTP }}
 	infrahttp "wechat-clone/core/shared/transport/http"
+{{- else if .IsGRPC }}
+	infragrpc "wechat-clone/core/shared/transport/grpc"
 {{- else }}
 	modruntime "wechat-clone/core/shared/runtime"
 {{- end }}

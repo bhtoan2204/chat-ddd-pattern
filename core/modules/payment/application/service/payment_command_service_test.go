@@ -168,7 +168,7 @@ func TestApplyProviderOutcomeFinalizesSuccessOnlyOncePerPayment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if duplicate {
+	if duplicate.Duplicate {
 		t.Fatalf("expected first success to finalize payment")
 	}
 	if paymentAggregate.Status() != entity.PaymentStatusSuccess {
@@ -187,7 +187,7 @@ func TestApplyProviderOutcomeFinalizesSuccessOnlyOncePerPayment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if !duplicate {
+	if !duplicate.Duplicate {
 		t.Fatalf("expected second success to be treated as duplicate")
 	}
 	if paymentAggregate.Status() != entity.PaymentStatusSuccess {
@@ -221,7 +221,7 @@ func TestApplyProviderOutcomeIgnoresFailAfterSuccessWithoutPersist(t *testing.T)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if !duplicate {
+	if !duplicate.Duplicate {
 		t.Fatalf("expected fail-after-success to be ignored as duplicate")
 	}
 	if paymentAggregate.Status() != entity.PaymentStatusSuccess {
@@ -285,7 +285,7 @@ func TestApplyProviderOutcomeFinalizesRefundAsReversal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
-	if duplicate {
+	if duplicate.Duplicate {
 		t.Fatalf("expected first refund to finalize reversal")
 	}
 	if paymentAggregate.Status() != entity.PaymentStatusRefunded {

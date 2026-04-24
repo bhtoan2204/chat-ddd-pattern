@@ -22,6 +22,7 @@ type AssemblyKind string
 
 const (
 	AssemblyKindHTTP       AssemblyKind = "http"
+	AssemblyKindGRPC       AssemblyKind = "grpc"
 	AssemblyKindMessaging  AssemblyKind = "messaging"
 	AssemblyKindProjection AssemblyKind = "projection"
 	AssemblyKindTask       AssemblyKind = "task"
@@ -61,7 +62,7 @@ func (s *AssemblySpec) Validate() error {
 		}
 		for _, kind := range module.Kinds {
 			switch kind {
-			case AssemblyKindHTTP, AssemblyKindMessaging, AssemblyKindProjection, AssemblyKindTask, AssemblyKindCron:
+			case AssemblyKindHTTP, AssemblyKindGRPC, AssemblyKindMessaging, AssemblyKindProjection, AssemblyKindTask, AssemblyKindCron:
 			default:
 				return fmt.Errorf("assembly module %s has unsupported kind %s", module.Name, kind)
 			}

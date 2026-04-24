@@ -10,6 +10,7 @@ import (
 
 const API_SPEC_DIR = "scaffold/api"
 const ASSEMBLY_SPEC_PATH = "scaffold/assembly/modules.yaml"
+const PROTO_SPEC_DIR = "scaffold/proto"
 
 func main() {
 	apiSpec, err := models.LoadAPISpecDir(API_SPEC_DIR)
@@ -59,6 +60,12 @@ func main() {
 	msg, err = generator.GenerateAssembly(assemblySpec)
 	if err != nil {
 		log.Fatalf("Failed to generate assembly builders: %v", err)
+	}
+	fmt.Println(msg)
+
+	msg, err = generator.GenerateProto(PROTO_SPEC_DIR)
+	if err != nil {
+		log.Fatalf("Failed to generate proto files: %v", err)
 	}
 	fmt.Println(msg)
 

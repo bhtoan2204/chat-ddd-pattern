@@ -1,7 +1,6 @@
 {
   "version": "0.2.0",
   "configurations": [
-  
     {
       "name": "Launch Package",
       "type": "go",
@@ -12,5 +11,10 @@
       "cwd": "${workspaceFolder}",
       "args": ["DEBUG_PATH_ECHO=${workspaceFolder}"]
     }
-  ]
+  ],
+  "go.alternateTools": {
+    "go": "/home/bhtoan/.gvm/gos/go1.26.2/bin/go"
+  },
+  "go.goroot": "/home/bhtoan/.gvm/gos/go1.26.2",
+  "go.toolsGopath": "/home/bhtoan/.gvm/pkgsets/go1.26.2/global"
 }

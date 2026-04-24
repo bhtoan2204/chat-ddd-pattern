@@ -1,0 +1,11 @@
+// CODE_GENERATOR - do not edit: response
+package out
+
+type StripeWebhookResponse struct {
+	Provider      string `json:"provider,omitempty"`
+	TransactionID string `json:"transaction_id,omitempty"`
+	ExternalRef   string `json:"external_ref,omitempty"`
+	Status        string `json:"status,omitempty"`
+	Duplicate     bool   `json:"duplicate,omitempty"`
+	LedgerPosted  bool   `json:"ledger_posted,omitempty"`
+}

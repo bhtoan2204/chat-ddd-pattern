@@ -6,6 +6,7 @@ modules:
   - name: ledger
     kinds:
       - http
+      - grpc
       - messaging
       - projection
 
@@ -16,9 +17,13 @@ modules:
 
   - name: payment
     kinds:
-      - http
+      - grpc
       - task
       - cron
+
+  - name: workflow
+    kinds:
+      - http
 
   - name: room
     kinds:
@@ -32,4 +37,3 @@ modules:
   - name: foreign_exchange
     kinds:
       - http
-      - messaging

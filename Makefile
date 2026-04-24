@@ -1,8 +1,8 @@
 .DEFAULT_GOAL := help
 
-FULL_COMPOSE := docker compose -p wechat-full -f docker-compose.dev-min.yml -f docker-compose.full.yml
+INFRA_COMPOSE := docker compose -p wechat-infra -f docker-compose.infra.yml
 APP_COMPOSE := docker compose -p wechat-app -f docker-compose.app.yml
-PRODUCTION_COMPOSE := docker compose -p wechat-prod -f docker-compose.dev-min.yml -f docker-compose.full.yml -f docker-compose.app.yml
+FULL_COMPOSE := docker compose -p wechat-full -f docker-compose.infra.yml -f docker-compose.app.yml
 
 BASE_ENV_FILE := secret/.env
 
@@ -13,9 +13,14 @@ endef
 ## Show available commands
 help:
 	@printf "Available targets:\n"
-	@printf "  make up             Start the local stack with Kafka, Debezium, and Elasticsearch\n"
-	@printf "  make up-full        Alias of make up\n"
-	@printf "  make down           Stop and remove local containers\n"
+	@printf "  make up             Start the local infra stack\n"
+	@printf "  make up-infra       Alias of make up\n"
+	@printf "  make up-app         Start app services only\n"
+	@printf "  make up-full        Start infra + app stack\n"
+	@printf "  make down           Stop infra containers\n"
+	@printf "  make down-infra     Alias of make down\n"
+	@printf "  make down-app       Stop app containers\n"
+	@printf "  make down-all       Stop infra + app containers\n"
 	@printf "  make bootstrap      Prepare local Cassandra and MinIO dependencies\n"
 	@printf "  make migrate        Apply database migrations without starting the API\n"
 	@printf "  make run            Run the API with the full local profile\n"
@@ -29,31 +34,45 @@ help:
 	@printf "  make connector-reset Reset connector offsets in Kafka Connect\n"
 .PHONY: help
 
-## Start the full local stack for development
+## Start the local infra stack
 up:
-	@bash -c '$(LOAD_BASE_ENV) $(FULL_COMPOSE) up -d --build'
+	@bash -c '$(LOAD_BASE_ENV) $(INFRA_COMPOSE) up -d --build'
 .PHONY: up
 
-## Alias for the default full local stack
-up-full:
-	@bash -c '$(LOAD_BASE_ENV) $(PRODUCTION_COMPOSE) up -d --build'
-.PHONY: up-full
+## Alias for infra stack
+up-infra:
+	@bash -c '$(LOAD_BASE_ENV) $(INFRA_COMPOSE) up -d --build'
+.PHONY: up-infra
 
+## Start app stack only
 up-app:
 	@bash -c '$(LOAD_BASE_ENV) $(APP_COMPOSE) up -d --build'
+.PHONY: up-app
 
-## Stop and remove local containers
+## Start infra + app stack
+up-full:
+	@bash -c '$(LOAD_BASE_ENV) $(FULL_COMPOSE) up -d --build'
+.PHONY: up-full
+
+## Stop infra stack
 down:
-	@bash -c '$(LOAD_BASE_ENV) $(FULL_COMPOSE) down'
+	@bash -c '$(LOAD_BASE_ENV) $(INFRA_COMPOSE) down'
 .PHONY: down
 
-down-all:
-	@bash -c '$(LOAD_BASE_ENV) $(PRODUCTION_COMPOSE) down --remove-orphans'
-.PHONY: down-all
+## Stop infra stack
+down-infra:
+	@bash -c '$(LOAD_BASE_ENV) $(INFRA_COMPOSE) down'
+.PHONY: down-infra
 
+## Stop app stack
 down-app:
 	@bash -c '$(LOAD_BASE_ENV) $(APP_COMPOSE) down'
 .PHONY: down-app
+
+## Stop infra + app stack
+down-all:
+	@bash -c '$(LOAD_BASE_ENV) $(FULL_COMPOSE) down --remove-orphans'
+.PHONY: down-all
 
 ## Prepare Cassandra keyspace and MinIO bucket for local development
 bootstrap:

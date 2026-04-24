@@ -1,0 +1,43 @@
+version: 1
+basePath: /api/v1
+
+endpoints:
+  - name: ForeignExchangeCreateQuote
+    method: POST
+    path: /fx/quotes
+    handler: CreateQuoteHandler
+    usecase:
+      name: ForeignExchangeUsecase
+      method: CreateQuote
+    request:
+      struct: CreateQuoteRequest
+      fields:
+        - name: from_currency
+          type: string
+          required: true
+        - name: to_currency
+          type: string
+          required: true
+        - name: to_amount
+          type: string
+          required: true
+        - name: purpose
+          type: string
+          required: true
+    response:
+      struct: CreateQuoteResponse
+      fields:
+        - name: quote_id
+          type: string
+        - name: from_currency
+          type: string
+        - name: to_currency
+          type: int64
+        - name: from_amount
+          type: int64
+        - name: to_amount
+          type: string
+        - name: customer_rate
+          type: string
+        - name: expires_at
+          type: string

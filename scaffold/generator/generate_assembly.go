@@ -21,6 +21,7 @@ type assemblyTemplateData struct {
 	UsesContext      bool
 	UsesConfig       bool
 	IsHTTP           bool
+	IsGRPC           bool
 }
 
 func GenerateAssembly(spec *models.AssemblySpec) (string, error) {
@@ -88,6 +89,16 @@ func buildAssemblyTemplateData(kind models.AssemblyKind) assemblyTemplateData {
 			ReturnType:       "infrahttp.HTTPServer",
 			UsesContext:      true,
 			IsHTTP:           true,
+		}
+	case models.AssemblyKindGRPC:
+		return assemblyTemplateData{
+			FunctionName:     "BuildGRPCServer",
+			ImplFunctionName: "buildGRPCServer",
+			Signature:        "ctx context.Context, appContext *appCtx.AppContext",
+			Arguments:        "ctx, appContext",
+			ReturnType:       "infragrpc.GRPCServer",
+			UsesContext:      true,
+			IsGRPC:           true,
 		}
 	case models.AssemblyKindMessaging:
 		return assemblyTemplateData{

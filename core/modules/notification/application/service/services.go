@@ -10,22 +10,26 @@ type Services interface {
 	EmailVerificationService() EmailVerificationService
 	PushDeliveryService() PushDeliveryService
 	RealtimeService() RealtimeService
+	PaymentNotificationService() PaymentNotificationService
 }
 
 type services struct {
 	emailVerificationService EmailVerificationService
 	pushDeliveryService      PushDeliveryService
 	realtimeService          RealtimeService
+	paymentNotification      PaymentNotificationService
 }
 
 func NewServices(appCtx *appCtx.AppContext, repos repos.Repos) Services {
 	emailVerificationService := newEmailVerificationService(appCtx.GetSMTP())
 	pushDeliveryService := newPushDeliveryService(repos.PushSubscriptionRepository(), appCtx.GetWebPush())
 	realtimeService := newRealtimeService(appCtx)
+	paymentNotification := newPaymentNotificationService(repos, realtimeService, pushDeliveryService)
 	return &services{
 		emailVerificationService: emailVerificationService,
 		pushDeliveryService:      pushDeliveryService,
 		realtimeService:          realtimeService,
+		paymentNotification:      paymentNotification,
 	}
 }
 
@@ -39,4 +43,8 @@ func (s *services) PushDeliveryService() PushDeliveryService {
 
 func (s *services) RealtimeService() RealtimeService {
 	return s.realtimeService
+}
+
+func (s *services) PaymentNotificationService() PaymentNotificationService {
+	return s.paymentNotification
 }

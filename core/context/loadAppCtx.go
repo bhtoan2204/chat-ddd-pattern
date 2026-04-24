@@ -13,6 +13,7 @@ import (
 	"wechat-clone/core/shared/infra/redis"
 	"wechat-clone/core/shared/infra/smtp"
 	"wechat-clone/core/shared/infra/storage"
+	"wechat-clone/core/shared/infra/temporalclient"
 	"wechat-clone/core/shared/infra/xpaseto"
 	"wechat-clone/core/shared/pkg/hasher"
 	"wechat-clone/core/shared/pkg/pubsub"
@@ -92,6 +93,9 @@ func LoadAppCtx(ctx context.Context, cfg *config.Config) (*AppContext, error) {
 		return nil, stackErr.Error(err)
 	}
 	opts = append(opts, WithWebPush(webPushService))
+
+	temporalClient := temporalclient.NewTemporalClient(ctx, cfg)
+	opts = append(opts, WithTemporalClient(temporalClient))
 
 	return NewAppContext(ctx, opts...)
 }

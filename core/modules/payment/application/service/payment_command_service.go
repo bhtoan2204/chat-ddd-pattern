@@ -17,6 +17,7 @@ import (
 	"wechat-clone/core/shared/finance"
 	"wechat-clone/core/shared/infra/lock"
 	"wechat-clone/core/shared/pkg/actorctx"
+	eventpkg "wechat-clone/core/shared/pkg/event"
 	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
 
@@ -38,6 +39,11 @@ type paymentCommandService struct {
 	providerRegistry    domainservice.PaymentProviderRegistry
 	feePolicy           finance.StripeFeePolicy
 	withdrawalBatchSize int
+}
+
+type paymentProviderOutcome struct {
+	Duplicate bool
+	Events    []out.PaymentIntegrationEvent
 }
 
 func NewPaymentCommandService(
@@ -257,7 +263,7 @@ func (s *paymentCommandService) ProcessWebhook(
 		return nil, stackErr.Error(err)
 	}
 
-	duplicate, err := s.applyProviderOutcome(ctx, paymentAggregate, webhook.Result, "", false)
+	outcome, err := s.applyProviderOutcome(ctx, paymentAggregate, webhook.Result, "", false)
 	if err != nil {
 		if isPaymentValidationError(err) {
 			return nil, stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
@@ -270,8 +276,9 @@ func (s *paymentCommandService) ProcessWebhook(
 		TransactionID: paymentAggregate.TransactionID(),
 		ExternalRef:   paymentAggregate.ExternalRef(),
 		Status:        paymentAggregate.Status(),
-		Duplicate:     duplicate,
+		Duplicate:     outcome.Duplicate,
 		LedgerPosted:  false,
+		Events:        outcome.Events,
 	}, nil
 }
 
@@ -334,13 +341,18 @@ func (s *paymentCommandService) applyProviderOutcome(
 	result entity.PaymentProviderResult,
 	checkoutURL string,
 	emitCheckoutEvent bool,
-) (bool, error) {
+) (paymentProviderOutcome, error) {
 	mutation, err := paymentAggregate.ApplyProviderOutcome(result, checkoutURL, emitCheckoutEvent, time.Now().UTC())
 	if err != nil {
-		return false, stackErr.Error(err)
+		return paymentProviderOutcome{}, stackErr.Error(err)
 	}
 	if !mutation.Persist {
-		return mutation.Duplicate, nil
+		return paymentProviderOutcome{Duplicate: mutation.Duplicate}, nil
+	}
+
+	events, err := paymentIntegrationEventsFromDomainEvents(paymentAggregate.PendingOutboxEvents())
+	if err != nil {
+		return paymentProviderOutcome{}, stackErr.Error(err)
 	}
 
 	persistErr := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
@@ -354,12 +366,35 @@ func (s *paymentCommandService) applyProviderOutcome(
 	})
 	if persistErr != nil {
 		if errors.Is(persistErr, repos.ErrProviderPaymentDuplicateProcessed) {
-			return true, nil
+			return paymentProviderOutcome{Duplicate: true}, nil
 		}
-		return false, stackErr.Error(persistErr)
+		return paymentProviderOutcome{}, stackErr.Error(persistErr)
 	}
 
-	return mutation.Duplicate, nil
+	return paymentProviderOutcome{
+		Duplicate: mutation.Duplicate,
+		Events:    events,
+	}, nil
+}
+
+func paymentIntegrationEventsFromDomainEvents(events []eventpkg.Event) ([]out.PaymentIntegrationEvent, error) {
+	if len(events) == 0 {
+		return nil, nil
+	}
+
+	serializer := eventpkg.NewSerializer()
+	items := make([]out.PaymentIntegrationEvent, 0, len(events))
+	for _, evt := range events {
+		data, err := serializer.Marshal(evt.EventData)
+		if err != nil {
+			return nil, stackErr.Error(fmt.Errorf("marshal payment integration event failed: %w", err))
+		}
+		items = append(items, out.PaymentIntegrationEvent{
+			Name:     evt.EventName,
+			DataJSON: string(data),
+		})
+	}
+	return items, nil
 }
 
 func (s *paymentCommandService) findPaymentAggregate(
@@ -405,10 +440,12 @@ func (s *paymentCommandService) markCreateFailed(ctx context.Context, paymentAgg
 	if !mutation.Persist {
 		return nil
 	}
-
-	return stackErr.Error(s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
+	if err := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
 		return stackErr.Error(tx.ProviderPaymentRepository().Save(ctx, paymentAggregate))
-	}))
+	}); err != nil {
+		return stackErr.Error(err)
+	}
+	return nil
 }
 
 func (s *paymentCommandService) computeStripeFee(amount int64) (int64, error) {

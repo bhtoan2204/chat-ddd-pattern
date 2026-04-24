@@ -221,6 +221,10 @@ func requestFieldType(field models.FieldSpec) string {
 }
 
 func requestNormalizeLines(field models.FieldSpec, goType, goName string) []string {
+	if strings.EqualFold(strings.TrimSpace(field.Source), "raw_body") {
+		return nil
+	}
+
 	switch goType {
 	case "string":
 		return []string{fmt.Sprintf("r.%s = strings.TrimSpace(r.%s)", goName, goName)}

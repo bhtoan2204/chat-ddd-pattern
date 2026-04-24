@@ -58,7 +58,6 @@ endpoints:
           type: string
         - name: refresh_token
           type: string
-          required: true
         - name: access_expires_at
           type: int64
         - name: refresh_expires_at

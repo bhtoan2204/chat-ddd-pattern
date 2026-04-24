@@ -15,7 +15,11 @@ type services struct {
 	paymentCommandService PaymentCommandService
 }
 
-func NewServices(appCtx *appCtx.AppContext, baseRepo repos.Repos, providerRegistry domainservice.PaymentProviderRegistry) Services {
+func NewServices(
+	appCtx *appCtx.AppContext,
+	baseRepo repos.Repos,
+	providerRegistry domainservice.PaymentProviderRegistry,
+) Services {
 	paymentCommandService := NewPaymentCommandService(appCtx, baseRepo, providerRegistry)
 	return &services{
 		paymentCommandService: paymentCommandService,
