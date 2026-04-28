@@ -54,18 +54,18 @@ func (mr *MockReposMockRecorder) AccountAggregateRepository() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AccountAggregateRepository", reflect.TypeOf((*MockRepos)(nil).AccountAggregateRepository))
 }
 
-// AccountRepository mocks base method.
-func (m *MockRepos) AccountRepository() AccountRepository {
+// DeviceAggregateRepository mocks base method.
+func (m *MockRepos) DeviceAggregateRepository() DeviceAggregateRepository {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AccountRepository")
-	ret0, _ := ret[0].(AccountRepository)
+	ret := m.ctrl.Call(m, "DeviceAggregateRepository")
+	ret0, _ := ret[0].(DeviceAggregateRepository)
 	return ret0
 }
 
-// AccountRepository indicates an expected call of AccountRepository.
-func (mr *MockReposMockRecorder) AccountRepository() *gomock.Call {
+// DeviceAggregateRepository indicates an expected call of DeviceAggregateRepository.
+func (mr *MockReposMockRecorder) DeviceAggregateRepository() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AccountRepository", reflect.TypeOf((*MockRepos)(nil).AccountRepository))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeviceAggregateRepository", reflect.TypeOf((*MockRepos)(nil).DeviceAggregateRepository))
 }
 
 // DeviceRepository mocks base method.
@@ -80,6 +80,20 @@ func (m *MockRepos) DeviceRepository() DeviceRepository {
 func (mr *MockReposMockRecorder) DeviceRepository() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeviceRepository", reflect.TypeOf((*MockRepos)(nil).DeviceRepository))
+}
+
+// SessionAggregateRepository mocks base method.
+func (m *MockRepos) SessionAggregateRepository() SessionAggregateRepository {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SessionAggregateRepository")
+	ret0, _ := ret[0].(SessionAggregateRepository)
+	return ret0
+}
+
+// SessionAggregateRepository indicates an expected call of SessionAggregateRepository.
+func (mr *MockReposMockRecorder) SessionAggregateRepository() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SessionAggregateRepository", reflect.TypeOf((*MockRepos)(nil).SessionAggregateRepository))
 }
 
 // SessionRepository mocks base method.

@@ -7,9 +7,9 @@ import (
 	appCtx "wechat-clone/core/context"
 	"wechat-clone/core/modules/account/application/dto/in"
 	"wechat-clone/core/modules/account/application/dto/out"
+	"wechat-clone/core/modules/account/application/projection"
 	"wechat-clone/core/modules/account/application/service"
 	"wechat-clone/core/modules/account/domain/entity"
-	repos "wechat-clone/core/modules/account/domain/repos"
 	"wechat-clone/core/shared/pkg/cqrs"
 	"wechat-clone/core/shared/pkg/stackErr"
 
@@ -17,16 +17,16 @@ import (
 )
 
 type searchUsersHandler struct {
-	accountRepos repos.AccountRepository
+	accountReadRepo projection.AccountReadRepository
 }
 
 func NewSearchUsers(
 	appCtx *appCtx.AppContext,
-	baseRepo repos.Repos,
+	accountReadRepo projection.AccountReadRepository,
 	services service.Services,
 ) cqrs.Handler[*in.SearchUsersRequest, *out.SearchUsersResponse] {
 	return &searchUsersHandler{
-		accountRepos: baseRepo.AccountRepository(),
+		accountReadRepo: accountReadRepo,
 	}
 }
 
@@ -53,7 +53,7 @@ func (u *searchUsersHandler) Handle(ctx context.Context, req *in.SearchUsersRequ
 		offset = 0
 	}
 
-	accounts, total, err := u.accountRepos.SearchUsers(ctx, q, limit, offset)
+	accounts, total, err := u.accountReadRepo.SearchUsers(ctx, q, limit, offset)
 	if err != nil {
 		return nil, stackErr.Error(fmt.Errorf("search users: %w", err))
 	}

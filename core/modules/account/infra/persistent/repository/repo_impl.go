@@ -2,6 +2,7 @@ package repos
 
 import (
 	"context"
+
 	"wechat-clone/core/modules/account/domain/repos"
 	sharedcache "wechat-clone/core/shared/infra/cache"
 	"wechat-clone/core/shared/pkg/logging"
@@ -18,35 +19,41 @@ type repoImpl struct {
 	inTransaction bool
 	afterCommit   []func(context.Context)
 
-	accountRepo          repos.AccountRepository
 	accountAggregateRepo repos.AccountAggregateRepository
-	deviceRepo           repos.DeviceRepository
-	sessionRepo          repos.SessionRepository
+	deviceRepo           repos.DeviceAggregateRepository
+	sessionRepo          repos.SessionAggregateRepository
 }
 
 func NewRepoImpl(db *gorm.DB, cache sharedcache.Cache) repos.Repos {
 	return newRepoImplWithDB(db, cache, false)
 }
 
-func newRepoImplWithDB(db *gorm.DB, cache sharedcache.Cache, inTransaction bool) *repoImpl {
+func newRepoImplWithDB(
+	db *gorm.DB,
+	cache sharedcache.Cache,
+	inTransaction bool,
+) *repoImpl {
 	r := &repoImpl{
 		db:            db,
 		cache:         cache,
 		inTransaction: inTransaction,
 	}
-	r.accountRepo = NewAccountRepoImpl(db, cache, !inTransaction, r.runAfterCommit)
-	r.accountAggregateRepo = NewAccountAggregateRepoImpl(db, cache, r.runAfterCommit)
+	r.accountAggregateRepo = NewAccountAggregateRepoImpl(db, cache, r.runAfterCommit, !inTransaction)
 	r.deviceRepo = NewDeviceRepoImpl(db)
 	r.sessionRepo = NewSessionRepoImpl(db, cache, !inTransaction, r.runAfterCommit)
 	return r
 }
 
-func (r *repoImpl) AccountRepository() repos.AccountRepository {
-	return r.accountRepo
-}
-
 func (r *repoImpl) AccountAggregateRepository() repos.AccountAggregateRepository {
 	return r.accountAggregateRepo
+}
+
+func (r *repoImpl) DeviceAggregateRepository() repos.DeviceAggregateRepository {
+	return r.deviceRepo
+}
+
+func (r *repoImpl) SessionAggregateRepository() repos.SessionAggregateRepository {
+	return r.sessionRepo
 }
 
 func (r *repoImpl) DeviceRepository() repos.DeviceRepository {

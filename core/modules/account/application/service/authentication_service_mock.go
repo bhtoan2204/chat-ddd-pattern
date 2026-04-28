@@ -69,6 +69,21 @@ func (mr *MockAuthenticationServiceMockRecorder) Logout(ctx, command any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Logout", reflect.TypeOf((*MockAuthenticationService)(nil).Logout), ctx, command)
 }
 
+// OpenAuthenticate mocks base method.
+func (m *MockAuthenticationService) OpenAuthenticate(ctx context.Context, command OpenAuthenticateAccountCommand) (*TokenPairResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "OpenAuthenticate", ctx, command)
+	ret0, _ := ret[0].(*TokenPairResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// OpenAuthenticate indicates an expected call of OpenAuthenticate.
+func (mr *MockAuthenticationServiceMockRecorder) OpenAuthenticate(ctx, command any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "OpenAuthenticate", reflect.TypeOf((*MockAuthenticationService)(nil).OpenAuthenticate), ctx, command)
+}
+
 // RefreshAuthenticate mocks base method.
 func (m *MockAuthenticationService) RefreshAuthenticate(ctx context.Context, command RefreshTokenCommand) (*TokenPairResult, error) {
 	m.ctrl.T.Helper()

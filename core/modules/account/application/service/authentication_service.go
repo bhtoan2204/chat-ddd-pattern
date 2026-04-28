@@ -242,9 +242,10 @@ func (s *authenticationService) OpenAuthenticate(ctx context.Context, command Op
 	}
 
 	var tokenPair *TokenPairResult
-	if txErr := s.openAuthenticateTransaction(ctx, email, command, now, &tokenPair); txErr != nil {
+	var accountSnapshot *entity.Account
+	if txErr := s.openAuthenticateTransaction(ctx, email, command, now, &tokenPair, &accountSnapshot); txErr != nil {
 		if shareddb.IsUniqueConstraintError(txErr) {
-			txErr = s.openAuthenticateTransaction(ctx, email, command, now, &tokenPair)
+			txErr = s.openAuthenticateTransaction(ctx, email, command, now, &tokenPair, &accountSnapshot)
 		}
 		if txErr != nil {
 			return nil, stackErr.Error(txErr)
@@ -260,6 +261,7 @@ func (s *authenticationService) openAuthenticateTransaction(
 	command OpenAuthenticateAccountCommand,
 	now time.Time,
 	tokenPair **TokenPairResult,
+	accountSnapshotOut **entity.Account,
 ) error {
 	return s.baseRepo.WithTransaction(ctx, func(txRepos repos.Repos) error {
 		accountRepo := txRepos.AccountAggregateRepository()
@@ -301,6 +303,7 @@ func (s *authenticationService) openAuthenticateTransaction(
 		if err != nil {
 			return stackErr.Error(err)
 		}
+		*accountSnapshotOut = accountSnapshot
 
 		deviceAgg, err := s.ensureKnownDevice(ctx, txRepos.DeviceRepository(), accountSnapshot.ID, command.Device, now)
 		if err != nil {

@@ -67,6 +67,7 @@ type KafkaConfig struct {
 	KafkaLedgerConsumer       KafkaLedgerConsumer
 	KafkaRoomConsumer         KafkaRoomConsumer
 	KafkaRelationshipConsumer KafkaRelationshipConsumer
+	KafkaAccountConsumer      KafkaAccountConsumer
 }
 
 type KafkaNotificationConsumer struct {
@@ -106,6 +107,11 @@ type KafkaRelationshipConsumer struct {
 	RelationshipProjectionGroup string `env:"KAFKA_RELATIONSHIP_CONSUMER_PROJECTION_GROUP"`
 	RelationshipOutboxTopic     string `env:"KAFKA_CONSUMER_RELATIONSHIP_OUTBOX_TOPIC"`
 	AccountTopic                string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
+}
+
+type KafkaAccountConsumer struct {
+	AccountProjectionGroup string `env:"KAFKA_ACCOUNT_CONSUMER_PROJECTION_GROUP,default=account-projection"`
+	AccountOutboxTopic     string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
 }
 
 type SecurityConfig struct {
@@ -173,6 +179,7 @@ type ElasticsearchConfig struct {
 	Username                 string `env:"ELASTICSEARCH_USERNAME"`
 	Password                 string `env:"ELASTICSEARCH_PASSWORD"`
 	RoomMessageIndex         string `env:"ELASTICSEARCH_ROOM_MESSAGE_INDEX,default=room_messages_v1"`
+	AccountIndex             string `env:"ELASTICSEARCH_ACCOUNT_INDEX,default=accounts_v1"`
 	ConnectTimeoutSeconds    int    `env:"ELASTICSEARCH_CONNECT_TIMEOUT_SECONDS,default=10"`
 	ResponseHeaderTimeoutSec int    `env:"ELASTICSEARCH_RESPONSE_HEADER_TIMEOUT_SECONDS,default=10"`
 }

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	appCtx "wechat-clone/core/context"
+	accountassembly "wechat-clone/core/modules/account/assembly"
 	ledgerassembly "wechat-clone/core/modules/ledger/assembly"
 	notificationassembly "wechat-clone/core/modules/notification/assembly"
 	paymentassembly "wechat-clone/core/modules/payment/assembly"
@@ -123,6 +124,11 @@ func (s *appServer) buildModuleRuntimes(appContext *appCtx.AppContext) error {
 		return stackErr.Error(fmt.Errorf("build ledger messaging runtime failed: %w", err))
 	}
 
+	accountProjectionRuntime, err := accountassembly.BuildProjectionRuntime(s.cfg, appContext)
+	if err != nil {
+		return stackErr.Error(fmt.Errorf("build account projection runtime failed: %w", err))
+	}
+
 	roomProjectionRuntime, err := roomassembly.BuildProjectionRuntime(s.cfg, appContext)
 	if err != nil {
 		return stackErr.Error(fmt.Errorf("build room projection runtime failed: %w", err))
@@ -150,6 +156,7 @@ func (s *appServer) buildModuleRuntimes(appContext *appCtx.AppContext) error {
 
 	s.moduleRuntimes = []modruntime.Module{
 		notificationRuntime,
+		accountProjectionRuntime,
 		roomProjectionRuntime,
 		relationshipMessagingRuntime,
 		ledgerProjectionRuntime,

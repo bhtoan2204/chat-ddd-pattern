@@ -5,9 +5,9 @@ import (
 	appCtx "wechat-clone/core/context"
 	"wechat-clone/core/modules/account/application/dto/in"
 	"wechat-clone/core/modules/account/application/dto/out"
+	"wechat-clone/core/modules/account/application/projection"
 	"wechat-clone/core/modules/account/application/service"
 	"wechat-clone/core/modules/account/application/support"
-	repos "wechat-clone/core/modules/account/domain/repos"
 	"wechat-clone/core/shared/pkg/cqrs"
 	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
@@ -16,12 +16,12 @@ import (
 )
 
 type getProfileHandler struct {
-	accountRepo repos.AccountRepository
+	accountReadRepo projection.AccountReadRepository
 }
 
-func NewGetProfileHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.GetProfileRequest, *out.GetProfileResponse] {
+func NewGetProfileHandler(appCtx *appCtx.AppContext, accountReadRepo projection.AccountReadRepository, services service.Services) cqrs.Handler[*in.GetProfileRequest, *out.GetProfileResponse] {
 	return &getProfileHandler{
-		accountRepo: baseRepo.AccountRepository(),
+		accountReadRepo: accountReadRepo,
 	}
 }
 
@@ -34,7 +34,7 @@ func (u *getProfileHandler) Handle(ctx context.Context, req *in.GetProfileReques
 		return nil, stackErr.Error(err)
 	}
 
-	accountEntity, err := u.accountRepo.GetAccountByID(ctx, accountID)
+	accountEntity, err := u.accountReadRepo.GetAccountByID(ctx, accountID)
 	if err != nil {
 		log.Errorw("Failed to get account by ID", zap.Error(err))
 		return nil, stackErr.Error(err)

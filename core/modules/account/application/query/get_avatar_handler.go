@@ -8,8 +8,8 @@ import (
 	appCtx "wechat-clone/core/context"
 	"wechat-clone/core/modules/account/application/dto/in"
 	"wechat-clone/core/modules/account/application/dto/out"
+	"wechat-clone/core/modules/account/application/projection"
 	"wechat-clone/core/modules/account/application/service"
-	repos "wechat-clone/core/modules/account/domain/repos"
 	"wechat-clone/core/shared/infra/storage"
 	"wechat-clone/core/shared/pkg/cqrs"
 	"wechat-clone/core/shared/pkg/logging"
@@ -21,21 +21,21 @@ import (
 const avatarPresignedURLTTL = 15 * time.Minute
 
 type getAvatarHandler struct {
-	accountRepo repos.AccountRepository
-	storage     storage.Storage
+	accountReadRepo projection.AccountReadRepository
+	storage         storage.Storage
 }
 
-func NewGetAvatarHandler(appCtx *appCtx.AppContext, baseRepo repos.Repos, services service.Services) cqrs.Handler[*in.GetAvatarRequest, *out.GetAvatarResponse] {
+func NewGetAvatarHandler(appCtx *appCtx.AppContext, accountReadRepo projection.AccountReadRepository, services service.Services) cqrs.Handler[*in.GetAvatarRequest, *out.GetAvatarResponse] {
 	return &getAvatarHandler{
-		accountRepo: baseRepo.AccountRepository(),
-		storage:     appCtx.GetStorage(),
+		accountReadRepo: accountReadRepo,
+		storage:         appCtx.GetStorage(),
 	}
 }
 
 func (u *getAvatarHandler) Handle(ctx context.Context, req *in.GetAvatarRequest) (*out.GetAvatarResponse, error) {
 	log := logging.FromContext(ctx).Named("GetAvatar")
 
-	accountEntity, err := u.accountRepo.GetAccountByID(ctx, req.AccountID)
+	accountEntity, err := u.accountReadRepo.GetAccountByID(ctx, req.AccountID)
 	if err != nil {
 		log.Errorw("Failed to get account by ID", zap.Error(err))
 		return nil, stackErr.Error(err)

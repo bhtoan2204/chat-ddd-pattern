@@ -21,10 +21,12 @@ import (
 )
 
 type accountAggregateRepoImpl struct {
-	db               *gorm.DB
-	serializer       eventpkg.Serializer
-	projectionWriter *accountRepoImpl
-	outboxPublisher  eventpkg.Publisher
+	db              *gorm.DB
+	serializer      eventpkg.Serializer
+	projectionCache accountcache.AccountCache
+	outboxPublisher eventpkg.Publisher
+	afterCommit     afterCommitRegistrar
+	ownsTransaction bool
 }
 
 type accountOutboxEventStore struct {
@@ -36,6 +38,7 @@ func NewAccountAggregateRepoImpl(
 	db *gorm.DB,
 	cache sharedcache.Cache,
 	afterCommit afterCommitRegistrar,
+	ownsTransaction bool,
 ) accountrepos.AccountAggregateRepository {
 	if afterCommit == nil {
 		afterCommit = func(ctx context.Context, fn func(context.Context)) {
@@ -47,17 +50,15 @@ func NewAccountAggregateRepoImpl(
 
 	serializer := newAccountAggregateSerializer()
 	return &accountAggregateRepoImpl{
-		db:         db,
-		serializer: serializer,
-		projectionWriter: &accountRepoImpl{
-			db:           db,
-			accountCache: accountcache.NewAccountCache(cache),
-			afterCommit:  afterCommit,
-		},
+		db:              db,
+		serializer:      serializer,
+		projectionCache: accountcache.NewAccountCache(cache),
 		outboxPublisher: eventpkg.NewPublisher(&accountOutboxEventStore{
 			db:         db,
 			serializer: serializer,
 		}),
+		afterCommit:     afterCommit,
+		ownsTransaction: ownsTransaction,
 	}
 }
 
@@ -135,7 +136,45 @@ func (r *accountAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.Acco
 		return stackErr.Error(err)
 	}
 
-	if err := r.db.WithContext(ctx).
+	save := func(tx *gorm.DB) error {
+		if err := r.saveProjection(ctx, tx, snapshot); err != nil {
+			return stackErr.Error(err)
+		}
+
+		previousPublisher := r.outboxPublisher
+		r.outboxPublisher = eventpkg.NewPublisher(&accountOutboxEventStore{
+			db:         tx,
+			serializer: r.serializer,
+		})
+		defer func() {
+			r.outboxPublisher = previousPublisher
+		}()
+
+		if err := r.publishOutboxEvents(ctx, agg); err != nil {
+			return stackErr.Error(err)
+		}
+		return nil
+	}
+
+	if r.ownsTransaction {
+		if err := r.db.WithContext(ctx).Transaction(save); err != nil {
+			return stackErr.Error(err)
+		}
+	} else {
+		if err := save(r.db.WithContext(ctx)); err != nil {
+			return stackErr.Error(err)
+		}
+	}
+
+	r.syncCacheAfterCommit(ctx, snapshot)
+	return nil
+}
+
+func (r *accountAggregateRepoImpl) saveProjection(ctx context.Context, db *gorm.DB, snapshot *entity.Account) error {
+	if snapshot == nil {
+		return stackErr.Error(fmt.Errorf("account snapshot is nil"))
+	}
+	if err := db.WithContext(ctx).
 		Clauses(clause.OnConflict{
 			Columns: []clause.Column{
 				{Name: "id"},
@@ -155,15 +194,20 @@ func (r *accountAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.Acco
 				"updated_at",
 			}),
 		}).
-		Create(r.projectionWriter.toModel(snapshot)).Error; err != nil {
+		Create(accountToProjectionModel(snapshot)).Error; err != nil {
 		return stackErr.Error(fmt.Errorf("save account projection failed: %w", err))
 	}
-	r.projectionWriter.syncCacheAfterCommit(ctx, snapshot)
-
-	if err := r.publishOutboxEvents(ctx, agg); err != nil {
-		return stackErr.Error(err)
-	}
 	return nil
+}
+
+func (r *accountAggregateRepoImpl) syncCacheAfterCommit(ctx context.Context, account *entity.Account) {
+	if r == nil || r.afterCommit == nil || account == nil {
+		return
+	}
+	r.afterCommit(ctx, func(hookCtx context.Context) {
+		_ = r.projectionCache.Set(hookCtx, account)
+		_ = r.projectionCache.SetByEmail(hookCtx, account)
+	})
 }
 
 func (r *accountAggregateRepoImpl) loadProjection(ctx context.Context, accountID string) (*entity.Account, error) {
@@ -174,8 +218,7 @@ func (r *accountAggregateRepoImpl) loadProjection(ctx context.Context, accountID
 		return nil, stackErr.Error(err)
 	}
 
-	mapper := &accountRepoImpl{}
-	return mapper.toEntity(&model)
+	return projectionModelToAccount(&model)
 }
 
 func (r *accountAggregateRepoImpl) loadProjectionByEmail(ctx context.Context, email string) (*entity.Account, error) {
@@ -186,8 +229,7 @@ func (r *accountAggregateRepoImpl) loadProjectionByEmail(ctx context.Context, em
 		return nil, stackErr.Error(err)
 	}
 
-	mapper := &accountRepoImpl{}
-	return mapper.toEntity(&model)
+	return projectionModelToAccount(&model)
 }
 
 func (r *accountAggregateRepoImpl) publishOutboxEvents(ctx context.Context, agg *aggregate.AccountAggregate) error {

@@ -3,10 +3,12 @@ package events
 import "time"
 
 const (
-	EventAccountCreated        = "EventAccountCreated"
-	EventAccountUpdated        = "EventAccountUpdated"
-	EventAccountProfileUpdated = "EventAccountProfileUpdated"
-	EventAccountBanned         = "EventAccountBanned"
+	EventAccountCreated         = "EventAccountCreated"
+	EventAccountUpdated         = "EventAccountUpdated"
+	EventAccountProfileUpdated  = "EventAccountProfileUpdated"
+	EventAccountEmailVerified   = "EventAccountEmailVerified"
+	EventAccountPasswordChanged = "EventAccountPasswordChanged"
+	EventAccountBanned          = "EventAccountBanned"
 )
 
 type AccountCreatedEvent struct {
