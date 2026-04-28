@@ -7,6 +7,7 @@ option go_package = "wechat-clone/core/shared/transport/grpc/gen/payment/v1;paym
 service PaymentService {
   rpc CreatePaymentIntent(CreatePaymentIntentRequest) returns (CreatePaymentIntentResponse);
   rpc ProcessProviderWebhook(ProcessProviderWebhookRequest) returns (ProcessProviderWebhookResponse);
+  rpc RefundPayment(RefundPaymentRequest) returns (RefundPaymentResponse);
 }
 
 message CreatePaymentIntentRequest {
@@ -47,4 +48,19 @@ message ProcessProviderWebhookResponse {
 message PaymentIntegrationEvent {
   string name = 1;
   string data_json = 2;
+}
+
+message RefundPaymentRequest {
+  string provider = 1;
+  string transaction_id = 2;
+  string reason = 3;
+}
+
+message RefundPaymentResponse {
+  string provider = 1;
+  string transaction_id = 2;
+  string external_ref = 3;
+  string status = 4;
+  bool duplicate = 5;
+  repeated PaymentIntegrationEvent events = 6;
 }

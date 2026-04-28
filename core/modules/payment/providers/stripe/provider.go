@@ -216,6 +216,79 @@ func (p *Provider) CreateWithdrawal(ctx context.Context, intent *entity.PaymentI
 	}, nil
 }
 
+func (p *Provider) RefundPayment(ctx context.Context, req providers.RefundPaymentRequest) (*providers.RefundPaymentResponse, error) {
+	if !p.Enabled() {
+		return nil, fmt.Errorf("stripe provider is not configured")
+	}
+	transactionID := strings.TrimSpace(req.TransactionID)
+	if transactionID == "" {
+		return nil, fmt.Errorf("transaction_id is required")
+	}
+	if req.Amount <= 0 {
+		return nil, fmt.Errorf("refund amount must be positive")
+	}
+
+	paymentRef := strings.TrimSpace(req.ExternalRef)
+	if strings.HasPrefix(paymentRef, "cs_") {
+		session, err := p.stripeClient().CheckoutSessions.Get(paymentRef, &stripe.CheckoutSessionParams{
+			Params: stripe.Params{
+				Context: ctx,
+				Headers: http.Header{
+					"Stripe-Version": []string{apiVersion},
+				},
+			},
+			Expand: []*string{stripe.String("payment_intent")},
+		})
+		if err != nil {
+			return nil, stackErr.Error(err)
+		}
+		if session == nil || session.PaymentIntent == nil || strings.TrimSpace(session.PaymentIntent.ID) == "" {
+			return nil, fmt.Errorf("stripe checkout session payment_intent is required for refund")
+		}
+		paymentRef = strings.TrimSpace(session.PaymentIntent.ID)
+	}
+	if paymentRef == "" {
+		return nil, fmt.Errorf("provider payment reference is required for refund")
+	}
+
+	params := &stripe.RefundParams{
+		Params: stripe.Params{
+			Context: ctx,
+			Headers: http.Header{
+				"Stripe-Version": []string{apiVersion},
+			},
+		},
+		Amount: stripe.Int64(req.Amount),
+		Metadata: map[string]string{
+			"transaction_id": transactionID,
+			"refund_reason":  strings.TrimSpace(req.Reason),
+		},
+	}
+	if strings.HasPrefix(paymentRef, "ch_") {
+		params.Charge = stripe.String(paymentRef)
+	} else {
+		params.PaymentIntent = stripe.String(paymentRef)
+	}
+	params.SetIdempotencyKey(fmt.Sprintf("payment-refund:%s", transactionID))
+
+	refund, err := p.stripeClient().Refunds.New(params)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if refund == nil || strings.TrimSpace(refund.ID) == "" {
+		return nil, fmt.Errorf("stripe refund response missing id")
+	}
+
+	return &providers.RefundPaymentResponse{
+		Provider:      ProviderName,
+		TransactionID: transactionID,
+		ExternalRef:   firstNonEmpty(refund.Charge.ID, paymentRef, req.ExternalRef),
+		Status:        entity.PaymentStatusRefunded,
+		Amount:        refund.Amount,
+		Currency:      firstNonEmpty(string(refund.Currency), req.Currency),
+	}, nil
+}
+
 func (p *Provider) VerifyWebhook(_ context.Context, payload []byte, signature string) (*providers.WebhookEvent, error) {
 	if strings.TrimSpace(p.webhookSecret) == "" {
 		return nil, fmt.Errorf("stripe webhook secret is not configured")

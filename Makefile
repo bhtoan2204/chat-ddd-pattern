@@ -122,7 +122,14 @@ test:
 
 ## Regenerate scaffolded routes, handlers, and OpenAPI artifacts
 generate:
+	@echo "Installing required tools..."
+	@go install golang.org/x/tools/cmd/goimports@v0.1.12
+	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
+	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.32.0
+
+	@echo "Running scaffold generator..."
 	@go run scaffold/main.go
+
 .PHONY: generate
 
 ## Register Debezium connectors after Kafka Connect becomes healthy

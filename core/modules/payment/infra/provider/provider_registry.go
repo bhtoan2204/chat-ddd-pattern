@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"wechat-clone/core/modules/payment/domain/entity"
@@ -78,6 +79,36 @@ func (a *paymentProviderAdapter) CreateWithdrawal(
 			Status:        entity.NormalizePaymentStatusOrPending(response.Status),
 			Amount:        intent.ProviderAmount,
 			Currency:      intent.Currency,
+			ExternalRef:   strings.TrimSpace(response.ExternalRef),
+		},
+	}, nil
+}
+
+func (a *paymentProviderAdapter) RefundPayment(
+	ctx context.Context,
+	intent *entity.PaymentIntent,
+	reason string,
+) (*domainservice.PaymentRefund, error) {
+	response, err := a.provider.RefundPayment(ctx, providers.RefundPaymentRequest{
+		TransactionID: intent.TransactionID,
+		ExternalRef:   intent.ExternalRef,
+		Amount:        intent.ProviderAmount,
+		Currency:      intent.Currency,
+		Reason:        reason,
+	})
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	return &domainservice.PaymentRefund{
+		Provider: a.Name(),
+		Result: entity.PaymentProviderResult{
+			TransactionID: coalesceProviderValue(response.TransactionID, intent.TransactionID),
+			EventID:       fmt.Sprintf("refund:%s", coalesceProviderValue(response.TransactionID, intent.TransactionID)),
+			EventType:     "payment.refunded",
+			Status:        entity.NormalizePaymentStatusOrPending(response.Status),
+			Amount:        response.Amount,
+			Currency:      coalesceProviderValue(response.Currency, intent.Currency),
 			ExternalRef:   strings.TrimSpace(response.ExternalRef),
 		},
 	}, nil

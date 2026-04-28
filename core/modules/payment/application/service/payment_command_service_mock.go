@@ -72,6 +72,21 @@ func (mr *MockPaymentCommandServiceMockRecorder) CreateWithdrawal(ctx, req any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWithdrawal", reflect.TypeOf((*MockPaymentCommandService)(nil).CreateWithdrawal), ctx, req)
 }
 
+// RefundPayment mocks base method.
+func (m *MockPaymentCommandService) RefundPayment(ctx context.Context, req *in.RefundPaymentRequest) (*out.RefundPaymentResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RefundPayment", ctx, req)
+	ret0, _ := ret[0].(*out.RefundPaymentResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RefundPayment indicates an expected call of RefundPayment.
+func (mr *MockPaymentCommandServiceMockRecorder) RefundPayment(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefundPayment", reflect.TypeOf((*MockPaymentCommandService)(nil).RefundPayment), ctx, req)
+}
+
 // ProcessPendingWithdrawals mocks base method.
 func (m *MockPaymentCommandService) ProcessPendingWithdrawals(ctx context.Context) error {
 	m.ctrl.T.Helper()

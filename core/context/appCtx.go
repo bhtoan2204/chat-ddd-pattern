@@ -17,29 +17,27 @@ import (
 	es8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/gocql/gocql"
 	"github.com/redis/go-redis/v9"
-	"go.temporal.io/sdk/client"
 	"gorm.io/gorm"
 )
 
 type Option func(*AppContext)
 
 type AppContext struct {
-	cfg            *config.Config
-	redisClient    *redis.Client
-	db             *gorm.DB
-	queryDB        *gorm.DB
-	cache          cache.Cache
-	hasher         hasher.Hasher
-	paseto         xpaseto.PasetoService
-	smtp           smtp.SMTP
-	storage        storage.Storage
-	consulClient   discovery.ConsulClient
-	locker         lock.Lock
-	cassandra      *gocql.Session
-	elasticsearch  *es8.Client
-	localBus       *pubsub.Bus
-	webPush        webpush.WebPush
-	temporalClient client.Client
+	cfg           *config.Config
+	redisClient   *redis.Client
+	db            *gorm.DB
+	queryDB       *gorm.DB
+	cache         cache.Cache
+	hasher        hasher.Hasher
+	paseto        xpaseto.PasetoService
+	smtp          smtp.SMTP
+	storage       storage.Storage
+	consulClient  discovery.ConsulClient
+	locker        lock.Lock
+	cassandra     *gocql.Session
+	elasticsearch *es8.Client
+	localBus      *pubsub.Bus
+	webPush       webpush.WebPush
 }
 
 func NewAppContext(ctx context.Context, opts ...Option) (*AppContext, error) {
@@ -143,12 +141,6 @@ func WithWebPush(service webpush.WebPush) Option {
 	}
 }
 
-func WithTemporalClient(temporalClient client.Client) Option {
-	return func(appCtx *AppContext) {
-		appCtx.temporalClient = temporalClient
-	}
-}
-
 func (appCtx *AppContext) GetRedisClient() *redis.Client {
 	return appCtx.redisClient
 }
@@ -208,10 +200,6 @@ func (appCtx *AppContext) GetWebPush() webpush.WebPush {
 	return appCtx.webPush
 }
 
-func (appCtx *AppContext) GetTemporalClient() client.Client {
-	return appCtx.temporalClient
-}
-
 func (appCtx *AppContext) Close() {
 	if appCtx.localBus != nil {
 		appCtx.localBus.Close()
@@ -221,9 +209,6 @@ func (appCtx *AppContext) Close() {
 	}
 	if appCtx.redisClient != nil {
 		appCtx.redisClient.Close()
-	}
-	if appCtx.temporalClient != nil {
-		appCtx.temporalClient.Close()
 	}
 	if appCtx.db != nil {
 		ins, _ := appCtx.db.DB()

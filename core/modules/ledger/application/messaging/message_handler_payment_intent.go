@@ -58,6 +58,9 @@ func (h *messageHandler) handlePaymentOutboxEvent(ctx context.Context, value []b
 		}
 		payload.PaymentID = resolvePaymentSucceededID(event.AggregateID, payload)
 		events, err = h.paymentSucceededLedgerEvents(payload)
+		if err != nil {
+			return h.emitPaymentReconciliationFailed(ctx, payload, err)
+		}
 	case sharedevents.EventPaymentFailed:
 		payload, decodeErr := unmarshalPaymentFailedPayload(event.EventData)
 		if decodeErr != nil {
@@ -112,6 +115,36 @@ func (h *messageHandler) handlePaymentOutboxEvent(ctx context.Context, value []b
 	return stackErr.Error(h.withLedgerAccountLocks(ctx, ledgerEventLockKeys(events), func() error {
 		return h.ledgerService.RecordLedgerEvents(ctx, ledgerservice.RecordLedgerEventsCommand{Events: events})
 	}))
+}
+
+func (h *messageHandler) emitPaymentReconciliationFailed(ctx context.Context, payload sharedevents.PaymentSucceededEvent, cause error) error {
+	if h.outboxRepo == nil {
+		return stackErr.Error(cause)
+	}
+
+	paymentID := resolvePaymentSucceededID(payload.PaymentID, payload)
+	failedAt := time.Now().UTC()
+	failureEvent := eventpkg.Event{
+		AggregateID:   paymentID,
+		AggregateType: "LedgerPaymentReconciliation",
+		EventName:     sharedevents.EventLedgerPaymentReconciliationFailed,
+		EventData: sharedevents.LedgerPaymentReconciliationFailedEvent{
+			PaymentID:          paymentID,
+			TransactionID:      strings.TrimSpace(payload.TransactionID),
+			Provider:           strings.TrimSpace(payload.Provider),
+			ClearingAccountKey: strings.TrimSpace(payload.ClearingAccountKey),
+			CreditAccountID:    strings.TrimSpace(payload.CreditAccountID),
+			Currency:           strings.TrimSpace(payload.Currency),
+			Amount:             payload.Amount,
+			FeeAmount:          payload.FeeAmount,
+			ProviderAmount:     payload.ProviderAmount,
+			Reason:             strings.TrimSpace(cause.Error()),
+			FailedAt:           failedAt,
+		},
+		CreatedAt: failedAt.Unix(),
+	}
+
+	return stackErr.Error(h.outboxRepo.Append(ctx, failureEvent))
 }
 
 func (h *messageHandler) withLedgerAccountLocks(ctx context.Context, lockKeys []string, fn func() error) error {

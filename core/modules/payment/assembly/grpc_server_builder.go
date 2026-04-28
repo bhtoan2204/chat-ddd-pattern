@@ -34,9 +34,10 @@ func buildGRPCServer(_ context.Context, appContext *appCtx.AppContext) (infragrp
 
 	createPayment := cqrs.NewDispatcher(paymentcommand.NewCreatePayment(paymentCommandService))
 	processWebhook := cqrs.NewDispatcher(paymentcommand.NewProcessWebhook(paymentCommandService))
+	refundPayment := cqrs.NewDispatcher(paymentcommand.NewRefundPayment(paymentCommandService))
 
 	return &paymentGRPCRegistrar{
-		server: paymentgrpc.NewServer(createPayment, processWebhook),
+		server: paymentgrpc.NewServer(createPayment, processWebhook, refundPayment),
 	}, nil
 }
 

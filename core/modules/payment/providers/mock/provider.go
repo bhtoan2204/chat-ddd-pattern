@@ -42,6 +42,23 @@ func (p *Provider) CreatePayment(_ context.Context, req providers.CreatePaymentR
 	}, nil
 }
 
+func (p *Provider) RefundPayment(_ context.Context, req providers.RefundPaymentRequest) (*providers.RefundPaymentResponse, error) {
+	transactionID := strings.TrimSpace(req.TransactionID)
+	if transactionID == "" {
+		return nil, fmt.Errorf("transaction_id is required")
+	}
+
+	externalRef := fmt.Sprintf("mock_refund_%s", transactionID)
+	return &providers.RefundPaymentResponse{
+		Provider:      ProviderName,
+		TransactionID: transactionID,
+		ExternalRef:   firstNonEmpty(req.ExternalRef, externalRef),
+		Status:        entity.PaymentStatusRefunded,
+		Amount:        req.Amount,
+		Currency:      req.Currency,
+	}, nil
+}
+
 func (p *Provider) CreateWithdrawal(_ context.Context, intent *entity.PaymentIntent, _ map[string]string) (*providers.CreatePaymentResponse, error) {
 	if intent == nil {
 		return nil, fmt.Errorf("payment intent is required")
@@ -100,6 +117,15 @@ func (p *Provider) ParseEvent(_ context.Context, event *providers.WebhookEvent) 
 		Currency:      strings.TrimSpace(event.Attributes["currency"]),
 		ExternalRef:   strings.TrimSpace(event.Attributes["external_ref"]),
 	}, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value = strings.TrimSpace(value); value != "" {
+			return value
+		}
+	}
+	return ""
 }
 
 type webhookPayload struct {

@@ -11,6 +11,7 @@ type PaymentProvider interface {
 	Name() string
 	CreatePayment(ctx context.Context, intent *entity.PaymentIntent, metadata map[string]string) (*PaymentCreation, error)
 	CreateWithdrawal(ctx context.Context, intent *entity.PaymentIntent, metadata map[string]string) (*PaymentCreation, error)
+	RefundPayment(ctx context.Context, intent *entity.PaymentIntent, reason string) (*PaymentRefund, error)
 	ParseWebhook(ctx context.Context, payload []byte, signature string) (*PaymentWebhook, error)
 }
 
@@ -28,5 +29,10 @@ type PaymentCreation struct {
 type PaymentWebhook struct {
 	Provider string
 	Ignored  bool
+	Result   entity.PaymentProviderResult
+}
+
+type PaymentRefund struct {
+	Provider string
 	Result   entity.PaymentProviderResult
 }

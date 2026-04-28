@@ -14,7 +14,6 @@ type Config struct {
 	CassandraConfig     CassandraConfig
 	ElasticsearchConfig ElasticsearchConfig
 	SMTPConfig          SMTPConfig
-	TemporalConfig      TemporalConfig
 	GrpcConfig          GrpcConfig
 }
 
@@ -84,6 +83,7 @@ type KafkaPaymentConsumer struct {
 	AccountTopic       string `env:"KAFKA_CONSUMER_ACCOUNT_TOPIC"`
 	PaymentEventsTopic string `env:"KAFKA_CONSUMER_PAYMENT_EVENTS_TOPIC"`
 	PaymentOutboxTopic string `env:"KAFKA_CONSUMER_PAYMENT_OUTBOX_TOPIC"`
+	LedgerOutboxTopic  string `env:"KAFKA_CONSUMER_LEDGER_OUTBOX_TOPIC"`
 }
 
 type KafkaRoomConsumer struct {
@@ -184,13 +184,6 @@ type SMTPConfig struct {
 	User   string `env:"SMTP_USER"`
 	Pass   string `env:"SMTP_PASS"`
 	From   string `env:"SMTP_FROM"`
-}
-
-type TemporalConfig struct {
-	Host      string `env:"TEMPORAL_HOST"`
-	Port      int    `env:"TEMPORAL_PORT"`
-	Address   string `env:"TEMPORAL_ADDRESS"`
-	Namespace string `env:"TEMPORAL_NAMESPACE"`
 }
 
 type GrpcConfig struct {

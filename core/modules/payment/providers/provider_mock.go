@@ -71,6 +71,21 @@ func (mr *MockPaymentProviderMockRecorder) CreateWithdrawal(ctx, intent, metadat
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateWithdrawal", reflect.TypeOf((*MockPaymentProvider)(nil).CreateWithdrawal), ctx, intent, metadata)
 }
 
+// RefundPayment mocks base method.
+func (m *MockPaymentProvider) RefundPayment(ctx context.Context, req RefundPaymentRequest) (*RefundPaymentResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RefundPayment", ctx, req)
+	ret0, _ := ret[0].(*RefundPaymentResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RefundPayment indicates an expected call of RefundPayment.
+func (mr *MockPaymentProviderMockRecorder) RefundPayment(ctx, req any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefundPayment", reflect.TypeOf((*MockPaymentProvider)(nil).RefundPayment), ctx, req)
+}
+
 // Name mocks base method.
 func (m *MockPaymentProvider) Name() string {
 	m.ctrl.T.Helper()

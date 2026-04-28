@@ -30,6 +30,7 @@ type PaymentCommandService interface {
 	CreatePayment(ctx context.Context, req *in.CreatePaymentRequest) (*out.CreatePaymentResponse, error)
 	CreateWithdrawal(ctx context.Context, req *in.CreateWithdrawalRequest) (*out.CreateWithdrawalResponse, error)
 	ProcessWebhook(ctx context.Context, req *in.ProcessWebhookRequest) (*out.ProcessWebhookResponse, error)
+	RefundPayment(ctx context.Context, req *in.RefundPaymentRequest) (*out.RefundPaymentResponse, error)
 	ProcessPendingWithdrawals(ctx context.Context) error
 }
 
@@ -278,6 +279,86 @@ func (s *paymentCommandService) ProcessWebhook(
 		Status:        paymentAggregate.Status(),
 		Duplicate:     outcome.Duplicate,
 		LedgerPosted:  false,
+		Events:        outcome.Events,
+	}, nil
+}
+
+func (s *paymentCommandService) RefundPayment(
+	ctx context.Context,
+	req *in.RefundPaymentRequest,
+) (*out.RefundPaymentResponse, error) {
+	if req == nil {
+		return nil, stackErr.Error(fmt.Errorf("%w: request is required", ErrValidation))
+	}
+	if err := req.Validate(); err != nil {
+		return nil, stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
+	}
+
+	log := logging.FromContext(ctx).Named("RefundPayment")
+	lockKey := fmt.Sprintf("payment:%s", req.TransactionID)
+	lockValue := uuid.NewString()
+	locked, err := s.locker.AcquireLock(ctx, lockKey, lockValue, 30*time.Second, 100*time.Millisecond, 3*time.Second)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if !locked {
+		return nil, stackErr.Error(fmt.Errorf("acquire payment lock failed: transaction_id=%s", req.TransactionID))
+	}
+	defer func() {
+		released, releaseErr := s.locker.ReleaseLock(ctx, lockKey, lockValue)
+		if releaseErr != nil {
+			log.Errorw("failed to release payment lock", zap.String("transaction_id", req.TransactionID), zap.String("lock_key", lockKey), zap.Error(releaseErr))
+			return
+		}
+		if !released {
+			log.Warnw("payment lock was not released", zap.String("transaction_id", req.TransactionID), zap.String("lock_key", lockKey))
+		}
+	}()
+
+	paymentAggregate, err := s.baseRepo.PaymentIntentAggregateRepository().GetByTransactionID(ctx, req.TransactionID)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+	if !strings.EqualFold(paymentAggregate.Provider(), req.Provider) {
+		return nil, stackErr.Error(fmt.Errorf("%w: provider mismatch", ErrValidation))
+	}
+	if paymentAggregate.Status() == entity.PaymentStatusRefunded {
+		return &out.RefundPaymentResponse{
+			Provider:      paymentAggregate.Provider(),
+			TransactionID: paymentAggregate.TransactionID(),
+			ExternalRef:   paymentAggregate.ExternalRef(),
+			Status:        paymentAggregate.Status(),
+			Duplicate:     true,
+		}, nil
+	}
+	if paymentAggregate.Status() != entity.PaymentStatusSuccess {
+		return nil, stackErr.Error(fmt.Errorf("%w: payment must be successful before refund", ErrValidation))
+	}
+
+	provider, err := s.providerRegistry.Get(paymentAggregate.Provider())
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	refund, err := provider.RefundPayment(ctx, paymentAggregate.Snapshot(), req.Reason)
+	if err != nil {
+		return nil, stackErr.Error(err)
+	}
+
+	outcome, err := s.applyProviderOutcome(ctx, paymentAggregate, refund.Result, "", false)
+	if err != nil {
+		if isPaymentValidationError(err) {
+			return nil, stackErr.Error(fmt.Errorf("%w: %w", ErrValidation, err))
+		}
+		return nil, stackErr.Error(err)
+	}
+
+	return &out.RefundPaymentResponse{
+		Provider:      paymentAggregate.Provider(),
+		TransactionID: paymentAggregate.TransactionID(),
+		ExternalRef:   paymentAggregate.ExternalRef(),
+		Status:        paymentAggregate.Status(),
+		Duplicate:     outcome.Duplicate,
 		Events:        outcome.Events,
 	}, nil
 }

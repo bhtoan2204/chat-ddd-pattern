@@ -26,15 +26,18 @@ type paymentGRPCServer struct {
 	paymentv1.PaymentServiceServer
 	createPayment  cqrs.Dispatcher[*in.CreatePaymentRequest, *out.CreatePaymentResponse]
 	processWebhook cqrs.Dispatcher[*in.ProcessWebhookRequest, *out.ProcessWebhookResponse]
+	refundPayment  cqrs.Dispatcher[*in.RefundPaymentRequest, *out.RefundPaymentResponse]
 }
 
 func NewServer(
 	createPayment cqrs.Dispatcher[*in.CreatePaymentRequest, *out.CreatePaymentResponse],
 	processWebhook cqrs.Dispatcher[*in.ProcessWebhookRequest, *out.ProcessWebhookResponse],
+	refundPayment cqrs.Dispatcher[*in.RefundPaymentRequest, *out.RefundPaymentResponse],
 ) paymentv1.PaymentServiceServer {
 	return &paymentGRPCServer{
 		createPayment:  createPayment,
 		processWebhook: processWebhook,
+		refundPayment:  refundPayment,
 	}
 }
 
@@ -81,6 +84,26 @@ func (s *paymentGRPCServer) ProcessProviderWebhook(ctx context.Context, req *pay
 		Status:        response.Status,
 		Duplicate:     response.Duplicate,
 		LedgerPosted:  response.LedgerPosted,
+		Events:        paymentIntegrationEvents(response.Events),
+	}, nil
+}
+
+func (s *paymentGRPCServer) RefundPayment(ctx context.Context, req *paymentv1.RefundPaymentRequest) (*paymentv1.RefundPaymentResponse, error) {
+	response, err := s.refundPayment.Dispatch(ctx, &in.RefundPaymentRequest{
+		Provider:      req.GetProvider(),
+		TransactionID: req.GetTransactionId(),
+		Reason:        req.GetReason(),
+	})
+	if err != nil {
+		return nil, mapGRPCError(err)
+	}
+
+	return &paymentv1.RefundPaymentResponse{
+		Provider:      response.Provider,
+		TransactionId: response.TransactionID,
+		ExternalRef:   response.ExternalRef,
+		Status:        response.Status,
+		Duplicate:     response.Duplicate,
 		Events:        paymentIntegrationEvents(response.Events),
 	}, nil
 }

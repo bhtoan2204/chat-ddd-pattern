@@ -85,6 +85,21 @@ func (mr *MockPaymentProviderMockRecorder) Name() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Name", reflect.TypeOf((*MockPaymentProvider)(nil).Name))
 }
 
+// RefundPayment mocks base method.
+func (m *MockPaymentProvider) RefundPayment(ctx context.Context, intent *entity.PaymentIntent, reason string) (*PaymentRefund, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RefundPayment", ctx, intent, reason)
+	ret0, _ := ret[0].(*PaymentRefund)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// RefundPayment indicates an expected call of RefundPayment.
+func (mr *MockPaymentProviderMockRecorder) RefundPayment(ctx, intent, reason any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RefundPayment", reflect.TypeOf((*MockPaymentProvider)(nil).RefundPayment), ctx, intent, reason)
+}
+
 // ParseWebhook mocks base method.
 func (m *MockPaymentProvider) ParseWebhook(ctx context.Context, payload []byte, signature string) (*PaymentWebhook, error) {
 	m.ctrl.T.Helper()
