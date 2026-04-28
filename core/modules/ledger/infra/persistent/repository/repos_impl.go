@@ -5,6 +5,7 @@ import (
 
 	appCtx "wechat-clone/core/context"
 	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	eventpkg "wechat-clone/core/shared/pkg/event"
 	"wechat-clone/core/shared/pkg/logging"
 	"wechat-clone/core/shared/pkg/stackErr"
 
@@ -17,7 +18,6 @@ type repoImpl struct {
 	db     *gorm.DB
 
 	ledgerAccountAggregateRepo ledgerrepos.LedgerAccountAggregateRepository
-	ledgerOutboxEventsRepo     ledgerrepos.LedgerOutboxEventsRepository
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) ledgerrepos.Repos {
@@ -30,7 +30,6 @@ func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) ledgerrepos.Repos
 		appCtx:                     appCtx,
 		db:                         db,
 		ledgerAccountAggregateRepo: ledgerAccountRepo,
-		ledgerOutboxEventsRepo:     NewLedgerOutboxEventsRepoImpl(db),
 	}
 }
 
@@ -38,8 +37,8 @@ func (r *repoImpl) LedgerAccountAggregateRepository() ledgerrepos.LedgerAccountA
 	return r.ledgerAccountAggregateRepo
 }
 
-func (r *repoImpl) LedgerOutboxEventsRepository() ledgerrepos.LedgerOutboxEventsRepository {
-	return r.ledgerOutboxEventsRepo
+func (r *repoImpl) PaymentReconciliationFailureEventStore() eventpkg.Store {
+	return NewLedgerOutboxEventsRepoImpl(r.db)
 }
 
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(ledgerrepos.Repos) error) (err error) {

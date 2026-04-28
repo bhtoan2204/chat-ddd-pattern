@@ -118,33 +118,20 @@ func (h *messageHandler) handlePaymentOutboxEvent(ctx context.Context, value []b
 }
 
 func (h *messageHandler) emitPaymentReconciliationFailed(ctx context.Context, payload sharedevents.PaymentSucceededEvent, cause error) error {
-	if h.outboxRepo == nil {
-		return stackErr.Error(cause)
-	}
-
 	paymentID := resolvePaymentSucceededID(payload.PaymentID, payload)
-	failedAt := time.Now().UTC()
-	failureEvent := eventpkg.Event{
-		AggregateID:   paymentID,
-		AggregateType: "LedgerPaymentReconciliation",
-		EventName:     sharedevents.EventLedgerPaymentReconciliationFailed,
-		EventData: sharedevents.LedgerPaymentReconciliationFailedEvent{
-			PaymentID:          paymentID,
-			TransactionID:      strings.TrimSpace(payload.TransactionID),
-			Provider:           strings.TrimSpace(payload.Provider),
-			ClearingAccountKey: strings.TrimSpace(payload.ClearingAccountKey),
-			CreditAccountID:    strings.TrimSpace(payload.CreditAccountID),
-			Currency:           strings.TrimSpace(payload.Currency),
-			Amount:             payload.Amount,
-			FeeAmount:          payload.FeeAmount,
-			ProviderAmount:     payload.ProviderAmount,
-			Reason:             strings.TrimSpace(cause.Error()),
-			FailedAt:           failedAt,
-		},
-		CreatedAt: failedAt.Unix(),
-	}
 
-	return stackErr.Error(h.outboxRepo.Append(ctx, failureEvent))
+	return stackErr.Error(h.ledgerService.RecordPaymentReconciliationFailed(ctx, ledgerservice.RecordPaymentReconciliationFailedCommand{
+		PaymentID:          paymentID,
+		TransactionID:      strings.TrimSpace(payload.TransactionID),
+		Provider:           strings.TrimSpace(payload.Provider),
+		ClearingAccountKey: strings.TrimSpace(payload.ClearingAccountKey),
+		CreditAccountID:    strings.TrimSpace(payload.CreditAccountID),
+		Currency:           strings.TrimSpace(payload.Currency),
+		Amount:             payload.Amount,
+		FeeAmount:          payload.FeeAmount,
+		ProviderAmount:     payload.ProviderAmount,
+		Reason:             strings.TrimSpace(cause.Error()),
+	}))
 }
 
 func (h *messageHandler) withLedgerAccountLocks(ctx context.Context, lockKeys []string, fn func() error) error {

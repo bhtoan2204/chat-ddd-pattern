@@ -57,3 +57,7 @@ func (s *services) RecordPaymentSucceeded(ctx context.Context, command RecordPay
 func (s *services) RecordPaymentReversed(ctx context.Context, command RecordPaymentReversedCommand) error {
 	return s.ledgerService.RecordPaymentReversed(ctx, command)
 }
+
+func (s *services) RecordPaymentReconciliationFailed(ctx context.Context, command RecordPaymentReconciliationFailedCommand) error {
+	return s.ledgerService.RecordPaymentReconciliationFailed(ctx, command)
+}

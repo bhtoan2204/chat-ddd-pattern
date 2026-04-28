@@ -8,7 +8,7 @@ import (
 
 	ledgeraggregate "wechat-clone/core/modules/ledger/domain/aggregate"
 	"wechat-clone/core/modules/ledger/domain/eventstore"
-	ledgerrepos "wechat-clone/core/modules/ledger/domain/repos"
+	eventpkg "wechat-clone/core/shared/pkg/event"
 
 	"go.uber.org/mock/gomock"
 )
@@ -19,7 +19,7 @@ func TestAggregateStoreSaveUsesExpectedVersion(t *testing.T) {
 
 	repo := eventstore.NewMockLedgerEventStore(ctrl)
 	postingStore := eventstore.NewMockLedgerPostingStore(ctrl)
-	outboxRepo := ledgerrepos.NewMockLedgerOutboxEventsRepository(ctrl)
+	outboxRepo := eventpkg.NewMockStore(ctrl)
 
 	store := &aggregateStoreImpl{
 		repo:         repo,
@@ -77,7 +77,7 @@ func TestAggregateStoreSaveRejectsUnexpectedVersion(t *testing.T) {
 
 	repo := eventstore.NewMockLedgerEventStore(ctrl)
 	postingStore := eventstore.NewMockLedgerPostingStore(ctrl)
-	outboxRepo := ledgerrepos.NewMockLedgerOutboxEventsRepository(ctrl)
+	outboxRepo := eventpkg.NewMockStore(ctrl)
 
 	store := &aggregateStoreImpl{
 		repo:         repo,

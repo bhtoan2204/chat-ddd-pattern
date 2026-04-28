@@ -12,7 +12,6 @@ import (
 	"wechat-clone/core/shared/contracts"
 	"wechat-clone/core/shared/infra/lock"
 	infraMessaging "wechat-clone/core/shared/infra/messaging"
-	eventpkg "wechat-clone/core/shared/pkg/event"
 	"wechat-clone/core/shared/pkg/stackErr"
 )
 
@@ -27,7 +26,6 @@ type MessageHandler interface {
 type messageHandler struct {
 	consumer      []infraMessaging.Consumer
 	ledgerService service.LedgerService
-	outboxRepo    eventpkg.Store
 	locker        lock.Lock
 	feeAccountID  string
 }
@@ -42,7 +40,6 @@ func NewMessageHandler(
 	instance := &messageHandler{
 		consumer:      make([]infraMessaging.Consumer, 0, 1),
 		ledgerService: ledgerSvc,
-		outboxRepo:    ledgerRepos.LedgerOutboxEventsRepository(),
 		locker:        appCtx.Locker(),
 		feeAccountID:  strings.TrimSpace(cfg.LedgerConfig.Stripe.FeeAccountID),
 	}

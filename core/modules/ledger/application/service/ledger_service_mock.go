@@ -55,6 +55,20 @@ func (mr *MockLedgerServiceMockRecorder) RecordLedgerEvents(ctx, command any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordLedgerEvents", reflect.TypeOf((*MockLedgerService)(nil).RecordLedgerEvents), ctx, command)
 }
 
+// RecordPaymentReconciliationFailed mocks base method.
+func (m *MockLedgerService) RecordPaymentReconciliationFailed(ctx context.Context, command RecordPaymentReconciliationFailedCommand) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecordPaymentReconciliationFailed", ctx, command)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecordPaymentReconciliationFailed indicates an expected call of RecordPaymentReconciliationFailed.
+func (mr *MockLedgerServiceMockRecorder) RecordPaymentReconciliationFailed(ctx, command any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordPaymentReconciliationFailed", reflect.TypeOf((*MockLedgerService)(nil).RecordPaymentReconciliationFailed), ctx, command)
+}
+
 // RecordPaymentReversed mocks base method.
 func (m *MockLedgerService) RecordPaymentReversed(ctx context.Context, command RecordPaymentReversedCommand) error {
 	m.ctrl.T.Helper()

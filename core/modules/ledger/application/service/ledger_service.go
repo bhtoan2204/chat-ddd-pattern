@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	ledgeraggregate "wechat-clone/core/modules/ledger/domain/aggregate"
 	"wechat-clone/core/modules/ledger/domain/entity"
@@ -48,6 +49,20 @@ type RecordLedgerEventsCommand struct {
 	Events []eventpkg.Event
 }
 
+type RecordPaymentReconciliationFailedCommand struct {
+	PaymentID          string
+	TransactionID      string
+	Provider           string
+	ClearingAccountKey string
+	CreditAccountID    string
+	Currency           string
+	Amount             int64
+	FeeAmount          int64
+	ProviderAmount     int64
+	Reason             string
+	FailedAt           time.Time
+}
+
 const LedgerAccountLockKeyPrefix = "ledger-account"
 
 //go:generate mockgen -package=service -destination=ledger_service_mock.go -source=ledger_service.go
@@ -56,6 +71,7 @@ type LedgerService interface {
 	RecordLedgerEvents(ctx context.Context, command RecordLedgerEventsCommand) error
 	RecordPaymentSucceeded(ctx context.Context, command RecordPaymentSucceededCommand) error
 	RecordPaymentReversed(ctx context.Context, command RecordPaymentReversedCommand) error
+	RecordPaymentReconciliationFailed(ctx context.Context, command RecordPaymentReconciliationFailedCommand) error
 }
 
 type ledgerService struct {
@@ -412,6 +428,69 @@ func (s *ledgerService) RecordPaymentReversed(ctx context.Context, command Recor
 	}
 
 	return stackErr.Error(s.RecordLedgerEvents(ctx, RecordLedgerEventsCommand{Events: events}))
+}
+
+func (s *ledgerService) RecordPaymentReconciliationFailed(ctx context.Context, command RecordPaymentReconciliationFailedCommand) error {
+	if s == nil || s.baseRepo == nil {
+		return stackErr.Error(fmt.Errorf("ledger repository is required"))
+	}
+
+	paymentID := strings.TrimSpace(command.PaymentID)
+	if paymentID == "" {
+		paymentID = strings.TrimSpace(command.TransactionID)
+	}
+	if paymentID == "" {
+		return stackErr.Error(fmt.Errorf("%w: payment_id is required", ErrValidation))
+	}
+
+	failedAt := command.FailedAt.UTC()
+	if failedAt.IsZero() {
+		failedAt = time.Now().UTC()
+	}
+
+	reason := strings.TrimSpace(command.Reason)
+	if reason == "" {
+		reason = "ledger payment reconciliation failed"
+	}
+
+	failureEvent := eventpkg.Event{
+		AggregateID:   paymentID,
+		AggregateType: "LedgerPaymentReconciliation",
+		EventName:     sharedevents.EventLedgerPaymentReconciliationFailed,
+		EventData: sharedevents.LedgerPaymentReconciliationFailedEvent{
+			PaymentID:          paymentID,
+			TransactionID:      strings.TrimSpace(command.TransactionID),
+			Provider:           strings.TrimSpace(command.Provider),
+			ClearingAccountKey: strings.TrimSpace(command.ClearingAccountKey),
+			CreditAccountID:    strings.TrimSpace(command.CreditAccountID),
+			Currency:           strings.TrimSpace(command.Currency),
+			Amount:             command.Amount,
+			FeeAmount:          command.FeeAmount,
+			ProviderAmount:     command.ProviderAmount,
+			Reason:             reason,
+			FailedAt:           failedAt,
+		},
+		CreatedAt: failedAt.Unix(),
+	}
+
+	outboxRepo, ok := ledgerOutboxStore(s.baseRepo)
+	if !ok || outboxRepo == nil {
+		return stackErr.Error(fmt.Errorf("ledger reconciliation failure publisher is not configured"))
+	}
+
+	return stackErr.Error(outboxRepo.Append(ctx, failureEvent))
+}
+
+func ledgerOutboxStore(baseRepo ledgerrepos.Repos) (eventpkg.Store, bool) {
+	type paymentReconciliationFailureStoreProvider interface {
+		PaymentReconciliationFailureEventStore() eventpkg.Store
+	}
+
+	provider, ok := baseRepo.(paymentReconciliationFailureStoreProvider)
+	if !ok {
+		return nil, false
+	}
+	return provider.PaymentReconciliationFailureEventStore(), true
 }
 
 func (s *ledgerService) RecordLedgerEvents(ctx context.Context, command RecordLedgerEventsCommand) error {

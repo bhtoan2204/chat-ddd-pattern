@@ -16,7 +16,7 @@ import (
 type aggregateStoreImpl struct {
 	repo         eventstore.LedgerEventStore
 	postingStore eventstore.LedgerPostingStore
-	outboxRepo   ledgerrepos.LedgerOutboxEventsRepository
+	outboxRepo   eventpkg.Store
 }
 
 func newAggregateStore(dbTX dbTX, serializer eventpkg.Serializer) eventstore.AggregateStore {
