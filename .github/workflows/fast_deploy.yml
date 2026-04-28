@@ -40,11 +40,19 @@ jobs:
             exit 1
           fi
 
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v6
+      - name: Cache golangci-lint
+        id: cache-golangci-lint
+        uses: actions/cache@v4
         with:
-          version: latest
-          args: --timeout=5m
+          path: ~/go/bin/golangci-lint
+          key: ${{ runner.os }}-golangci-lint-latest-go1.26.2
+
+      - name: Install golangci-lint
+        if: steps.cache-golangci-lint.outputs.cache-hit != 'true'
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+      - name: Run golangci-lint
+        run: golangci-lint run --timeout=5m
 
       - name: Run unit tests with coverage
         run: go test ./... -v -count=1 -coverprofile=coverage.out

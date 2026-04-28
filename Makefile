@@ -30,7 +30,8 @@ help:
 	@printf "  make fmt            Format Go code with goimports\n"
 	@printf "  make lint           Run go vet across the repository\n"
 	@printf "  make test           Run Go tests\n"
-	@printf "  make generate       Regenerate scaffold outputs\n"
+	@printf "  make generate       Regenerate scaffold outputs (WHAT=all|api|module|assembly|proto|swagger, MODULE=name)\n"
+	@printf "  make generate-help  Show scaffold generator CLI help\n"
 	@printf "  make connector      Register Debezium connectors against Kafka Connect\n"
 	@printf "  make connector-reset Reset connector offsets in Kafka Connect\n"
 .PHONY: help
@@ -120,17 +121,26 @@ test:
 	@go test ./...
 .PHONY: test
 
-## Regenerate scaffolded routes, handlers, and OpenAPI artifacts
+## Regenerate scaffolded routes, handlers, protobuf, and OpenAPI artifacts
+WHAT ?= all
+MODULE ?=
 generate:
 	@echo "Installing required tools..."
 	@go install golang.org/x/tools/cmd/goimports@v0.1.12
-	@go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
-	@go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.32.0
+	@if [ "$(WHAT)" = "all" ] || [ "$(WHAT)" = "proto" ]; then \
+		go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0; \
+		go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.32.0; \
+	fi
 
-	@echo "Running scaffold generator..."
-	@go run scaffold/main.go
+	@echo "Running scaffold generator ($(WHAT))..."
+	@go run scaffold/main.go $(WHAT) $(if $(MODULE),--module $(MODULE),)
 
 .PHONY: generate
+
+## Show scaffold generator CLI help
+generate-help:
+	@go run scaffold/main.go help
+.PHONY: generate-help
 
 ## Register Debezium connectors after Kafka Connect becomes healthy
 connector:
