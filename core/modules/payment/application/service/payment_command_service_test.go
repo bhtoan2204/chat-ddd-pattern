@@ -34,7 +34,7 @@ func TestProcessWebhookLocksByTransactionIDAndFinalizesSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	baseRepo := repos.NewMockRepos(ctrl)
 	txRepos := repos.NewMockRepos(ctrl)
-	providerRepo := repos.NewMockProviderPaymentRepository(ctrl)
+	aggregateRepo := repos.NewMockPaymentIntentAggregateRepo(ctrl)
 	providerRegistry := domainservice.NewMockPaymentProviderRegistry(ctrl)
 	provider := domainservice.NewMockPaymentProvider(ctrl)
 	locker := sharedlock.NewMockLock(ctrl)
@@ -55,15 +55,15 @@ func TestProcessWebhookLocksByTransactionIDAndFinalizesSuccess(t *testing.T) {
 		},
 	}, nil)
 
-	baseRepo.EXPECT().ProviderPaymentRepository().Return(providerRepo).AnyTimes()
-	providerRepo.EXPECT().GetByTransactionID(gomock.Any(), "txn-1").Return(paymentAggregate, nil).Times(2)
+	baseRepo.EXPECT().PaymentIntentAggregateRepository().Return(aggregateRepo).AnyTimes()
+	aggregateRepo.EXPECT().GetByTransactionID(gomock.Any(), "txn-1").Return(paymentAggregate, nil).Times(2)
 	locker.EXPECT().AcquireLock(gomock.Any(), "payment:txn-1", gomock.Any(), 30*time.Second, 100*time.Millisecond, 3*time.Second).Return(true, nil)
 	locker.EXPECT().ReleaseLock(gomock.Any(), "payment:txn-1", gomock.Any()).Return(true, nil)
 	baseRepo.EXPECT().WithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(repos.Repos) error) error {
 		return fn(txRepos)
 	})
-	txRepos.EXPECT().ProviderPaymentRepository().Return(providerRepo).AnyTimes()
-	providerRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
+	txRepos.EXPECT().PaymentIntentAggregateRepository().Return(aggregateRepo).AnyTimes()
+	aggregateRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
 		if savedAggregate.Status() != entity.PaymentStatusSuccess {
 			t.Fatalf("expected saved aggregate status success, got %s", savedAggregate.Status())
 		}
@@ -113,15 +113,15 @@ func TestApplyProviderOutcomeFinalizesSuccessOnlyOncePerPayment(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	baseRepo := repos.NewMockRepos(ctrl)
 	txRepos := repos.NewMockRepos(ctrl)
-	providerRepo := repos.NewMockProviderPaymentRepository(ctrl)
+	aggregateRepo := repos.NewMockPaymentIntentAggregateRepo(ctrl)
 
 	paymentAggregate := mustRehydratePaymentAggregate(t, "txn-1", "stripe", 100, "VND", "wallet:available")
 
 	baseRepo.EXPECT().WithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(repos.Repos) error) error {
 		return fn(txRepos)
 	}).Times(1)
-	txRepos.EXPECT().ProviderPaymentRepository().Return(providerRepo).AnyTimes()
-	providerRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
+	txRepos.EXPECT().PaymentIntentAggregateRepository().Return(aggregateRepo).AnyTimes()
+	aggregateRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
 		if savedAggregate.Status() != entity.PaymentStatusSuccess {
 			t.Fatalf("expected saved aggregate status success, got %s", savedAggregate.Status())
 		}
@@ -213,7 +213,7 @@ func TestApplyProviderOutcomeFinalizesRefundAsReversal(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	baseRepo := repos.NewMockRepos(ctrl)
 	txRepos := repos.NewMockRepos(ctrl)
-	providerRepo := repos.NewMockProviderPaymentRepository(ctrl)
+	aggregateRepo := repos.NewMockPaymentIntentAggregateRepo(ctrl)
 
 	paymentAggregate := mustRehydratePaymentAggregate(t, "txn-1", "stripe", 100, "VND", "wallet:available")
 	_, err := paymentAggregate.ApplyProviderOutcome(entity.PaymentProviderResult{
@@ -230,8 +230,8 @@ func TestApplyProviderOutcomeFinalizesRefundAsReversal(t *testing.T) {
 	baseRepo.EXPECT().WithTransaction(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, fn func(repos.Repos) error) error {
 		return fn(txRepos)
 	})
-	txRepos.EXPECT().ProviderPaymentRepository().Return(providerRepo).AnyTimes()
-	providerRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
+	txRepos.EXPECT().PaymentIntentAggregateRepository().Return(aggregateRepo).AnyTimes()
+	aggregateRepo.EXPECT().Save(gomock.Any(), paymentAggregate).DoAndReturn(func(_ context.Context, savedAggregate *paymentaggregate.PaymentIntentAggregate) error {
 		if savedAggregate.Status() != entity.PaymentStatusRefunded {
 			t.Fatalf("expected refunded status, got %s", savedAggregate.Status())
 		}

@@ -1,12 +1,4 @@
 {
-  "go.alternateTools": {
-    "go": "/home/bhtoan/.gvm/gos/go1.26.2/bin/go",
-    "gopls": "/home/bhtoan/.gvm/pkgsets/go1.26.2/global/bin/gopls"
-  },
-  "go.goroot": "/home/bhtoan/.gvm/gos/go1.26.2",
-  "go.toolsGopath": "/home/bhtoan/.gvm/pkgsets/go1.26.2/global",
-  "go.gopath": "/home/bhtoan/.gvm/pkgsets/go1.26.2/global",
-  "go.toolsManagement.autoUpdate": false,
   "editor.rulers": [120],
   "editor.formatOnSave": true,
   "go.formatTool": "goimports"

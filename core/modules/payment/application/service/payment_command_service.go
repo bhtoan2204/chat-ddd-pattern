@@ -98,7 +98,7 @@ func (s *paymentCommandService) CreatePayment(
 	}
 
 	if err := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		return stackErr.Error(tx.ProviderPaymentRepository().Create(ctx, paymentAggregate))
+		return stackErr.Error(tx.PaymentIntentAggregateRepository().Create(ctx, paymentAggregate))
 	}); err != nil {
 		if errors.Is(err, repos.ErrProviderPaymentDuplicateIntent) {
 			return nil, stackErr.Error(fmt.Errorf("%w: %s", ErrDuplicatePayment, paymentAggregate.TransactionID()))
@@ -169,7 +169,7 @@ func (s *paymentCommandService) CreateWithdrawal(
 	}
 
 	if err := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		return stackErr.Error(tx.ProviderPaymentRepository().Create(ctx, paymentAggregate))
+		return stackErr.Error(tx.PaymentIntentAggregateRepository().Create(ctx, paymentAggregate))
 	}); err != nil {
 		if errors.Is(err, repos.ErrProviderPaymentDuplicateIntent) {
 			return nil, stackErr.Error(fmt.Errorf("%w: %s", ErrDuplicatePayment, paymentAggregate.TransactionID()))
@@ -191,7 +191,7 @@ func (s *paymentCommandService) CreateWithdrawal(
 }
 
 func (s *paymentCommandService) ProcessPendingWithdrawals(ctx context.Context) error {
-	items, err := s.baseRepo.ProviderPaymentRepository().ListPendingWithdrawals(ctx, s.effectiveWithdrawalBatchSize())
+	items, err := s.baseRepo.PaymentIntentAggregateRepository().ListPendingWithdrawals(ctx, s.effectiveWithdrawalBatchSize())
 	if err != nil {
 		return stackErr.Error(err)
 	}
@@ -258,7 +258,7 @@ func (s *paymentCommandService) ProcessWebhook(
 		}
 	}()
 
-	paymentAggregate, err = s.baseRepo.ProviderPaymentRepository().GetByTransactionID(ctx, paymentAggregate.TransactionID())
+	paymentAggregate, err = s.baseRepo.PaymentIntentAggregateRepository().GetByTransactionID(ctx, paymentAggregate.TransactionID())
 	if err != nil {
 		return nil, stackErr.Error(err)
 	}
@@ -305,7 +305,7 @@ func (s *paymentCommandService) processPendingWithdrawal(ctx context.Context, tr
 		}
 	}()
 
-	paymentAggregate, err := s.baseRepo.ProviderPaymentRepository().GetByTransactionID(ctx, transactionID)
+	paymentAggregate, err := s.baseRepo.PaymentIntentAggregateRepository().GetByTransactionID(ctx, transactionID)
 	if err != nil {
 		return stackErr.Error(err)
 	}
@@ -355,16 +355,15 @@ func (s *paymentCommandService) applyProviderOutcome(
 		return paymentProviderOutcome{}, stackErr.Error(err)
 	}
 
-	persistErr := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		if err := tx.ProviderPaymentRepository().Save(ctx, paymentAggregate); err != nil {
+	if persistErr := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
+		if err := tx.PaymentIntentAggregateRepository().Save(ctx, paymentAggregate); err != nil {
 			if errors.Is(err, repos.ErrProviderPaymentDuplicateProcessed) {
 				return stackErr.Error(err)
 			}
 			return stackErr.Error(err)
 		}
 		return nil
-	})
-	if persistErr != nil {
+	}); persistErr != nil {
 		if errors.Is(persistErr, repos.ErrProviderPaymentDuplicateProcessed) {
 			return paymentProviderOutcome{Duplicate: true}, nil
 		}
@@ -402,7 +401,7 @@ func (s *paymentCommandService) findPaymentAggregate(
 	provider string,
 	result entity.PaymentProviderResult,
 ) (*paymentaggregate.PaymentIntentAggregate, error) {
-	store := s.baseRepo.ProviderPaymentRepository()
+	store := s.baseRepo.PaymentIntentAggregateRepository()
 
 	if strings.TrimSpace(result.TransactionID) != "" {
 		paymentAggregate, err := store.GetByTransactionID(ctx, result.TransactionID)
@@ -441,7 +440,7 @@ func (s *paymentCommandService) markCreateFailed(ctx context.Context, paymentAgg
 		return nil
 	}
 	if err := s.baseRepo.WithTransaction(ctx, func(tx repos.Repos) error {
-		return stackErr.Error(tx.ProviderPaymentRepository().Save(ctx, paymentAggregate))
+		return stackErr.Error(tx.PaymentIntentAggregateRepository().Save(ctx, paymentAggregate))
 	}); err != nil {
 		return stackErr.Error(err)
 	}

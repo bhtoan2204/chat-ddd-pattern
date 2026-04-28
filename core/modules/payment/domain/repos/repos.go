@@ -6,7 +6,7 @@ import (
 
 //go:generate mockgen -package=repos -destination=repos_mock.go -source=repos.go
 type Repos interface {
-	ProviderPaymentRepository() ProviderPaymentRepository
+	PaymentIntentAggregateRepository() PaymentIntentAggregateRepo
 
 	WithTransaction(ctx context.Context, fn func(Repos) error) error
 }

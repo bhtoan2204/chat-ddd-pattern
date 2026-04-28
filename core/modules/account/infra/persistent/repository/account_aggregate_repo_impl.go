@@ -164,7 +164,7 @@ func (r *accountAggregateRepoImpl) Save(ctx context.Context, agg *aggregate.Acco
 		}
 	}
 
-	agg.Root().Update()
+	agg.Root().MarkPersisted()
 	return nil
 }
 

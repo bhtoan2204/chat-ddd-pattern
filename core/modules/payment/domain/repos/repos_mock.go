@@ -40,18 +40,18 @@ func (m *MockRepos) EXPECT() *MockReposMockRecorder {
 	return m.recorder
 }
 
-// ProviderPaymentRepository mocks base method.
-func (m *MockRepos) ProviderPaymentRepository() ProviderPaymentRepository {
+// PaymentIntentAggregateRepository mocks base method.
+func (m *MockRepos) PaymentIntentAggregateRepository() PaymentIntentAggregateRepo {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ProviderPaymentRepository")
-	ret0, _ := ret[0].(ProviderPaymentRepository)
+	ret := m.ctrl.Call(m, "PaymentIntentAggregateRepository")
+	ret0, _ := ret[0].(PaymentIntentAggregateRepo)
 	return ret0
 }
 
-// ProviderPaymentRepository indicates an expected call of ProviderPaymentRepository.
-func (mr *MockReposMockRecorder) ProviderPaymentRepository() *gomock.Call {
+// PaymentIntentAggregateRepository indicates an expected call of PaymentIntentAggregateRepository.
+func (mr *MockReposMockRecorder) PaymentIntentAggregateRepository() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ProviderPaymentRepository", reflect.TypeOf((*MockRepos)(nil).ProviderPaymentRepository))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PaymentIntentAggregateRepository", reflect.TypeOf((*MockRepos)(nil).PaymentIntentAggregateRepository))
 }
 
 // WithTransaction mocks base method.

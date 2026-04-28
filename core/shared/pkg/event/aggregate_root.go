@@ -26,7 +26,7 @@ func (ar *AggregateRoot) SetID(id string) error {
 		return stackErr.Error(ErrIDEmpty)
 	}
 
-	if id == ar.aggregateID {
+	if ar.aggregateID != "" && ar.aggregateID != id {
 		return stackErr.Error(ErrAggExisted)
 	}
 
@@ -118,7 +118,7 @@ func (ar *AggregateRoot) LoadFromHistory(agg Aggregate, events []Event) error {
 	return nil
 }
 
-func (ar *AggregateRoot) Update() {
+func (ar *AggregateRoot) MarkPersisted() {
 	// mark persisted, clear events and update version
 	if len(ar.events) > 0 {
 		lastEvent := ar.events[len(ar.events)-1]

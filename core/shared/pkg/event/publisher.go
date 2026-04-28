@@ -69,6 +69,6 @@ func (p *publisher) PublishAggregate(ctx context.Context, agg Aggregate) error {
 	if err := p.Publish(ctx, events...); err != nil {
 		return stackErr.Error(err)
 	}
-	root.Update()
+	root.MarkPersisted()
 	return nil
 }

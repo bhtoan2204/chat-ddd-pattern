@@ -105,7 +105,7 @@ func (s *aggregateStoreImpl) Save(ctx context.Context, agg eventpkg.Aggregate) e
 		}
 	}
 
-	root.Update()
+	root.MarkPersisted()
 	return nil
 }
 

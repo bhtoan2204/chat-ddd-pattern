@@ -39,7 +39,7 @@ func TestNewProviderTopUpAggregateQueuesCreatedEvent(t *testing.T) {
 	if outbox[0].CreatedAt != now.Unix() {
 		t.Fatalf("unexpected envelope created at: %d", outbox[0].CreatedAt)
 	}
-	payload, ok := outbox[0].EventData.(sharedevents.PaymentCreatedEvent)
+	payload, ok := outbox[0].EventData.(*sharedevents.PaymentCreatedEvent)
 	if !ok {
 		t.Fatalf("unexpected payload type: %T", outbox[0].EventData)
 	}
@@ -75,7 +75,7 @@ func TestNewProviderWithdrawalAggregateQueuesCreatedAndRequestedEvents(t *testin
 	if outbox[1].EventName != sharedevents.EventPaymentWithdrawalRequested {
 		t.Fatalf("unexpected second event name: %s", outbox[1].EventName)
 	}
-	payload, ok := outbox[1].EventData.(sharedevents.PaymentWithdrawalRequestedEvent)
+	payload, ok := outbox[1].EventData.(*sharedevents.PaymentWithdrawalRequestedEvent)
 	if !ok {
 		t.Fatalf("unexpected payload type: %T", outbox[1].EventData)
 	}
@@ -137,7 +137,7 @@ func TestPaymentIntentAggregateApplySuccessQueuesProcessedAndOutbox(t *testing.T
 	if outbox[0].Version != 1 {
 		t.Fatalf("unexpected outbox version: %d", outbox[0].Version)
 	}
-	successPayload, ok := outbox[0].EventData.(sharedevents.PaymentSucceededEvent)
+	successPayload, ok := outbox[0].EventData.(*sharedevents.PaymentSucceededEvent)
 	if !ok {
 		t.Fatalf("unexpected success payload type: %T", outbox[0].EventData)
 	}

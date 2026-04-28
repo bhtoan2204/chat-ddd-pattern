@@ -253,11 +253,11 @@ func TestLedgerServiceRecordPaymentReversed(t *testing.T) {
 		accountRepo := ledgerrepos.NewMockLedgerAccountAggregateRepository(ctrl)
 		walletAgg, _ := ledgeraggregate.NewLedgerAccountAggregate("wallet:available")
 		_, _ = walletAgg.BookPayment("payment:pay-1:succeeded", "pay-1", "ledger:clearing:provider:stripe", "VND", 100, gomockTime())
-		walletAgg.Root().Update()
+		walletAgg.Root().MarkPersisted()
 
 		clearingAgg, _ := ledgeraggregate.NewLedgerAccountAggregate("ledger:clearing:provider:stripe")
 		_, _ = clearingAgg.BookPayment("payment:pay-1:succeeded", "pay-1", "wallet:available", "VND", -100, gomockTime())
-		clearingAgg.Root().Update()
+		clearingAgg.Root().MarkPersisted()
 
 		baseRepo.EXPECT().
 			WithTransaction(gomock.Any(), gomock.Any()).

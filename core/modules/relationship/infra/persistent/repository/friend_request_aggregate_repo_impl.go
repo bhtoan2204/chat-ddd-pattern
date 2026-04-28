@@ -134,7 +134,7 @@ func (f *friendRequestAggregateRepo) Save(ctx context.Context, agg *aggregate.Fr
 		}
 	}
 
-	agg.Update()
+	agg.MarkPersisted()
 	return nil
 }
 

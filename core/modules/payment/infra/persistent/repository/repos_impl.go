@@ -15,7 +15,7 @@ type repoImpl struct {
 	appCtx *appCtx.AppContext
 	db     *gorm.DB
 
-	providerPaymentRepo repos.ProviderPaymentRepository
+	paymentIntentAggregateRepo repos.PaymentIntentAggregateRepo
 }
 
 func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
@@ -23,17 +23,16 @@ func NewRepoImpl(appCtx *appCtx.AppContext) repos.Repos {
 }
 
 func newRepoImplWithDB(appCtx *appCtx.AppContext, db *gorm.DB) repos.Repos {
-	providerPaymentRepo := newProviderPaymentRepoImpl(db)
 	return &repoImpl{
 		appCtx: appCtx,
 		db:     db,
 
-		providerPaymentRepo: providerPaymentRepo,
+		paymentIntentAggregateRepo: NewPaymentIntentAggregateRepo(db),
 	}
 }
 
-func (r *repoImpl) ProviderPaymentRepository() repos.ProviderPaymentRepository {
-	return r.providerPaymentRepo
+func (r *repoImpl) PaymentIntentAggregateRepository() repos.PaymentIntentAggregateRepo {
+	return r.paymentIntentAggregateRepo
 }
 
 func (r *repoImpl) WithTransaction(ctx context.Context, fn func(repos.Repos) error) (err error) {
