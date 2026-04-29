@@ -27,9 +27,7 @@ func GenerateProto(protoRoot string) (string, error) {
 		"--go-grpc_out=.",
 		"--go-grpc_opt=module=wechat-clone",
 	}
-	for _, file := range files {
-		args = append(args, file)
-	}
+	args = append(args, files...)
 
 	cmd := exec.Command("protoc", args...)
 	if output, err := cmd.CombinedOutput(); err != nil {

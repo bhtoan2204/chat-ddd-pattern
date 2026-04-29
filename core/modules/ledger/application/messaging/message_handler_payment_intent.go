@@ -147,14 +147,6 @@ func (h *messageHandler) withLedgerAccountLocks(ctx context.Context, lockKeys []
 	return nil
 }
 
-func unmarshalPaymentCreatedPayload(data json.RawMessage) (sharedevents.PaymentCreatedEvent, error) {
-	var payload sharedevents.PaymentCreatedEvent
-	if err := contracts.UnmarshalEventData(data, &payload); err != nil {
-		return sharedevents.PaymentCreatedEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment created payload failed: %w", err))
-	}
-	return payload, nil
-}
-
 func unmarshalPaymentWithdrawalRequestedPayload(data json.RawMessage) (sharedevents.PaymentWithdrawalRequestedEvent, error) {
 	var payload sharedevents.PaymentWithdrawalRequestedEvent
 	if err := contracts.UnmarshalEventData(data, &payload); err != nil {
@@ -193,10 +185,6 @@ func unmarshalPaymentChargebackPayload(data json.RawMessage) (sharedevents.Payme
 		return sharedevents.PaymentChargebackEvent{}, stackErr.Error(fmt.Errorf("unmarshal payment chargeback payload failed: %w", err))
 	}
 	return payload, nil
-}
-
-func resolvePaymentCreatedID(aggregateID string, payload sharedevents.PaymentCreatedEvent) string {
-	return utils.FirstNonEmpty(strings.TrimSpace(payload.PaymentID), strings.TrimSpace(aggregateID), strings.TrimSpace(payload.TransactionID))
 }
 
 func resolvePaymentWithdrawalRequestedID(aggregateID string, payload sharedevents.PaymentWithdrawalRequestedEvent) string {
@@ -572,68 +560,6 @@ func newPaymentPosting(
 		panic(err)
 	}
 	return posting
-}
-
-func transferLedgerEvents(transactionID, fromAccountID, toAccountID, currency string, amount int64, bookedAt time.Time) ([]eventpkg.Event, error) {
-	if bookedAt.IsZero() {
-		bookedAt = time.Now().UTC()
-	}
-
-	if _, err := ledgeraggregate.NewLedgerAccountTransferOutPosting(
-		valueobject.LedgerAccountTransferPostingInput{
-			AccountID:             fromAccountID,
-			TransactionID:         transactionID,
-			CounterpartyAccountID: toAccountID,
-			Currency:              currency,
-			Amount:                amount,
-			BookedAt:              bookedAt,
-		},
-	); err != nil {
-		return nil, stackErr.Error(err)
-	}
-	if _, err := ledgeraggregate.NewLedgerAccountTransferInPosting(
-		valueobject.LedgerAccountTransferPostingInput{
-			AccountID:             toAccountID,
-			TransactionID:         transactionID,
-			CounterpartyAccountID: fromAccountID,
-			Currency:              currency,
-			Amount:                amount,
-			BookedAt:              bookedAt,
-		},
-	); err != nil {
-		return nil, stackErr.Error(err)
-	}
-
-	debitEvent, err := ledgeraggregate.NewLedgerAccountEvent(
-		fromAccountID,
-		eventpkg.AggregateTypeName(&ledgeraggregate.LedgerAccountAggregate{}),
-		&ledgeraggregate.EventLedgerAccountTransferredToAccount{
-			TransactionID: transactionID,
-			ToAccountID:   toAccountID,
-			Currency:      currency,
-			Amount:        amount,
-			BookedAt:      bookedAt,
-		},
-	)
-	if err != nil {
-		return nil, stackErr.Error(err)
-	}
-	creditEvent, err := ledgeraggregate.NewLedgerAccountEvent(
-		toAccountID,
-		eventpkg.AggregateTypeName(&ledgeraggregate.LedgerAccountAggregate{}),
-		&ledgeraggregate.EventLedgerAccountReceivedTransfer{
-			TransactionID: transactionID,
-			FromAccountID: fromAccountID,
-			Currency:      currency,
-			Amount:        amount,
-			BookedAt:      bookedAt,
-		},
-	)
-	if err != nil {
-		return nil, stackErr.Error(err)
-	}
-
-	return []eventpkg.Event{debitEvent, creditEvent}, nil
 }
 
 func debitLedgerEventNameForReversal(paymentEventName string) string {

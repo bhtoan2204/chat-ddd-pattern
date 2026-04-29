@@ -11,7 +11,6 @@ import (
 
 	accountprojection "wechat-clone/core/modules/account/application/projection"
 	"wechat-clone/core/modules/account/domain/entity"
-	accounttypes "wechat-clone/core/modules/account/types"
 	"wechat-clone/core/shared/config"
 	"wechat-clone/core/shared/pkg/stackErr"
 
@@ -190,37 +189,12 @@ func accountSearchIndexDefinition() map[string]interface{} {
 	}
 }
 
-func accountToDocumentSource(account *entity.Account) map[string]interface{} {
-	if account == nil {
-		return nil
-	}
-	return map[string]interface{}{
-		"id":                  strings.TrimSpace(account.ID),
-		"email":               account.Email.Value(),
-		"display_name":        account.DisplayName,
-		"username":            cloneStringPtr(account.Username),
-		"avatar_object_key":   cloneStringPtr(account.AvatarObjectKey),
-		"status":              account.Status.String(),
-		"email_verified_at":   cloneTimePtr(account.EmailVerifiedAt),
-		"last_login_at":       cloneTimePtr(account.LastLoginAt),
-		"password_changed_at": cloneTimePtr(account.PasswordChangedAt),
-		"created_at":          account.CreatedAt.UTC(),
-		"updated_at":          account.UpdatedAt.UTC(),
-		"banned_reason":       account.BannedReason,
-		"banned_until":        cloneTimePtr(account.BannedUntil),
-	}
-}
-
 func resolveAccountSearchIndex(cfg config.ElasticsearchConfig) string {
 	index := strings.TrimSpace(cfg.AccountIndex)
 	if index == "" {
 		return defaultAccountSearchIndex
 	}
 	return index
-}
-
-func isActiveStatus(status string) bool {
-	return strings.TrimSpace(strings.ToLower(status)) == accounttypes.AccountStatusActive.String()
 }
 
 func cloneStringPtr(value *string) *string {

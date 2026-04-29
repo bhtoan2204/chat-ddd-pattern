@@ -180,13 +180,6 @@ func appendUniqueString(values []string, value string) []string {
 	return append(values, value)
 }
 
-func lastPendingMessage(messages []*entity.MessageEntity) *entity.MessageEntity {
-	if len(messages) == 0 {
-		return nil
-	}
-	return messages[len(messages)-1]
-}
-
 func executeSendMessage(ctx context.Context, baseRepo repos.Repos, accountID string, command apptypes.SendMessageCommand) (*apptypes.MessageResult, error) {
 	roomAgg, err := baseRepo.RoomAggregateRepository().Load(ctx, strings.TrimSpace(command.RoomID))
 	if err != nil {

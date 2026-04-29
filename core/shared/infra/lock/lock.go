@@ -41,12 +41,15 @@ func (l *lock) AcquireLock(ctx context.Context, key, value string, expiration, r
 	defer cancel()
 
 	for {
-		ok, err := l.client.SetNX(ctx, key, value, expiration).Result()
+		res, err := l.client.SetArgs(ctx, key, value, redis.SetArgs{
+			Mode: "NX",
+			TTL:  expiration,
+		}).Result()
 		if err != nil {
 			log.Errorw("AcquireLock redis error", zap.String("key", key), zap.Error(err))
 			return false, stackErr.Error(err)
 		}
-		if ok {
+		if res == "OK" {
 			return true, nil
 		}
 

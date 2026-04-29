@@ -323,11 +323,11 @@ func (c *cache) SetSAdd(ctx context.Context, key string, members ...interface{})
 }
 
 func (c *cache) SetNX(ctx context.Context, key string, seconds int64, data interface{}) (bool, error) {
-	ok, err := c.rc.SetNX(ctx, key, data, time.Second*time.Duration(seconds)).Result()
+	res, err := c.rc.Set(ctx, key, data, time.Second*time.Duration(seconds)).Result()
 	if err != nil {
 		return false, stackErr.Error(err)
 	}
-	return ok, nil
+	return res == "OK", nil
 }
 
 func (c *cache) Select(ctx context.Context, index int) error {

@@ -844,22 +844,6 @@ func (a *PaymentIntentAggregate) validateProviderResultForStatus(status string, 
 	return nil
 }
 
-func (a *PaymentIntentAggregate) paymentIdempotencyKey(eventID, externalRef string) string {
-	if eventID = strings.TrimSpace(eventID); eventID != "" {
-		return eventID
-	}
-	if externalRef = strings.TrimSpace(externalRef); externalRef != "" {
-		return externalRef
-	}
-	if a != nil && a.intent != nil {
-		if externalRef = strings.TrimSpace(a.intent.ExternalRef); externalRef != "" {
-			return externalRef
-		}
-		return strings.TrimSpace(a.intent.TransactionID)
-	}
-	return ""
-}
-
 func (a *PaymentIntentAggregate) transitionIdempotencyKey(eventName string) string {
 	if a == nil || a.intent == nil {
 		return strings.TrimSpace(eventName) + ":"
